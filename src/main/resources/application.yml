@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: gayadi-server
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:gayadi;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+  flyway:
+    enabled: true
+  h2:
+    console:
+      enabled: ${H2_CONSOLE_ENABLED:true}
+      path: /h2-console
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: GAYADI Server
+    description: Adaptive group travel planning API
+    version: 0.1.0
+
+logging:
+  level:
+    root: INFO
+    com.gayadi.server: INFO

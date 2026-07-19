@@ -9,6 +9,14 @@
 
 이 문서는 GAYADI 서버의 제품 흐름, 데이터 모델, API, 운영 기준을 정의하는 기준 문서다. 구현 중 설계가 변경되면 코드와 함께 이 문서를 수정한다.
 
+### 현재 구현 기준
+
+- Spring Boot 4.1 / Java 21 / Maven Wrapper
+- 로컬 기본 실행은 H2, 운영 프로필은 PostgreSQL
+- Flyway가 아래 11개 테이블과 기준 장소·설문 데이터를 생성
+- 관광·날씨·혼잡·대중교통 API가 없어도 로컬 스텁으로 핵심 흐름 실행 가능
+- OAuth/OIDC, Redis, FCM/SSE 및 실제 외부 공급자 어댑터는 다음 연동 단계
+
 ## 1. 서비스 개요
 
 GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·중·후의 코스와 이동 방법을 추천하는 서비스다.
@@ -80,8 +88,8 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 
 | 대상 | 상태 |
 | --- | --- |
-| 여행 | `PREPARING` → `READY` → `IN_PROGRESS` → `RETURNING` → `COMPLETED` |
-| 일정 | `DRAFT` → `CONFIRMED` |
+| 여행 | `DRAFT` → `READY` → `IN_PROGRESS` → `RETURNING` → `COMPLETED` |
+| 일정 | `ACTIVE` |
 | 일정 항목 | `PLANNED` → `IN_PROGRESS` → `COMPLETED` / `SKIPPED` |
 | 변경 제안 | `PENDING` → `APPROVED` / `REJECTED` / `EXPIRED` |
 
@@ -106,7 +114,7 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 | 테이블 | 주요 칼럼 |
 | --- | --- |
 | `users` | `id`, `nickname`, `oauth_provider`, `oauth_subject`, `status` |
-| `trips` | `id`, `owner_id`, `title`, `destination_name`, `start_date`, `end_date`, `departure_mode`, `departure_at`, `meeting_address`, `meeting_latitude`, `meeting_longitude`, `invite_code`, `status` |
+| `trips` | `id`, `owner_id`, `title`, `departure_mode`, `departure_at`, `meeting_at`, `meeting_location`, `status` |
 | `trip_members` | `id`, `trip_id`, `user_id`, `role`, `participation_status`, `departure_location`, `return_destination`, `route_preferences` |
 
 `trips.departure_mode`는 여행 전체의 출발 방식이다.
@@ -118,10 +126,10 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 
 | 테이블 | 주요 칼럼 |
 | --- | --- |
-| `surveys` | `id`, `survey_type`, `title`, `version`, `questions`, `status` |
-| `survey_responses` | `id`, `survey_id`, `user_id`, `answers`, `result_code`, `result_data`, `completed_at` |
-| `trip_plans` | `id`, `trip_id`, `survey_response_id`, `revision_no`, `status`, `preference_snapshot`, `confirmed_at` |
-| `trip_plan_items` | `id`, `plan_id`, `place_id`, `sequence_no`, `planned_start_at`, `planned_end_at`, `status`, `memo` |
+| `surveys` | `id`, `survey_type`, `version`, `questions`, `status` |
+| `survey_responses` | `id`, `survey_id`, `user_id`, `trip_id`, `answers`, `result_code`, `result_data`, `created_at` |
+| `trip_plans` | `id`, `trip_id`, `survey_response_id`, `revision_no`, `status`, `preference_snapshot`, `created_at`, `updated_at` |
+| `trip_plan_items` | `id`, `plan_id`, `place_id`, `sequence_no`, `planned_start`, `planned_end`, `status` |
 
 성향 테스트는 `surveys.survey_type = PERSONALITY`인 일반 설문이다. 문항은 `questions` JSON, 사용자의 답변은 `answers` JSON, 계산된 성향과 추천 선호는 `result_code`, `result_data`에 저장한다. 만족도 조사 같은 다른 설문도 같은 구조를 재사용할 수 있다.
 
@@ -129,8 +137,8 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 
 | 테이블 | 주요 칼럼 |
 | --- | --- |
-| `places` | `id`, `name`, `category`, `address`, `latitude`, `longitude`, `source`, `source_place_id`, `basic_info`, `status`, `synced_at` |
-| `event_observations` | `id`, `event_type`, `source`, `place_id`, `grid_key`, `observed_at`, `valid_from`, `valid_to`, `severity`, `normalized_value` |
+| `places` | `id`, `name`, `category`, `address`, `latitude`, `longitude`, `source`, `source_place_id`, `basic_info` |
+| `event_observations` | `id`, `event_type`, `source`, `place_id`, `observed_at`, `valid_to`, `severity`, `normalized_value` |
 
 장소는 반복 검색과 코스 생성에 필요하므로 DB에 저장한다. 날씨·혼잡·교통은 외부 API가 원본이며, 일정 판단에 사용한 관측값만 Event DB에 저장하고 일반 조회는 Redis에 짧게 캐시한다.
 
@@ -138,8 +146,8 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 
 | 테이블 | 주요 칼럼 |
 | --- | --- |
-| `trip_routes` | `id`, `trip_id`, `member_id`, `scope`, `phase`, `origin`, `destination`, `departure_at`, `primary_mode`, `duration_seconds`, `transfer_count`, `fare`, `arrival_at`, `route_data`, `provider`, `status`, `valid_until`, `selected_at` |
-| `change_proposals` | `id`, `trip_id`, `plan_id`, `event_id`, `base_revision_no`, `status`, `reason`, `options`, `selected_option_key`, `before_snapshot`, `after_snapshot`, `decided_by`, `decided_at`, `notified_at`, `expires_at` |
+| `trip_routes` | `id`, `trip_id`, `member_id`, `scope`, `phase`, `origin`, `destination`, `duration_minutes`, `transfer_count`, `fare`, `route_data`, `status`, `valid_until` |
+| `change_proposals` | `id`, `trip_id`, `plan_id`, `event_id`, `base_revision_no`, `status`, `reason`, `options`, `selected_option`, `before_snapshot`, `after_snapshot`, `decided_by`, `decided_at` |
 
 경로 API가 반환한 후보는 Redis에 짧게 보관한다. 사용자가 후보를 선택했을 때만 `trip_routes`에 저장하며, 환승 구간은 `route_data` JSON에 넣는다.
 
@@ -283,11 +291,10 @@ flowchart TD
 ### 9.1 공통 규약
 
 - Base path: `/api/v1`
-- 인증: `Authorization: Bearer <access-token>`
-- 시간: ISO 8601, 서버 저장은 UTC, 사용자 표시만 지역 시간대 적용
-- 쓰기 API: 재시도로 중복 생성될 수 있는 요청은 `Idempotency-Key` 지원
-- 목록 API: `cursor`, `size` 기반 페이지네이션
-- 권한: `tripId`가 포함된 API는 여행 소유자 또는 멤버인지 확인
+- 현재 로컬 MVP: `/users`로 개발용 사용자를 만들며, 일부 결정 API에서 여행 멤버 여부를 검증
+- 운영 연동 목표: `Authorization: Bearer <access-token>`의 OAuth/OIDC principal을 모든 권한 판단에 사용
+- 시간: API는 ISO 8601을 사용한다. 현재 MVP는 `LocalDateTime`, 운영 전환 시 UTC `Instant` 정책으로 통일
+- `Idempotency-Key`, cursor 페이지네이션은 운영 연동 단계에서 추가
 - 오류 응답: `code`, `message`, `traceId`, `details`를 공통 형식으로 반환
 
 ```json
@@ -302,14 +309,18 @@ flowchart TD
 | 단계 | API | 연결 모델 |
 | --- | --- | --- |
 | 여행 생성 | `POST /api/v1/trips` | `trips`, `departure_mode` |
-| 멤버 설정 | `PUT /api/v1/trips/{tripId}/members/{memberId}/departure-profile` | `trip_members` |
-| 설문 조회 | `GET /api/v1/surveys/{surveyType}/active` | `surveys` |
-| 설문 제출 | `POST /api/v1/surveys/{surveyId}/responses` | `survey_responses` |
-| 일정 생성 | `POST /api/v1/trips/{tripId}/plans/generate` | `places`, `trip_plans`, `trip_plan_items` |
+| 여행 조회 | `GET /api/v1/trips/{tripId}` | `trips`, `trip_members` |
+| 멤버 설정 | `POST /api/v1/trips/{tripId}/members` | `trip_members` |
+| 설문 조회 | `GET /api/v1/surveys/personality` | `surveys` |
+| 설문 제출 | `POST /api/v1/trips/{tripId}/survey-responses` | `survey_responses` |
+| 그룹 성향 | `GET /api/v1/trips/{tripId}/personality-profile` | `survey_responses` |
+| 일정 생성 | `POST /api/v1/trips/{tripId}/plan/generate` | `places`, `trip_plans`, `trip_plan_items` |
+| 일정 조회 | `GET /api/v1/trips/{tripId}/plan` | `trip_plans`, `trip_plan_items` |
 | 장소 조회 | `GET /api/v1/places/{placeId}` | Place DB + Event DB/Redis |
-| 경로 추천 | `POST /api/v1/trips/{tripId}/routes/recommend` | 외부 경로 API + Redis 후보 캐시 |
-| 경로 선택 | `POST /api/v1/trips/{tripId}/routes/select` | 선택 결과를 `trip_routes`에 저장 |
-| 실시간 조회 | `GET /api/v1/trips/{tripId}/live` | 계획 + 이벤트 + 경로 |
+| 경로 추천 | `POST /api/v1/trips/{tripId}/routes/recommend?phase=...&memberId=...` | `RouteProvider`, `trip_routes` |
+| 여행 시작 | `POST /api/v1/trips/{tripId}/start` | `trips.status` |
+| 이벤트 관측 | `POST /api/v1/trips/{tripId}/event-observations` | `event_observations`, `change_proposals` |
+| 변경안 조회 | `GET /api/v1/trips/{tripId}/change-proposals` | `change_proposals` |
 | 변경 승인 | `POST /api/v1/trips/{tripId}/change-proposals/{proposalId}/decision` | 일정 항목 수정, `trip_plans.revision_no` 증가 |
 | 여행 완료 | `POST /api/v1/trips/{tripId}/complete` | 귀가 경로 + 여행 상태 |
 

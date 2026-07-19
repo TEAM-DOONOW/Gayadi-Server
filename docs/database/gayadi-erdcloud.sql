@@ -6,6 +6,7 @@
 -- - 설문 문항/답변, 경로 구간, 외부 API 상세 응답은 JSON으로 보관한다.
 -- - places와 event_observations는 나중에 별도 DB로 분리할 수 있다.
 -- - 아래에서는 ERDCloud에서 관계를 보이기 위해 논리 FK를 둔다.
+-- - 실제 실행 스키마의 기준은 src/main/resources/db/migration 이며, 이 파일은 발표용 논리 ERD다.
 
 -- ============================================================
 -- 1. 사용자 / 여행
@@ -31,11 +32,12 @@ CREATE TABLE trips (
     end_date            DATE NOT NULL,
     departure_mode      VARCHAR(20) NOT NULL,
     departure_at        DATETIME(3) NOT NULL,
+    meeting_at          DATETIME(3) NULL,
     meeting_address     VARCHAR(255) NULL,
     meeting_latitude    DECIMAL(10,7) NULL,
     meeting_longitude   DECIMAL(10,7) NULL,
     invite_code         VARCHAR(100) NULL,
-    status              VARCHAR(20) NOT NULL DEFAULT 'PREPARING',
+    status              VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
     created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     CONSTRAINT fk_trips_owner
@@ -82,6 +84,7 @@ CREATE TABLE survey_responses (
     id                  CHAR(36) PRIMARY KEY,
     survey_id           CHAR(36) NOT NULL,
     user_id             CHAR(36) NOT NULL,
+    trip_id             CHAR(36) NOT NULL,
     answers             JSON NULL,
     result_code         VARCHAR(50) NULL,
     result_data         JSON NULL,
@@ -91,6 +94,9 @@ CREATE TABLE survey_responses (
         FOREIGN KEY (survey_id) REFERENCES surveys(id),
     CONSTRAINT fk_survey_responses_user
         FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_survey_responses_trip
+        FOREIGN KEY (trip_id) REFERENCES trips(id),
+    UNIQUE KEY uq_survey_responses_trip_user (trip_id, survey_id, user_id),
     KEY idx_survey_responses_user (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
