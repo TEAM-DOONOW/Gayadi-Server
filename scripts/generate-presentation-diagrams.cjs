@@ -9,10 +9,10 @@ fs.mkdirSync(OUT, { recursive: true });
 const W = 2560;
 const H = 1440;
 const C = {
-  bg: '#E8EEF6', ink: '#0B1830', muted: '#475569', border: '#9DADC0', white: '#FFFFFF',
-  navy: '#123C69', violet: '#6637D9', green: '#087E62', orange: '#D85C22',
-  blue: '#0568C2', rose: '#C52B5A', success: '#087A55', line: '#607089',
-  cyan: '#0D9FA5', gold: '#D99614'
+  bg: '#F8FAFC', ink: '#0F172A', muted: '#475569', border: '#94A3B8', white: '#FFFFFF',
+  navy: '#1E3A8A', violet: '#7C3AED', green: '#059669', orange: '#EA580C',
+  blue: '#2563EB', rose: '#DB2777', success: '#059669', line: '#64748B',
+  cyan: '#0F766E', gold: '#D97706'
 };
 
 const esc = (value) => String(value)
@@ -45,21 +45,21 @@ function shell(title, description, content) {
       <circle cx="1" cy="1" r="1.15" fill="#AAB7C8"/>
     </pattern>
   </defs>
-  <rect width="${W}" height="${H}" fill="url(#pageBackground)"/>
-  <rect width="${W}" height="${H}" fill="url(#grid)" opacity="0.24"/>
+  <rect width="${W}" height="${H}" fill="#FFFFFF"/>
+  <rect width="${W}" height="${H}" fill="url(#grid)" opacity="0.08"/>
   <g font-family="Malgun Gothic, Noto Sans KR, Arial, sans-serif">${content}</g>
 </svg>`;
 }
 
-function header(title, subtitle) {
-  return `<rect width="${W}" height="122" fill="url(#topHeader)"/>
-  <rect x="0" y="118" width="${W}" height="4" fill="${C.cyan}"/>
-  <rect x="64" y="29" width="8" height="62" rx="4" fill="${C.cyan}"/>
-  <text x="92" y="55" font-size="35" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
-  <text x="92" y="88" font-size="17" fill="#D5E0EC">${esc(subtitle)}</text>
-  <g filter="url(#softShadow)"><rect x="2342" y="33" width="154" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.38"/>
-  <circle cx="2371" cy="59" r="8" fill="${C.cyan}"/>
-  <text x="2429" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">GAYADI</text></g>`;
+function header(title, subtitle, rightText = '') {
+  const right = rightText
+    ? `\n    <text x="2464" y="72" text-anchor="end" font-size="14" font-weight="600" fill="#CBD5E1">${esc(rightText)}</text>`
+    : '';
+  return `<g filter="url(#softShadow)">
+    <rect x="64" y="28" width="2432" height="80" rx="10" fill="#0F172A"/>
+    <text x="94" y="62" font-size="29" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
+    <text x="94" y="88" font-size="14.5" fill="#CBD5E1">${esc(subtitle)}</text>${right}
+  </g>`;
 }
 
 function table({ id, x, y, w, color, note, rows }) {
@@ -118,7 +118,7 @@ function erd() {
       ['PK', 'id', 'UUID'], ['FK', 'owner_id', 'UUID'], ['', 'departure_mode', 'VARCHAR'], ['', 'departure_at / meeting_at', 'TIMESTAMP'], ['', 'meeting_location', 'JSON'], ['', 'status', 'VARCHAR']]],
     ['trip_members', 55, 505, 415, C.navy, '참가자별 출발지·귀가지를 관리', [
       ['PK', 'id', 'UUID'], ['FK', 'trip_id', 'UUID'], ['FK', 'user_id', 'UUID'], ['', 'role / participation_status', 'VARCHAR'], ['', 'departure_location', 'JSON'], ['', 'return_destination', 'JSON'], ['', 'route_preferences', 'JSON']]],
-    ['surveys', 985, 160, 355, C.violet, '성향·만족도 등 범용 설문 정의', [
+    ['surveys', 985, 160, 355, C.violet, '성향·만족도 설문 문항과 버전', [
       ['PK', 'id', 'UUID'], ['', 'survey_type', 'VARCHAR'], ['', 'version', 'VARCHAR'], ['', 'questions', 'JSON'], ['', 'status', 'VARCHAR']]],
     ['survey_responses', 985, 455, 390, C.violet, '응답 원본과 계산 결과', [
       ['PK', 'id', 'UUID'], ['FK', 'survey_id', 'UUID'], ['FK', 'user_id / trip_id', 'UUID'], ['', 'answers', 'JSON'], ['', 'result_code', 'VARCHAR'], ['', 'result_data', 'JSON']]],
@@ -128,11 +128,11 @@ function erd() {
       ['PK', 'id', 'UUID'], ['FK', 'plan_id', 'UUID'], ['FK', 'place_id', 'UUID'], ['', 'sequence_no', 'INT'], ['', 'planned_start / end', 'TIMESTAMP'], ['', 'status', 'VARCHAR']]],
     ['trip_routes', 55, 960, 455, C.blue, '선택된 출발·이동·귀가 경로', [
       ['PK', 'id', 'UUID'], ['FK', 'trip_id / member_id', 'UUID'], ['', 'scope / phase', 'VARCHAR'], ['', 'origin / destination', 'JSON'], ['', 'duration / transfer / fare', 'INT'], ['', 'route_data', 'JSON'], ['', 'status / valid_until', 'VARCHAR']]],
-    ['places', 1745, 160, 430, C.green, '외부 장소 API를 보완하는 장소 원장', [
+    ['places', 1745, 160, 430, C.green, '서비스에서 사용하는 장소 정보', [
       ['PK', 'id', 'UUID'], ['', 'name / category', 'VARCHAR'], ['', 'address', 'VARCHAR'], ['', 'latitude / longitude', 'DECIMAL'], ['', 'source / source_place_id', 'VARCHAR'], ['', 'basic_info', 'JSON']]],
-    ['event_observations', 1745, 530, 455, C.orange, '정규화한 날씨·혼잡·교통 관측값', [
+    ['event_observations', 1745, 530, 455, C.orange, '수집한 날씨·혼잡·교통 상태', [
       ['PK', 'id', 'UUID'], ['FK', 'place_id', 'UUID'], ['', 'event_type / source', 'VARCHAR'], ['', 'observed_at / valid_to', 'TIMESTAMP'], ['', 'severity', 'VARCHAR'], ['', 'normalized_value', 'JSON']]],
-    ['change_proposals', 1600, 960, 610, C.rose, '일정 변경 제안·승인·감사 기록', [
+    ['change_proposals', 1600, 960, 610, C.rose, '일정 변경 제안과 사용자 선택 결과', [
       ['PK', 'id', 'UUID'], ['FK', 'trip_id / plan_id / event_id', 'UUID'], ['', 'base_revision_no', 'INT'], ['', 'status / reason', 'VARCHAR'], ['', 'options / selected_option', 'JSON'], ['', 'before / after_snapshot', 'JSON'], ['', 'decided_by / decided_at', 'UUID / TIME']]],
   ];
 
@@ -217,23 +217,23 @@ function flowArrow(points, options = {}) {
 }
 
 function serviceFlow() {
-  let s = header('GAYADI 서비스 흐름도', '여행 전 · 여행 중 · 여행 후  |  성향 기반 일정과 상황 대응');
-  s += panel(50, 145, 780, 1125, C.navy, '01', '여행 전', '성향 파악 · 일정 생성 · 출발 경로');
-  s += panel(870, 145, 1060, 1125, C.orange, '02', '여행 중', '실시간 변수 감지 · 대안 제시 · 승인');
+  let s = header('GAYADI 서비스 흐름도', '성향 기반 일정 생성부터 실시간 변경 대응과 귀가까지', '여행 전  →  여행 중  →  여행 후');
+  s += panel(50, 145, 780, 1125, C.blue, '01', '여행 전', '성향 파악 · 일정 생성 · 출발 경로');
+  s += panel(870, 145, 1060, 1125, C.violet, '02', '여행 중', '실시간 변수 감지 · 대안 제시 · 승인');
   s += panel(1970, 145, 540, 1125, C.green, '03', '여행 후', '귀가 경로 · 여행 종료');
 
   // 여행 전
-  s += step(250, 245, 380, 64, '여행 생성 · 멤버 초대', { stroke: C.navy });
-  s += decision(440, 405, 310, 100, '출발 방식?', C.navy);
-  s += step(85, 515, 310, 88, '모여서 출발\nGROUP_MEETING', { fill: '#DCEAF7', stroke: C.navy, size: 15 });
-  s += step(475, 515, 310, 88, '각자 출발\nINDIVIDUAL', { fill: '#DCEAF7', stroke: C.navy, size: 15 });
+  s += step(250, 245, 380, 64, '여행 생성 · 멤버 초대', { stroke: C.blue });
+  s += decision(440, 405, 310, 100, '출발 방식?', C.blue);
+  s += step(85, 515, 310, 88, '모여서 출발', { fill: '#EFF6FF', stroke: C.blue, size: 15 });
+  s += step(475, 515, 310, 88, '각자 출발', { fill: '#EFF6FF', stroke: C.blue, size: 15 });
   s += step(250, 690, 380, 70, '성향 설문 제출', { stroke: C.violet });
   s += step(220, 825, 440, 82, '장소 후보 조회 · 맞춤 일정 생성', { stroke: C.green });
   s += step(175, 970, 530, 88, '대중교통 출발 경로 추천\n멤버→집결지 또는 멤버→첫 장소', { stroke: C.blue, size: 15 });
-  s += step(250, 1120, 380, 70, '여행 준비 완료 · READY', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
+  s += step(250, 1120, 380, 70, '여행 준비 완료', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
   s += flowArrow([[440, 309], [440, 355]]);
-  s += flowArrow([[350, 440], [240, 515]], { label: '모여서', at: [270, 473], color: C.navy });
-  s += flowArrow([[530, 440], [630, 515]], { label: '각자', at: [610, 473], color: C.navy });
+  s += flowArrow([[350, 440], [240, 515]], { label: '모여서', at: [270, 473], color: C.blue });
+  s += flowArrow([[530, 440], [630, 515]], { label: '각자', at: [610, 473], color: C.blue });
   s += flowArrow([[240, 603], [240, 642], [440, 642], [440, 690]]);
   s += flowArrow([[630, 603], [630, 642], [440, 642], [440, 690]]);
   s += flowArrow([[440, 760], [440, 825]]);
@@ -241,13 +241,13 @@ function serviceFlow() {
   s += flowArrow([[440, 1058], [440, 1120]]);
 
   // 여행 중
-  s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#FFE5D3', stroke: C.orange });
-  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 상태 확인\n주기 조회 + 짧은 캐시', { stroke: C.orange, size: 15 });
+  s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#F5F3FF', stroke: C.violet });
+  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 상태 확인\n주기적으로 최신 정보 확인', { stroke: C.orange, size: 15 });
   s += decision(1400, 535, 330, 108, '일정 영향 있음?', C.orange);
   s += step(1180, 655, 440, 78, '대체 장소 · 경로 계산', { stroke: C.blue });
   s += step(1150, 785, 500, 82, '변경 이유 · 시간 차이 알림', { stroke: C.rose });
   s += decision(1400, 965, 340, 108, '사용자 승인?', C.rose);
-  s += step(1110, 1090, 580, 92, '미래 일정 항목 수정\nrevision_no 증가 · 변경 이력 저장', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E', size: 15 });
+  s += step(1110, 1090, 580, 92, '남은 일정에 새 코스 반영\n이전 일정과 변경 이력 보관', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E', size: 15 });
   s += flowArrow([[1400, 303], [1400, 350]]);
   s += flowArrow([[1400, 438], [1400, 481]]);
   s += flowArrow([[1400, 589], [1400, 655]], { label: '예', at: [1436, 620], color: C.orange });
@@ -259,7 +259,7 @@ function serviceFlow() {
   s += flowArrow([[1110, 1136], [965, 1136], [965, 394], [1145, 394]], { label: '여행 계속', at: [1013, 1110], color: C.success });
 
   // 단계 연결
-  s += flowArrow([[630, 1155], [850, 1155], [850, 269], [1190, 269]], { label: '출발', at: [850, 228], color: C.navy });
+  s += flowArrow([[630, 1155], [850, 1155], [850, 269], [1190, 269]], { label: '출발', at: [850, 228], color: C.blue });
 
   // 여행 후
   s += step(2045, 300, 390, 76, '마지막 일정 완료', { stroke: C.green });
@@ -272,18 +272,18 @@ function serviceFlow() {
   s += flowArrow([[2240, 726], [2240, 830]]);
 
   // 기반 시스템
-  s += `<g filter="url(#shadow)"><rect x="50" y="1295" width="2460" height="100" rx="18" fill="url(#bottomBand)" stroke="#2A6175" stroke-width="2"/>
-    <rect x="50" y="1295" width="10" height="100" rx="5" fill="${C.cyan}"/>
-    <text x="82" y="1327" font-size="12" font-weight="700" fill="#8FDFE1">데이터 및 외부 연동</text>
-    <text x="82" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">핵심 DB</text>
-    <text x="280" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">장소 DB</text>
-    <text x="485" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">이벤트 DB</text>
-    <text x="690" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Redis 캐시</text>
-    <text x="930" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">관광 API</text>
-    <text x="1115" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">날씨 · 혼잡 API</text>
-    <text x="1410" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">대중교통 · 경로 API</text>
-    <text x="1760" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">푸시 알림 / SSE</text>
-    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">로그 · 지표</text></g>`;
+  s += `<g filter="url(#softShadow)"><rect x="50" y="1295" width="2460" height="100" rx="14" fill="#ECFDF5" stroke="${C.green}" stroke-width="2"/>
+    <path d="M64,1295 H2496 Q2510,1295 2510,1309 V1334 H50 V1309 Q50,1295 64,1295 Z" fill="${C.green}"/>
+    <text x="82" y="1322" font-size="15" font-weight="700" fill="#FFFFFF">데이터 · 외부 연동</text>
+    <text x="82" y="1370" font-size="16" font-weight="600" fill="#065F46">핵심 DB</text>
+    <text x="280" y="1370" font-size="16" font-weight="600" fill="#065F46">장소 DB</text>
+    <text x="485" y="1370" font-size="16" font-weight="600" fill="#065F46">이벤트 DB</text>
+    <text x="690" y="1370" font-size="16" font-weight="600" fill="#475569">Redis 캐시</text>
+    <text x="930" y="1370" font-size="16" font-weight="600" fill="#9A3412">관광 API</text>
+    <text x="1115" y="1370" font-size="16" font-weight="600" fill="#9A3412">날씨 · 혼잡 API</text>
+    <text x="1410" y="1370" font-size="16" font-weight="600" fill="#9A3412">대중교통 · 경로 API</text>
+    <text x="1760" y="1370" font-size="16" font-weight="600" fill="#475569">푸시 알림 / SSE</text>
+    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#475569">로그 · 지표</text></g>`;
 
   return shell('GAYADI 서비스 흐름도', '여행 전, 여행 중, 여행 후의 전체 사용자 및 시스템 흐름', s);
 }
