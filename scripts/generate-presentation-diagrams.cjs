@@ -55,10 +55,13 @@ function header(title, subtitle, rightText = '') {
   const right = rightText
     ? `\n    <text x="2464" y="72" text-anchor="end" font-size="14" font-weight="600" fill="#CBD5E1">${esc(rightText)}</text>`
     : '';
+  const titleY = subtitle ? 62 : 77;
+  const subtitleText = subtitle
+    ? `\n    <text x="94" y="88" font-size="14.5" fill="#CBD5E1">${esc(subtitle)}</text>`
+    : '';
   return `<g filter="url(#softShadow)">
     <rect x="64" y="28" width="2432" height="80" rx="10" fill="#0F172A"/>
-    <text x="94" y="62" font-size="29" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
-    <text x="94" y="88" font-size="14.5" fill="#CBD5E1">${esc(subtitle)}</text>${right}
+    <text x="94" y="${titleY}" font-size="29" font-weight="700" fill="#FFFFFF">${esc(title)}</text>${subtitleText}${right}
   </g>`;
 }
 
@@ -171,13 +174,17 @@ function erd() {
 }
 
 function panel(x, y, w, h, color, number, title, subtitle) {
+  const titleY = subtitle ? y + 31 : y + 48;
+  const subtitleText = subtitle
+    ? `<text x="${x + 80}" y="${y + 57}" font-size="12.5" fill="#FFFFFF" opacity="0.94">${esc(subtitle)}</text>`
+    : '';
   return `<g filter="url(#softShadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="#FFFFFF" stroke="${color}" stroke-width="2.4"/>
     <rect x="${x + 2}" y="${y + 78}" width="${w - 4}" height="${h - 80}" rx="20" fill="${color}" fill-opacity="0.045"/>
     <path d="M${x + 18},${y} H${x + w - 18} Q${x + w},${y} ${x + w},${y + 18} V${y + 78} H${x} V${y + 18} Q${x},${y} ${x + 18},${y} Z" fill="${color}"/>
     <circle cx="${x + 42}" cy="${y + 39}" r="23" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.62"/>
     <text x="${x + 42}" y="${y + 45}" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">${number}</text>
-    <text x="${x + 80}" y="${y + 31}" font-size="23" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
-    <text x="${x + 80}" y="${y + 57}" font-size="12.5" fill="#FFFFFF" opacity="0.94">${esc(subtitle)}</text></g>`;
+    <text x="${x + 80}" y="${titleY}" font-size="23" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
+    ${subtitleText}</g>`;
 }
 
 function step(x, y, w, h, text, options = {}) {
@@ -191,8 +198,7 @@ function step(x, y, w, h, text, options = {}) {
   lines.forEach((line, index) => {
     texts += `<text x="${x + w / 2}" y="${first + index * gap}" text-anchor="middle" font-size="${options.size || 16}" font-weight="${options.weight || 600}" fill="${color}">${esc(line)}</text>`;
   });
-  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.2"/>
-    <rect x="${x + 10}" y="${y + 13}" width="7" height="${Math.max(18, h - 26)}" rx="3.5" fill="${stroke}"/>${texts}</g>`;
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.2"/>${texts}</g>`;
 }
 
 function decision(cx, cy, w, h, text, color) {
@@ -216,10 +222,10 @@ function flowArrow(points, options = {}) {
 }
 
 function serviceFlow() {
-  let s = header('GAYADI 서비스 흐름도', '성향 기반 일정 생성부터 실시간 변경 대응과 귀가까지', '여행 전  →  여행 중  →  여행 후');
-  s += panel(50, 145, 780, 1125, C.blue, '01', '여행 전', '성향 파악 · 일정 생성 · 출발 경로');
-  s += panel(870, 145, 1060, 1125, C.violet, '02', '여행 중', '실시간 변수 감지 · 대안 제시 · 승인');
-  s += panel(1970, 145, 540, 1125, C.green, '03', '여행 후', '귀가 경로 · 여행 종료');
+  let s = header('GAYADI 서비스 흐름도', '');
+  s += panel(50, 145, 780, 1125, C.blue, '01', '여행 전', '');
+  s += panel(870, 145, 1060, 1125, C.violet, '02', '여행 중', '');
+  s += panel(1970, 145, 540, 1125, C.green, '03', '여행 후', '');
 
   // 여행 전
   s += step(250, 245, 380, 64, '여행 생성 · 멤버 초대', { stroke: C.blue });
@@ -228,7 +234,7 @@ function serviceFlow() {
   s += step(475, 515, 310, 88, '각자 출발', { fill: '#EFF6FF', stroke: C.blue, size: 15 });
   s += step(250, 690, 380, 70, '성향 설문 제출', { stroke: C.violet });
   s += step(220, 825, 440, 82, '장소 후보 조회 · 맞춤 일정 생성', { stroke: C.green });
-  s += step(175, 970, 530, 88, '대중교통 출발 경로 추천\n멤버→집결지 또는 멤버→첫 장소', { stroke: C.blue, size: 15 });
+  s += step(175, 970, 530, 88, '출발 경로 추천', { stroke: C.blue, size: 15 });
   s += step(250, 1120, 380, 70, '여행 준비 완료', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
   s += flowArrow([[440, 309], [440, 355]]);
   s += flowArrow([[350, 440], [240, 515]], { label: '모여서', at: [270, 473], color: C.blue });
@@ -241,12 +247,12 @@ function serviceFlow() {
 
   // 여행 중
   s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#F5F3FF', stroke: C.violet });
-  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 상태 확인\n주기적으로 최신 정보 확인', { stroke: C.orange, size: 15 });
+  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 확인', { stroke: C.orange, size: 15 });
   s += decision(1400, 535, 330, 108, '일정 영향 있음?', C.orange);
   s += step(1180, 655, 440, 78, '대체 장소 · 경로 계산', { stroke: C.blue });
   s += step(1150, 785, 500, 82, '변경 이유 · 시간 차이 알림', { stroke: C.rose });
   s += decision(1400, 965, 340, 108, '사용자 승인?', C.rose);
-  s += step(1110, 1090, 580, 92, '남은 일정에 새 코스 반영\n이전 일정과 변경 이력 보관', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E', size: 15 });
+  s += step(1110, 1090, 580, 92, '변경 일정 반영', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E', size: 15 });
   s += flowArrow([[1400, 303], [1400, 350]]);
   s += flowArrow([[1400, 438], [1400, 481]]);
   s += flowArrow([[1400, 589], [1400, 655]], { label: '예', at: [1436, 620], color: C.orange });
@@ -262,27 +268,13 @@ function serviceFlow() {
 
   // 여행 후
   s += step(2045, 300, 390, 76, '마지막 일정 완료', { stroke: C.green });
-  s += step(2035, 465, 410, 94, '멤버별 귀가 경로 추천\n마지막 장소 → 각자 귀가지', { stroke: C.blue, size: 15 });
+  s += step(2035, 465, 410, 94, '멤버별 귀가 경로 추천', { stroke: C.blue, size: 15 });
   s += step(2045, 650, 390, 76, '귀가 경로 선택', { stroke: C.blue });
   s += step(2045, 830, 390, 80, '여행 완료', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
   s += flowArrow([[1930, 1136], [1950, 1136], [1950, 338], [2045, 338]], { label: '마지막 일정', at: [1994, 294], color: C.green });
   s += flowArrow([[2240, 376], [2240, 465]]);
   s += flowArrow([[2240, 559], [2240, 650]]);
   s += flowArrow([[2240, 726], [2240, 830]]);
-
-  // 기반 시스템
-  s += `<g filter="url(#softShadow)"><rect x="50" y="1295" width="2460" height="100" rx="14" fill="#ECFDF5" stroke="${C.green}" stroke-width="2"/>
-    <path d="M64,1295 H2496 Q2510,1295 2510,1309 V1334 H50 V1309 Q50,1295 64,1295 Z" fill="${C.green}"/>
-    <text x="82" y="1322" font-size="15" font-weight="700" fill="#FFFFFF">데이터 · 외부 연동</text>
-    <text x="82" y="1370" font-size="16" font-weight="600" fill="#065F46">핵심 DB</text>
-    <text x="280" y="1370" font-size="16" font-weight="600" fill="#065F46">장소 DB</text>
-    <text x="485" y="1370" font-size="16" font-weight="600" fill="#065F46">이벤트 DB</text>
-    <text x="690" y="1370" font-size="16" font-weight="600" fill="#475569">Redis 캐시</text>
-    <text x="930" y="1370" font-size="16" font-weight="600" fill="#9A3412">관광 API</text>
-    <text x="1115" y="1370" font-size="16" font-weight="600" fill="#9A3412">날씨 · 혼잡 API</text>
-    <text x="1410" y="1370" font-size="16" font-weight="600" fill="#9A3412">대중교통 · 경로 API</text>
-    <text x="1760" y="1370" font-size="16" font-weight="600" fill="#475569">푸시 알림 / SSE</text>
-    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#475569">로그 · 지표</text></g>`;
 
   return shell('GAYADI 서비스 흐름도', '여행 전, 여행 중, 여행 후의 전체 사용자 및 시스템 흐름', s);
 }
