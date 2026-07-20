@@ -69,7 +69,6 @@ function table({ id, x, y, w, color, note, rows }) {
   let body = `<g filter="url(#shadow)">
     <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#FFFFFF" stroke="${color}" stroke-width="2"/>
     <path d="M${x + 14},${y} H${x + w - 14} Q${x + w},${y} ${x + w},${y + 14} V${y + head} H${x} V${y + 14} Q${x},${y} ${x + 14},${y} Z" fill="${color}"/>
-    <rect x="${x + 16}" y="${y + 12}" width="38" height="4" rx="2" fill="#FFFFFF" opacity="0.72"/>
     <text x="${x + 16}" y="${y + 27}" font-size="19" font-weight="700" fill="#FFFFFF">${esc(id)}</text>
     <text x="${x + 16}" y="${y + 50}" font-size="12.5" fill="#FFFFFF" opacity="0.92">${esc(note)}</text>`;
   rows.forEach((row, index) => {
