@@ -500,13 +500,13 @@ function serviceArchitectureDrawio() {
   const vertex = (id, parent, title, subtitle, style, x, y, w, h) => {
     cells.push(`<mxCell id="${id}" value="${drawioValue(title, subtitle)}" style="${style}" vertex="1" parent="${parent}"><mxGeometry x="${x}" y="${y}" width="${w}" height="${h}" as="geometry"/></mxCell>`);
   };
-  const edge = (id, source, target, label = '', dashed = false) => {
-    const style = `edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=classic;${dashed ? 'dashed=1;strokeColor=#D85C22;' : 'strokeColor=#53657A;'}`;
-    cells.push(`<mxCell id="${id}" value="${esc(label)}" style="${style}" edge="1" source="${source}" target="${target}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`);
+  const edge = (id, source, target) => {
+    const style = 'edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=classic;strokeColor=#53657A;';
+    cells.push(`<mxCell id="${id}" value="" style="${style}" edge="1" source="${source}" target="${target}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`);
   };
   const swimlane = 'swimlane;startSize=32;rounded=1;html=1;fontStyle=1;fontSize=16;container=1;collapsible=0;pointerEvents=0;';
   const node = 'rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;';
-  const planned = `${node}dashed=1;fillColor=#FFF4EC;strokeColor=#D85C22;`;
+  const externalNode = `${node}fillColor=#FFF4EC;strokeColor=#D85C22;`;
 
   vertex('client', '1', '클라이언트', '사용자와 모바일 앱', `${swimlane}fillColor=#E8F7F8;strokeColor=#0D9FA5;`, 20, 40, 220, 760);
   vertex('app', 'client', 'Android 앱', '여행 전·중·후 화면', `${node}fillColor=#E8F7F8;strokeColor=#0D9FA5;`, 30, 80, 160, 80);
@@ -534,35 +534,35 @@ function serviceArchitectureDrawio() {
 
   vertex('infraLane', 'server', '인프라 계층', '외부 기술 교체 경계', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;startSize=26;fontSize=14;`, 20, 505, 1160, 145);
   vertex('localAdapter', 'infraLane', '로컬 어댑터', 'H2 데이터·경로 스텁', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 170, 45, 250, 70);
-  vertex('notifyAdapter', 'infraLane', '알림 어댑터', '로그→FCM/SSE', planned, 455, 45, 250, 70);
-  vertex('externalAdapter', 'infraLane', '외부 API 어댑터', '장소·이벤트·경로', planned, 740, 45, 250, 70);
+  vertex('notifyAdapter', 'infraLane', '알림 어댑터', 'FCM·SSE', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 455, 45, 250, 70);
+  vertex('externalAdapter', 'infraLane', '외부 API 어댑터', '장소·이벤트·경로', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 740, 45, 250, 70);
 
-  vertex('external', '1', '외부 서비스', '운영 환경 연동', `${swimlane}fillColor=#FFF4EC;strokeColor=#D85C22;`, 1500, 40, 420, 760);
-  vertex('oauth', 'external', 'OAuth / OIDC', '로그인과 토큰 검증', planned, 35, 70, 350, 70);
-  vertex('placeApi', 'external', '관광·지도 API', '장소 검색과 상세 정보', planned, 35, 180, 350, 70);
-  vertex('eventApi', 'external', '날씨·혼잡 API', '실시간 관측값 수집', planned, 35, 290, 350, 70);
-  vertex('routeApi', 'external', '대중교통 경로 API', '실제 경로 후보 계산', planned, 35, 400, 350, 70);
-  vertex('pushApi', 'external', 'FCM · SSE', '변경 제안과 알림', planned, 35, 510, 350, 70);
+  vertex('external', '1', '외부 서비스', '', `${swimlane}fillColor=#FFF4EC;strokeColor=#D85C22;`, 1500, 40, 420, 760);
+  vertex('oauth', 'external', 'OAuth / OIDC', '', externalNode, 35, 70, 350, 70);
+  vertex('placeApi', 'external', '관광 · 지도 API', '', externalNode, 35, 180, 350, 70);
+  vertex('eventApi', 'external', '날씨 · 혼잡 API', '', externalNode, 35, 290, 350, 70);
+  vertex('routeApi', 'external', '대중교통 경로 API', '', externalNode, 35, 400, 350, 70);
+  vertex('pushApi', 'external', 'FCM · SSE', '', externalNode, 35, 510, 350, 70);
 
   vertex('data', '1', '데이터 저장소 · 현재 단일 DB', '업무 영역별 분리', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;`, 270, 840, 1650, 230);
   vertex('coreDb', 'data', 'Core 영역', '사용자·여행·일정', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5EEF8;strokeColor=#123C69;', 120, 80, 180, 95);
   vertex('placeDb', 'data', 'Place 영역', '장소 기본 정보', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 380, 80, 180, 95);
   vertex('eventDb', 'data', 'Event 영역', '사용한 이벤트', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF1E8;strokeColor=#D85C22;', 640, 80, 180, 95);
-  vertex('redis', 'data', 'Redis', '짧은 TTL 캐시·선택', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;fillColor=#FFF4EC;strokeColor=#D85C22;', 900, 80, 180, 95);
+  vertex('redis', 'data', 'Redis', '짧은 TTL 캐시', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 900, 80, 180, 95);
   vertex('ops', 'data', '운영 확인', 'Actuator·로그·GitHub Actions', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 1160, 80, 360, 95);
 
-  edge('e1', 'app', 'rest', 'HTTPS');
+  edge('e1', 'app', 'rest');
   edge('e2', 'rest', 'prepareUsecase');
   edge('e3', 'prepareUsecase', 'trip');
   edge('e4', 'prepareUsecase', 'survey');
   edge('e5', 'duringUsecase', 'event');
   edge('e6', 'duringUsecase', 'plan');
   edge('e7', 'returnUsecase', 'route');
-  edge('e8', 'externalAdapter', 'placeApi', '운영 연동', true);
-  edge('e9', 'externalAdapter', 'eventApi', '', true);
-  edge('e10', 'externalAdapter', 'routeApi', '', true);
-  edge('e11', 'notifyAdapter', 'pushApi', '', true);
-  edge('e12', 'localAdapter', 'coreDb', 'JDBC');
+  edge('e8', 'externalAdapter', 'placeApi');
+  edge('e9', 'externalAdapter', 'eventApi');
+  edge('e10', 'externalAdapter', 'routeApi');
+  edge('e11', 'notifyAdapter', 'pushApi');
+  edge('e12', 'localAdapter', 'coreDb');
   edge('e13', 'place', 'placeDb');
   edge('e14', 'event', 'eventDb');
 

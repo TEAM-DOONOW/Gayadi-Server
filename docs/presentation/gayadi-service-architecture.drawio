@@ -7,9 +7,6 @@
         <mxCell id="title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;strokeColor=#0F172A;fontColor=#FFFFFF;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;spacingLeft=24;arcSize=10;" value="GAYADI 서비스 아키텍처" vertex="1">
           <mxGeometry height="64" width="1800" x="60" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="legend" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontColor=#CBD5E1;fontSize=12;align=right;verticalAlign=middle;spacingRight=24;" value="실선  현재 구현   ·   점선  운영 연동 예정" vertex="1">
-          <mxGeometry height="32" width="380" x="1450" y="46" as="geometry" />
-        </mxCell>
         <mxCell id="client" parent="1" style="swimlane;horizontal=1;startSize=44;rounded=1;html=1;fillColor=#2563EB;swimlaneFillColor=#F8FAFC;strokeColor=#2563EB;fontColor=#FFFFFF;fontStyle=1;fontSize=16;container=1;collapsible=0;arcSize=8;" value="클라이언트" vertex="1">
           <mxGeometry height="660" width="230" x="60" y="120" as="geometry" />
         </mxCell>
@@ -85,16 +82,16 @@
         <mxCell id="localAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#0F766E;strokeWidth=2;fontColor=#134E4A;fontSize=13;fontStyle=1;arcSize=10;" value="DB 저장&#xa;JDBC · Flyway" vertex="1">
           <mxGeometry height="58" width="250" x="80" y="46" as="geometry" />
         </mxCell>
-        <mxCell id="notifyAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=13;fontStyle=1;arcSize=10;" value="알림 전송&#xa;FCM · SSE" vertex="1">
+        <mxCell id="notifyAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#0F766E;strokeWidth=2;fontColor=#134E4A;fontSize=13;fontStyle=1;arcSize=10;" value="알림 전송&#xa;FCM · SSE" vertex="1">
           <mxGeometry height="58" width="250" x="380" y="46" as="geometry" />
         </mxCell>
-        <mxCell id="externalAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=13;fontStyle=1;arcSize=10;" value="외부 정보 조회&#xa;장소 · 이벤트 · 경로" vertex="1">
+        <mxCell id="externalAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#0F766E;strokeWidth=2;fontColor=#134E4A;fontSize=13;fontStyle=1;arcSize=10;" value="외부 정보 조회&#xa;장소 · 이벤트 · 경로" vertex="1">
           <mxGeometry height="58" width="250" x="680" y="46" as="geometry" />
         </mxCell>
-        <mxCell id="e2" edge="1" parent="server" source="rest" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="prepareUsecase" value="요청 위임">
+        <mxCell id="e2" edge="1" parent="server" source="rest" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=classic;curved=0;" target="prepareUsecase" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" edge="1" parent="server" source="prepareUsecase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#4F46E5;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="trip" value="여행 구성">
+        <mxCell id="e3" edge="1" parent="server" source="prepareUsecase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#4F46E5;endArrow=classic;curved=0;" target="trip" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="235" y="357" />
@@ -102,7 +99,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e4" edge="1" parent="server" source="duringUsecase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#4F46E5;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="plan" value="변경 반영">
+        <mxCell id="e4" edge="1" parent="server" source="duringUsecase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#4F46E5;endArrow=classic;curved=0;" target="plan" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="535" y="357" />
@@ -110,7 +107,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e5" edge="1" parent="server" source="returnUsecase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#4F46E5;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="route" value="귀가 경로">
+        <mxCell id="e5" edge="1" parent="server" source="returnUsecase" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#4F46E5;endArrow=classic;curved=0;" target="route" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="835" y="357" />
@@ -121,19 +118,19 @@
         <mxCell id="external" parent="1" style="swimlane;horizontal=1;startSize=44;rounded=1;html=1;fillColor=#EA580C;swimlaneFillColor=#FFF7ED;strokeColor=#EA580C;fontColor=#FFFFFF;fontStyle=1;fontSize=16;container=1;collapsible=0;arcSize=8;" value="외부 서비스" vertex="1">
           <mxGeometry height="660" width="420" x="1440" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="oauth" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;dashed=1;fontColor=#7C2D12;fontSize=13;fontStyle=1;arcSize=10;" value="OAuth / OIDC&#xa;로그인과 토큰 검증" vertex="1">
+        <mxCell id="oauth" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;fontColor=#7C2D12;fontSize=14;fontStyle=1;arcSize=10;" value="OAuth / OIDC" vertex="1">
           <mxGeometry height="74" width="350" x="35" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="placeApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;dashed=1;fontColor=#7C2D12;fontSize=13;fontStyle=1;arcSize=10;" value="관광 · 지도 API&#xa;장소 검색과 상세 정보" vertex="1">
+        <mxCell id="placeApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;fontColor=#7C2D12;fontSize=14;fontStyle=1;arcSize=10;" value="관광 · 지도 API" vertex="1">
           <mxGeometry height="74" width="350" x="35" y="178" as="geometry" />
         </mxCell>
-        <mxCell id="eventApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;dashed=1;fontColor=#7C2D12;fontSize=13;fontStyle=1;arcSize=10;" value="날씨 · 혼잡 API&#xa;날씨와 혼잡 정보 조회" vertex="1">
+        <mxCell id="eventApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;fontColor=#7C2D12;fontSize=14;fontStyle=1;arcSize=10;" value="날씨 · 혼잡 API" vertex="1">
           <mxGeometry height="74" width="350" x="35" y="286" as="geometry" />
         </mxCell>
-        <mxCell id="routeApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;dashed=1;fontColor=#7C2D12;fontSize=13;fontStyle=1;arcSize=10;" value="대중교통 경로 API&#xa;실제 경로 후보 계산" vertex="1">
+        <mxCell id="routeApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;fontColor=#7C2D12;fontSize=14;fontStyle=1;arcSize=10;" value="대중교통 경로 API" vertex="1">
           <mxGeometry height="74" width="350" x="35" y="394" as="geometry" />
         </mxCell>
-        <mxCell id="pushApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;dashed=1;fontColor=#7C2D12;fontSize=13;fontStyle=1;arcSize=10;" value="FCM · SSE&#xa;변경 제안과 알림" vertex="1">
+        <mxCell id="pushApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;fontColor=#7C2D12;fontSize=14;fontStyle=1;arcSize=10;" value="FCM · SSE" vertex="1">
           <mxGeometry height="74" width="350" x="35" y="502" as="geometry" />
         </mxCell>
         <mxCell id="data" parent="1" style="swimlane;horizontal=1;startSize=44;rounded=1;html=1;fillColor=#059669;swimlaneFillColor=#F0FDF4;strokeColor=#059669;fontColor=#FFFFFF;fontStyle=1;fontSize=16;container=1;collapsible=0;arcSize=8;" value="데이터 저장소 · 현재 단일 DB" vertex="1">
@@ -148,13 +145,13 @@
         <mxCell id="eventDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Event 영역&#xa;관측된 이벤트 기록" vertex="1">
           <mxGeometry height="92" width="200" x="610" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="redis" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=13;fontStyle=1;" value="Redis&#xa;경로 · 외부 API 임시 저장" vertex="1">
+        <mxCell id="redis" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Redis&#xa;경로 · 외부 API 임시 저장" vertex="1">
           <mxGeometry height="92" width="200" x="880" y="70" as="geometry" />
         </mxCell>
         <mxCell id="ops" parent="data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;fontColor=#334155;fontSize=13;fontStyle=1;arcSize=10;" value="운영 확인&#xa;Actuator · 로그 · GitHub Actions" vertex="1">
           <mxGeometry height="92" width="300" x="1160" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="e1" edge="1" parent="1" source="app" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="rest" value="HTTPS">
+        <mxCell id="e1" edge="1" parent="1" source="app" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#475569;endArrow=classic;curved=0;" target="rest" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="350" y="241" />
@@ -162,7 +159,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e6" edge="1" parent="1" source="localAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="coreDb" value="JDBC">
+        <mxCell id="e6" edge="1" parent="1" source="localAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;curved=0;" target="coreDb" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="565" y="809" />
@@ -170,7 +167,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e7" edge="1" parent="1" source="place" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="placeDb" value="장소 저장">
+        <mxCell id="e7" edge="1" parent="1" source="place" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;curved=0;" target="placeDb" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="927" y="626" />
@@ -180,7 +177,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e8" edge="1" parent="1" source="event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="eventDb" value="이벤트 저장">
+        <mxCell id="e8" edge="1" parent="1" source="event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;curved=0;" target="eventDb" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1048" y="626" />
@@ -190,7 +187,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e9" edge="1" parent="1" source="apiLane" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;dashed=1;strokeColor=#EA580C;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="oauth" value="">
+        <mxCell id="e9" edge="1" parent="1" source="apiLane" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#EA580C;endArrow=classic;curved=0;" target="oauth" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="865" y="206" />
@@ -199,7 +196,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e10" edge="1" parent="1" source="externalAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;dashed=1;strokeColor=#EA580C;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="placeApi" value="">
+        <mxCell id="e10" edge="1" parent="1" source="externalAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#EA580C;endArrow=classic;curved=0;" target="placeApi" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1387" y="699" />
@@ -207,7 +204,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e11" edge="1" parent="1" source="externalAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;dashed=1;strokeColor=#EA580C;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="eventApi" value="">
+        <mxCell id="e11" edge="1" parent="1" source="externalAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#EA580C;endArrow=classic;curved=0;" target="eventApi" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1401" y="699" />
@@ -215,7 +212,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e12" edge="1" parent="1" source="externalAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;dashed=1;strokeColor=#EA580C;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="routeApi" value="">
+        <mxCell id="e12" edge="1" parent="1" source="externalAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#EA580C;endArrow=classic;curved=0;" target="routeApi" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1165" y="605" />
@@ -223,7 +220,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e13" edge="1" parent="1" source="notifyAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;dashed=1;strokeColor=#EA580C;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="pushApi" value="">
+        <mxCell id="e13" edge="1" parent="1" source="notifyAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#EA580C;endArrow=classic;curved=0;" target="pushApi" value="">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="865" y="654" />

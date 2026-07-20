@@ -210,11 +210,11 @@ flowchart TB
     end
 
     USECASE --> DB[(H2 로컬 · PostgreSQL 운영)]
-    PLACE -. 운영 연동 .-> PLACE_API[관광·지도 API]
-    EVENT -. 운영 연동 .-> EVENT_API[날씨·혼잡 API]
-    ROUTE -. 운영 연동 .-> ROUTE_API[대중교통 경로 API]
-    PLAN -. 운영 연동 .-> PUSH[FCM Push · SSE]
-    USECASE -. 선택 도입 .-> REDIS[(Redis 캐시)]
+    PLACE --> PLACE_API[관광·지도 API]
+    EVENT --> EVENT_API[날씨·혼잡 API]
+    ROUTE --> ROUTE_API[대중교통 경로 API]
+    PLAN --> PUSH[FCM Push · SSE]
+    USECASE --> REDIS[(Redis 캐시)]
 ```
 
 위 모듈들은 각각 별도 서버가 아니라 하나의 Spring Boot 애플리케이션 안에 있는 코드 경계다. 현재 MVP는 로컬 어댑터로 끝까지 실행되며, 실제 관광·날씨·혼잡·교통 공급자는 같은 인터페이스의 운영 어댑터로 교체한다. Controller가 모듈을 직접 섞어 호출하지 않고, Application Service가 여행 생성·코스 추천·실시간 변경 같은 유스케이스를 조합한다.
@@ -252,7 +252,7 @@ flowchart TB
 - 알림과 변경 이벤트가 크게 늘어날 때 이벤트 큐를 추가한다.
 - `core`, `place`, `event` DB는 데이터량과 운영 주기가 실제로 달라질 때 물리적으로 분리한다.
 
-아래 그림은 현재 서버 경계와 출시 전 연동 지점을 함께 보여준다. 실선은 현재 MVP, 점선은 운영 연동 예정 범위다.
+아래 그림은 내부 모듈, 데이터 저장소, 외부 서비스의 전체 구성과 연결을 보여준다.
 
 ![GAYADI 서비스 아키텍처](../presentation/gayadi-service-architecture-presentation.png)
 
@@ -306,8 +306,11 @@ flowchart TD
 
 | 단계 | API | 연결 모델 |
 | --- | --- | --- |
+| 사용자 생성 | `POST /api/v1/users` | `users` |
+| 사용자 조회 | `GET /api/v1/users/{userId}` | `users` |
 | 여행 생성 | `POST /api/v1/trips` | `trips`, `departure_mode` |
 | 여행 조회 | `GET /api/v1/trips/{tripId}` | `trips`, `trip_members` |
+| 멤버 목록 | `GET /api/v1/trips/{tripId}/members` | `trip_members`, `users` |
 | 멤버 설정 | `POST /api/v1/trips/{tripId}/members` | `trip_members` |
 | 설문 조회 | `GET /api/v1/surveys/personality` | `surveys` |
 | 설문 제출 | `POST /api/v1/trips/{tripId}/survey-responses` | `survey_responses` |
@@ -337,6 +340,22 @@ flowchart TD
 | 외부 API 호출 내역 | 운영 로그 | 업무 ERD와 분리 |
 
 ## 11. 외부 API와 캐시 정책
+
+### 11.1 사용할 외부 API
+
+| 기능 | 사용할 API | 주요 용도 |
+| --- | --- | --- |
+| 로그인 | 카카오 로그인 REST API | 인가 코드, 토큰 발급·갱신, 사용자 정보 조회 |
+| 장소 검색·좌표 | 카카오 로컬 API | 키워드 장소 검색, 주소·좌표 변환 |
+| 관광 콘텐츠 | 한국관광공사 TourAPI 4.0 | 관광지·축제·숙박·이미지 정보 조회 |
+| 날씨 | 기상청 단기예보 조회서비스 | 초단기실황, 초단기예보, 단기예보 조회 |
+| 혼잡도 | 서울 실시간 도시데이터 API | 주요 장소의 실시간 인구·혼잡도 조회 |
+| 대중교통 경로 | ODsay 대중교통 API | 출발·귀가 경로, 소요시간, 환승, 요금 조회 |
+| 푸시 알림 | Firebase Cloud Messaging | 일정 변경 제안과 여행 알림 전송 |
+
+SSE는 외부 공급자 API가 아니라 GAYADI 서버가 앱에 제공하는 실시간 스트림이다. 서울 실시간 도시데이터의 지원 지역 밖에서는 혼잡도를 `UNKNOWN`으로 처리하고, 일정 변경은 날씨·교통 등 확인 가능한 정보만으로 판단한다.
+
+### 11.2 저장·캐시 정책
 
 | 데이터 | 원본 | 저장/캐시 정책 | 장애 시 동작 |
 | --- | --- | --- | --- |
