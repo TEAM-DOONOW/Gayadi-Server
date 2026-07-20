@@ -608,16 +608,8 @@ async function render(name, svg) {
 (async () => {
   const output = [];
   output.push(await render('gayadi-erd-presentation', erd()));
-  output.push(await render('gayadi-service-architecture-presentation', serviceArchitecture()));
   output.push(await render('gayadi-service-flow-presentation', serviceFlow()));
-  const drawioPath = path.join(OUT, 'gayadi-service-architecture.drawio');
-  fs.writeFileSync(drawioPath, serviceArchitectureDrawio(), 'utf8');
-  fs.copyFileSync(
-    path.join(OUT, 'gayadi-service-architecture-presentation.png'),
-    path.join(ROOT, 'docs', 'architecture', 'travel-realtime-architecture.png')
-  );
   output.flatMap((item) => [item.svgPath, item.pngPath]).forEach((file) => console.log(file));
-  console.log(drawioPath);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

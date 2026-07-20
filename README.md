@@ -82,7 +82,7 @@ DB_PASSWORD=...
 - [발표용 서비스 아키텍처 PNG](docs/presentation/gayadi-service-architecture-presentation.png) / [SVG](docs/presentation/gayadi-service-architecture-presentation.svg) / [draw.io 편집 원본](docs/presentation/gayadi-service-architecture.drawio)
 - [발표용 서비스 흐름도 PNG](docs/presentation/gayadi-service-flow-presentation.png) / [SVG](docs/presentation/gayadi-service-flow-presentation.svg)
 
-세 그림은 각각 데이터 구조, 서버 구성, 여행 전·중·후 사용자 흐름을 설명합니다. 서비스 아키텍처의 실선은 현재 MVP에 구현된 연결이고, 점선은 실제 출시 전에 공급자 API와 연결할 영역입니다. 발표 이미지는 `scripts/generate-presentation-diagrams.cjs`로 재생성할 수 있습니다.
+세 그림은 각각 데이터 구조, 서버 구성, 여행 전·중·후 사용자 흐름을 설명합니다. 서비스 아키텍처의 실선은 현재 MVP에 구현된 연결이고, 점선은 실제 출시 전에 공급자 API와 연결할 영역입니다. ERD와 서비스 흐름도는 `scripts/generate-presentation-diagrams.cjs`로 재생성하며, 서비스 아키텍처는 draw.io 편집 원본에서 PNG·SVG로 내보냅니다.
 
 ## 아직 운영 연동이 필요한 범위
 
