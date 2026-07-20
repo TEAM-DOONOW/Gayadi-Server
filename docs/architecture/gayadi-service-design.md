@@ -72,7 +72,7 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 ### 여행 중
 
 1. 현재 일정 조회
-2. Event DB에서 날씨·혼잡·교통 상태 조회
+2. 수신된 날씨·혼잡·교통 관측값 조회
 3. 일정에 영향이 있으면 `change_proposal` 생성
 4. 대체 장소와 경로를 사용자에게 제안
 5. 승인 시 미래 일정 항목 수정 및 `trip_plan.revision_no` 증가
@@ -140,7 +140,7 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 | `places` | `id`, `name`, `category`, `address`, `latitude`, `longitude`, `source`, `source_place_id`, `basic_info` |
 | `event_observations` | `id`, `event_type`, `source`, `place_id`, `observed_at`, `valid_to`, `severity`, `normalized_value` |
 
-장소는 반복 검색과 코스 생성에 필요하므로 DB에 저장한다. 날씨·혼잡·교통은 외부 API가 원본이며, 일정 판단에 사용한 관측값만 Event DB에 저장하고 일반 조회는 Redis에 짧게 캐시한다.
+장소는 반복 검색과 코스 생성에 필요하므로 DB에 저장한다. 날씨·혼잡·교통은 외부 API가 원본이며, 일정 판단에 사용한 관측값만 `event_observations`에 저장한다. Redis 캐시는 운영 공급자 연동 단계에서 선택적으로 추가한다.
 
 ### 5.4 경로·변경 제안
 
@@ -162,7 +162,7 @@ GAYADI는 여행자의 성향과 현재 여행 상황을 반영해 여행 전·�
 
 ## 6. ERD
 
-ERDCloud에 가져올 수 있는 전체 DDL은 [`gayadi-erdcloud.sql`](../database/gayadi-erdcloud.sql)에 있다. 이 파일은 ERD 표현을 위한 MySQL 8 문법이며, 실제 PostgreSQL migration은 구현 단계에서 Flyway로 관리한다.
+ERDCloud에 가져올 수 있는 전체 DDL은 [`gayadi-erdcloud.sql`](../database/gayadi-erdcloud.sql)에 있다. 이 파일은 현재 Flyway V1 실행 스키마와 같은 테이블·컬럼·제약조건을 명시한다.
 
 ```mermaid
 erDiagram
@@ -171,7 +171,8 @@ erDiagram
     TRIPS ||--o{ TRIP_MEMBERS : contains
     SURVEYS ||--o{ SURVEY_RESPONSES : receives
     USERS ||--o{ SURVEY_RESPONSES : submits
-    TRIPS ||--o{ TRIP_PLANS : has
+    TRIPS ||--o{ SURVEY_RESPONSES : scopes
+    TRIPS ||--o| TRIP_PLANS : has_current
     SURVEY_RESPONSES ||--o{ TRIP_PLANS : influences
     TRIP_PLANS ||--o{ TRIP_PLAN_ITEMS : contains
     PLACES ||--o{ TRIP_PLAN_ITEMS : selected
@@ -184,7 +185,7 @@ erDiagram
     USERS ||--o{ CHANGE_PROPOSALS : decides
 ```
 
-`PLACES`와 `EVENT_OBSERVATIONS`는 별도 DB로 이동할 수 있으므로, 실제 운영에서는 Core DB와 API로 연결한다.
+현재는 하나의 관계형 DB를 사용하되 Core·Place·Event 테이블 영역을 논리적으로 구분한다. 트래픽과 갱신 주기가 달라지면 `PLACES`와 `EVENT_OBSERVATIONS`를 별도 DB 또는 서비스로 분리하고 내부 API로 연결할 수 있다.
 
 ## 7. 서비스 아키텍처
 
@@ -313,13 +314,14 @@ flowchart TD
 | 그룹 성향 | `GET /api/v1/trips/{tripId}/personality-profile` | `survey_responses` |
 | 일정 생성 | `POST /api/v1/trips/{tripId}/plan/generate` | `places`, `trip_plans`, `trip_plan_items` |
 | 일정 조회 | `GET /api/v1/trips/{tripId}/plan` | `trip_plans`, `trip_plan_items` |
-| 장소 조회 | `GET /api/v1/places/{placeId}` | Place DB + Event DB/Redis |
+| 장소 목록 | `GET /api/v1/places?category=...` | `places` |
+| 장소 조회 | `GET /api/v1/places/{placeId}` | `places` |
 | 경로 추천 | `POST /api/v1/trips/{tripId}/routes/recommend?phase=...&memberId=...` | `RouteProvider`, `trip_routes` |
 | 여행 시작 | `POST /api/v1/trips/{tripId}/start` | `trips.status` |
 | 이벤트 관측 | `POST /api/v1/trips/{tripId}/event-observations` | `event_observations`, `change_proposals` |
 | 변경안 조회 | `GET /api/v1/trips/{tripId}/change-proposals` | `change_proposals` |
 | 변경 승인 | `POST /api/v1/trips/{tripId}/change-proposals/{proposalId}/decision` | 일정 항목 수정, `trip_plans.revision_no` 증가 |
-| 여행 완료 | `POST /api/v1/trips/{tripId}/complete` | 귀가 경로 + 여행 상태 |
+| 여행 완료 | `POST /api/v1/trips/{tripId}/complete` | `trips.status` |
 
 ## 10. 최종 저장 판단
 
@@ -328,9 +330,9 @@ flowchart TD
 | 현재 여행 일정 | `trip_plans`, `trip_plan_items` 직접 수정 | 항상 현재 상태를 쉽게 조회 |
 | 일정 변경 이력 | `change_proposals`의 전·후 스냅샷 | 전체 일정 복제 없이 승인 이력 보존 |
 | 설문 | 정의와 응답만 분리, 문항·답변은 JSON | 여러 설문에 재사용하면서 과도한 분리 방지 |
-| 장소 | Place DB 저장 | 검색·좌표·코스 생성에 반복 사용 |
-| 날씨·혼잡·교통 | 일반 조회는 Redis, 판단에 사용한 이벤트만 DB | 외부 API 데이터의 불필요한 중복 방지 |
-| 경로 후보 | Redis 단기 캐시 | 시각에 따라 금방 오래된 데이터가 됨 |
+| 장소 | `places` 저장 | 검색·좌표·코스 생성에 반복 사용 |
+| 날씨·혼잡·교통 | 판단에 사용한 이벤트만 `event_observations`에 저장 | 외부 API 데이터의 불필요한 중복 방지 |
+| 경로 후보 | 현재는 즉시 계산·저장, 운영 연동 시 Redis 단기 캐시 | 시각에 따라 금방 오래된 데이터가 됨 |
 | 선택한 경로 | `trip_routes` 저장 | 여행 진행과 귀가 안내에 다시 사용 |
 | 외부 API 호출 내역 | 운영 로그 | 업무 ERD와 분리 |
 
@@ -338,7 +340,7 @@ flowchart TD
 
 | 데이터 | 원본 | 저장/캐시 정책 | 장애 시 동작 |
 | --- | --- | --- | --- |
-| 장소 기본 정보 | 관광/지도 API | Place DB 저장, 24시간 이상 캐시 | 마지막 동기화 데이터 제공 |
+| 장소 기본 정보 | 관광/지도 API | `places` 저장, 24시간 이상 캐시 | 마지막 동기화 데이터 제공 |
 | 날씨 예보 | 날씨 API | 발표 시각 기준 Redis TTL | 마지막 정상 데이터와 갱신 시각 표시 |
 | 기상특보 | 날씨 API | 1~5분 Redis TTL | 기존 일정 유지, 데이터 지연 안내 |
 | 혼잡도 | 혼잡 API | 제공처 갱신 주기 기준 약 5분 TTL | 혼잡도 미확인으로 표시 |

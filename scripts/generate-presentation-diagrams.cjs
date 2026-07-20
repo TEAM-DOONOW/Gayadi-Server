@@ -66,21 +66,21 @@ function header(title, subtitle, rightText = '') {
 }
 
 function table({ id, x, y, w, color, note, rows }) {
-  const head = 68;
+  const head = 46;
   const rowH = 33;
   const h = head + rows.length * rowH + 10;
   let body = `<g filter="url(#shadow)">
     <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#FFFFFF" stroke="${color}" stroke-width="2"/>
     <path d="M${x + 14},${y} H${x + w - 14} Q${x + w},${y} ${x + w},${y + 14} V${y + head} H${x} V${y + 14} Q${x},${y} ${x + 14},${y} Z" fill="${color}"/>
-    <text x="${x + 16}" y="${y + 27}" font-size="19" font-weight="700" fill="#FFFFFF">${esc(id)}</text>
-    <text x="${x + 16}" y="${y + 50}" font-size="12.5" fill="#FFFFFF" opacity="0.92">${esc(note)}</text>`;
+    <text x="${x + 16}" y="${y + 30}" font-size="19" font-weight="700" fill="#FFFFFF">${esc(id)}</text>`;
   rows.forEach((row, index) => {
     const top = y + head + index * rowH;
     if (index % 2 === 1) body += `<rect x="${x + 2}" y="${top}" width="${w - 4}" height="${rowH}" fill="#EDF2F7"/>`;
     if (index) body += `<line x1="${x + 10}" y1="${top}" x2="${x + w - 10}" y2="${top}" stroke="#D6DEE8"/>`;
-    const keyColor = row[0] === 'PK' ? '#B42318' : row[0] === 'FK' ? '#175CD3' : C.muted;
-    body += `<text x="${x + 14}" y="${top + 21}" font-size="11.5" font-weight="700" fill="${keyColor}">${esc(row[0])}</text>
-      <text x="${x + 49}" y="${top + 21}" font-size="13" font-weight="500" fill="${C.ink}">${esc(row[1])}</text>
+    const keyColor = row[0] === 'PK' ? '#B42318' : row[0].startsWith('FK') ? '#175CD3' : C.muted;
+    const keySize = row[0].length > 2 ? 9.5 : 11.5;
+    body += `<text x="${x + 14}" y="${top + 21}" font-size="${keySize}" font-weight="700" fill="${keyColor}">${esc(row[0])}</text>
+      <text x="${x + 66}" y="${top + 21}" font-size="13" font-weight="500" fill="${C.ink}">${esc(row[1])}</text>
       <text x="${x + w - 13}" y="${top + 21}" text-anchor="end" font-size="11.5" fill="${C.muted}">${esc(row[2])}</text>`;
   });
   return { x, y, w, h, svg: body + '</g>' };
@@ -88,19 +88,9 @@ function table({ id, x, y, w, color, note, rows }) {
 
 function relation(points, options = {}) {
   const color = options.color || C.line;
-  const dash = options.dashed ? ' stroke-dasharray="8 7"' : '';
   const p = points.map(([x, y]) => `${x},${y}`).join(' ');
-  let out = `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-opacity="0.92" stroke-width="5.4" stroke-linejoin="round"/>
-    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.7" stroke-linejoin="round"${dash}/>`;
-  if (options.one) out += `<text x="${options.one[0]}" y="${options.one[1]}" font-size="12" font-weight="700" fill="${color}">1</text>`;
-  if (options.many) out += `<text x="${options.many[0]}" y="${options.many[1]}" font-size="12" font-weight="700" fill="${color}">N</text>`;
-  if (options.label && options.at) {
-    const [x, y] = options.at;
-    const width = Math.max(68, options.label.length * 12 + 18);
-    out += `<rect x="${x - width / 2}" y="${y - 14}" width="${width}" height="26" rx="13" fill="#FFFFFF" stroke="${color}" stroke-width="1.3"/>
-      <text x="${x}" y="${y + 3}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${color}">${esc(options.label)}</text>`;
-  }
-  return out;
+  return `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
+    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round"/>`;
 }
 
 function erd() {
@@ -114,28 +104,28 @@ function erd() {
     change_proposals: 'CHANGE_PROPOSALS · 변경 제안'
   };
   const defs = [
-    ['users', 55, 170, 335, C.navy, '사용자 및 소셜 로그인 계정', [
-      ['PK', 'id', 'UUID'], ['', 'nickname', 'VARCHAR'], ['', 'oauth_provider', 'VARCHAR'], ['', 'oauth_subject', 'VARCHAR'], ['', 'status', 'VARCHAR']]],
-    ['trips', 475, 160, 400, C.navy, '여행과 출발 방식의 기준 정보', [
-      ['PK', 'id', 'UUID'], ['FK', 'owner_id', 'UUID'], ['', 'departure_mode', 'VARCHAR'], ['', 'departure_at / meeting_at', 'TIMESTAMP'], ['', 'meeting_location', 'JSON'], ['', 'status', 'VARCHAR']]],
-    ['trip_members', 55, 505, 415, C.navy, '참가자별 출발지·귀가지를 관리', [
-      ['PK', 'id', 'UUID'], ['FK', 'trip_id', 'UUID'], ['FK', 'user_id', 'UUID'], ['', 'role / participation_status', 'VARCHAR'], ['', 'departure_location', 'JSON'], ['', 'return_destination', 'JSON'], ['', 'route_preferences', 'JSON']]],
-    ['surveys', 985, 160, 355, C.violet, '성향·만족도 설문 문항과 버전', [
-      ['PK', 'id', 'UUID'], ['', 'survey_type', 'VARCHAR'], ['', 'version', 'VARCHAR'], ['', 'questions', 'JSON'], ['', 'status', 'VARCHAR']]],
-    ['survey_responses', 985, 455, 390, C.violet, '응답 원본과 계산 결과', [
-      ['PK', 'id', 'UUID'], ['FK', 'survey_id', 'UUID'], ['FK', 'user_id / trip_id', 'UUID'], ['', 'answers', 'JSON'], ['', 'result_code', 'VARCHAR'], ['', 'result_data', 'JSON']]],
-    ['trip_plans', 545, 620, 405, C.navy, '여행당 하나의 현재 일정', [
-      ['PK', 'id', 'UUID'], ['FK', 'trip_id', 'UUID'], ['FK', 'survey_response_id', 'UUID'], ['', 'revision_no', 'INT'], ['', 'preference_snapshot', 'JSON'], ['', 'status', 'VARCHAR']]],
-    ['trip_plan_items', 1040, 850, 430, C.navy, '장소별 방문 순서와 예정 시간', [
-      ['PK', 'id', 'UUID'], ['FK', 'plan_id', 'UUID'], ['FK', 'place_id', 'UUID'], ['', 'sequence_no', 'INT'], ['', 'planned_start / end', 'TIMESTAMP'], ['', 'status', 'VARCHAR']]],
-    ['trip_routes', 55, 960, 455, C.blue, '선택된 출발·이동·귀가 경로', [
-      ['PK', 'id', 'UUID'], ['FK', 'trip_id / member_id', 'UUID'], ['', 'scope / phase', 'VARCHAR'], ['', 'origin / destination', 'JSON'], ['', 'duration / transfer / fare', 'INT'], ['', 'route_data', 'JSON'], ['', 'status / valid_until', 'VARCHAR']]],
-    ['places', 1745, 160, 430, C.green, '서비스에서 사용하는 장소 정보', [
-      ['PK', 'id', 'UUID'], ['', 'name / category', 'VARCHAR'], ['', 'address', 'VARCHAR'], ['', 'latitude / longitude', 'DECIMAL'], ['', 'source / source_place_id', 'VARCHAR'], ['', 'basic_info', 'JSON']]],
-    ['event_observations', 1745, 530, 455, C.orange, '수집한 날씨·혼잡·교통 상태', [
-      ['PK', 'id', 'UUID'], ['FK', 'place_id', 'UUID'], ['', 'event_type / source', 'VARCHAR'], ['', 'observed_at / valid_to', 'TIMESTAMP'], ['', 'severity', 'VARCHAR'], ['', 'normalized_value', 'JSON']]],
-    ['change_proposals', 1600, 960, 610, C.rose, '일정 변경 제안과 사용자 선택 결과', [
-      ['PK', 'id', 'UUID'], ['FK', 'trip_id / plan_id / event_id', 'UUID'], ['', 'base_revision_no', 'INT'], ['', 'status / reason', 'VARCHAR'], ['', 'options / selected_option', 'JSON'], ['', 'before / after_snapshot', 'JSON'], ['', 'decided_by / decided_at', 'UUID / TIME']]],
+    ['users', 55, 150, 335, C.navy, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['', 'nickname', 'VARCHAR(80)'], ['', 'oauth_provider', 'VARCHAR(30)'], ['', 'oauth_subject', 'VARCHAR(120)'], ['', 'status', 'VARCHAR(20)'], ['', 'created_at', 'TIMESTAMP']]],
+    ['trips', 475, 150, 400, C.navy, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'owner_id', 'VARCHAR(36)'], ['', 'title', 'VARCHAR(120)'], ['', 'departure_mode', 'VARCHAR(30)'], ['', 'departure_at', 'TIMESTAMP'], ['', 'meeting_at', 'TIMESTAMP'], ['', 'meeting_location', 'VARCHAR(1000)'], ['', 'status', 'VARCHAR(30)'], ['', 'created_at', 'TIMESTAMP']]],
+    ['trip_members', 55, 520, 415, C.navy, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['FK', 'user_id', 'VARCHAR(36)'], ['', 'role', 'VARCHAR(20)'], ['', 'participation_status', 'VARCHAR(20)'], ['', 'departure_location', 'VARCHAR(1000)'], ['', 'return_destination', 'VARCHAR(1000)'], ['', 'route_preferences', 'VARCHAR(1000)'], ['', 'created_at', 'TIMESTAMP']]],
+    ['surveys', 985, 150, 355, C.violet, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['', 'survey_type', 'VARCHAR(40)'], ['', 'version', 'VARCHAR(20)'], ['', 'questions', 'VARCHAR(4000)'], ['', 'status', 'VARCHAR(20)']]],
+    ['survey_responses', 985, 455, 390, C.violet, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'survey_id', 'VARCHAR(36)'], ['FK', 'user_id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['', 'answers', 'VARCHAR(4000)'], ['', 'result_code', 'VARCHAR(40)'], ['', 'result_data', 'VARCHAR(2000)'], ['', 'created_at', 'TIMESTAMP']]],
+    ['trip_plans', 545, 600, 405, C.navy, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK·UQ', 'trip_id', 'VARCHAR(36)'], ['FK', 'survey_response_id', 'VARCHAR(36)'], ['', 'revision_no', 'INTEGER'], ['', 'preference_snapshot', 'VARCHAR(2000)'], ['', 'status', 'VARCHAR(20)'], ['', 'created_at', 'TIMESTAMP'], ['', 'updated_at', 'TIMESTAMP']]],
+    ['trip_plan_items', 1040, 875, 430, C.navy, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'plan_id', 'VARCHAR(36)'], ['FK', 'place_id', 'VARCHAR(36)'], ['', 'sequence_no', 'INTEGER'], ['', 'planned_start', 'TIMESTAMP'], ['', 'planned_end', 'TIMESTAMP'], ['', 'status', 'VARCHAR(20)']]],
+    ['trip_routes', 55, 900, 455, C.blue, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['FK', 'member_id', 'VARCHAR(36)'], ['', 'scope', 'VARCHAR(30)'], ['', 'phase', 'VARCHAR(30)'], ['', 'origin', 'VARCHAR(1000)'], ['', 'destination', 'VARCHAR(1000)'], ['', 'duration_minutes', 'INTEGER'], ['', 'transfer_count', 'INTEGER'], ['', 'fare', 'INTEGER'], ['', 'route_data', 'VARCHAR(4000)'], ['', 'status', 'VARCHAR(20)'], ['', 'valid_until', 'TIMESTAMP'], ['', 'created_at', 'TIMESTAMP']]],
+    ['places', 1745, 150, 430, C.green, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['', 'name', 'VARCHAR(160)'], ['', 'category', 'VARCHAR(60)'], ['', 'address', 'VARCHAR(300)'], ['', 'latitude', 'DECIMAL(10,7)'], ['', 'longitude', 'DECIMAL(10,7)'], ['', 'source', 'VARCHAR(30)'], ['', 'source_place_id', 'VARCHAR(120)'], ['', 'basic_info', 'VARCHAR(2000)']]],
+    ['event_observations', 1745, 535, 455, C.orange, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'place_id', 'VARCHAR(36)'], ['', 'event_type', 'VARCHAR(40)'], ['', 'source', 'VARCHAR(40)'], ['', 'observed_at', 'TIMESTAMP'], ['', 'valid_to', 'TIMESTAMP'], ['', 'severity', 'VARCHAR(20)'], ['', 'normalized_value', 'VARCHAR(2000)']]],
+    ['change_proposals', 1600, 885, 610, C.rose, '', [
+      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['FK', 'plan_id', 'VARCHAR(36)'], ['FK', 'event_id', 'VARCHAR(36)'], ['', 'base_revision_no', 'INTEGER'], ['', 'status', 'VARCHAR(20)'], ['', 'reason', 'VARCHAR(500)'], ['', 'options', 'VARCHAR(4000)'], ['', 'selected_option', 'VARCHAR(2000)'], ['', 'before_snapshot', 'VARCHAR(4000)'], ['', 'after_snapshot', 'VARCHAR(4000)'], ['FK', 'decided_by', 'VARCHAR(36)'], ['', 'decided_at', 'TIMESTAMP'], ['', 'created_at', 'TIMESTAMP']]],
   ];
 
   let nodes = '';
@@ -145,31 +135,26 @@ function erd() {
   }
 
   let lines = '';
-  lines += relation([[390, 265], [475, 265]], { label: '소유', at: [432, 238], one: [403, 255], many: [458, 255] });
-  lines += relation([[225, 413], [225, 505]], { label: '참여', at: [278, 459], one: [237, 430], many: [237, 494] });
-  lines += relation([[475, 330], [445, 330], [445, 575], [470, 575]], { one: [460, 319], many: [454, 565] });
-  lines += relation([[1160, 403], [1160, 455]], { label: '응답', at: [1210, 430], one: [1172, 418], many: [1172, 448] });
-  lines += relation([[390, 330], [430, 330], [430, 435], [960, 435], [960, 570], [985, 570]], { dashed: true, color: C.violet, label: '사용자 응답', at: [710, 417], one: [402, 320], many: [970, 559] });
-  lines += relation([[675, 426], [675, 620]], { label: '현재 일정', at: [738, 525], one: [687, 444], many: [687, 608] });
-  lines += relation([[985, 635], [950, 635]], { dashed: true, color: C.violet, label: '성향 반영', at: [928, 603], one: [973, 625], many: [960, 653] });
-  lines += relation([[950, 760], [1015, 760], [1015, 955], [1040, 955]], { label: '일정 항목', at: [1012, 808], one: [965, 750], many: [1028, 945] });
-  lines += relation([[1745, 295], [1570, 295], [1570, 950], [1470, 950]], { dashed: true, color: C.green, label: '장소 참조', at: [1570, 785], one: [1728, 285], many: [1480, 940] });
-  lines += relation([[265, 746], [265, 960]], { label: '개인 경로', at: [330, 850], one: [277, 765], many: [277, 948] });
-  lines += relation([[545, 760], [510, 760], [510, 1090]], { label: '여행 경로', at: [462, 885], one: [530, 750], many: [520, 1078] });
-  lines += relation([[1960, 426], [1960, 530]], { label: '상태 관측', at: [2025, 478], one: [1972, 443], many: [1972, 518] });
-  lines += relation([[1975, 806], [1975, 960]], { label: '변경 근거', at: [2042, 880], one: [1987, 822], many: [1987, 948] });
-  lines += relation([[950, 800], [1530, 800], [1530, 1110], [1600, 1110]], { label: '일정 변경', at: [1260, 782], one: [965, 790], many: [1585, 1100] });
-  lines += relation([[875, 295], [1505, 295], [1505, 1035], [1600, 1035]], { label: '여행 제안', at: [1450, 330], one: [890, 285], many: [1585, 1025] });
-
-  const labels = `<g><rect x="200" y="127" width="170" height="25" rx="12.5" fill="${C.navy}"/><text x="285" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
-    <g><rect x="1130" y="127" width="174" height="25" rx="12.5" fill="${C.violet}"/><text x="1217" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
-    <g><rect x="1890" y="127" width="232" height="25" rx="12.5" fill="${C.green}"/><text x="2006" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
-    <g transform="translate(2158,35)" filter="url(#softShadow)"><rect width="166" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.94" stroke="#8392A7" stroke-width="1.4"/>
-      <line x1="14" y1="18" x2="50" y2="18" stroke="${C.line}" stroke-width="2.5"/><text x="60" y="22" font-size="11" font-weight="700" fill="${C.ink}">물리 FK</text>
-      <line x1="14" y1="38" x2="50" y2="38" stroke="${C.green}" stroke-width="2.5" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" font-weight="700" fill="${C.ink}">논리 참조</text></g>`;
+  lines += relation([[390, 230], [475, 230]]);
+  lines += relation([[225, 404], [225, 520]]);
+  lines += relation([[475, 330], [445, 330], [445, 600], [470, 600]]);
+  lines += relation([[1160, 371], [1160, 455]], { color: C.violet });
+  lines += relation([[390, 300], [420, 300], [420, 435], [955, 435], [955, 555], [985, 555]], { color: C.violet });
+  lines += relation([[875, 395], [925, 395], [925, 585], [985, 585]], { color: C.violet });
+  lines += relation([[675, 503], [675, 600]]);
+  lines += relation([[985, 650], [950, 650]], { color: C.violet });
+  lines += relation([[950, 800], [1010, 800], [1010, 955], [1040, 955]]);
+  lines += relation([[1745, 345], [1570, 345], [1570, 980], [1470, 980]], { color: C.green });
+  lines += relation([[265, 873], [265, 900]], { color: C.blue });
+  lines += relation([[475, 455], [500, 455], [500, 1000], [510, 1000]], { color: C.blue });
+  lines += relation([[1960, 503], [1960, 535]], { color: C.orange });
+  lines += relation([[1970, 855], [1970, 885]], { color: C.orange });
+  lines += relation([[950, 835], [1530, 835], [1530, 1060], [1600, 1060]], { color: C.rose });
+  lines += relation([[875, 430], [1510, 430], [1510, 955], [1600, 955]], { color: C.rose });
+  lines += relation([[55, 335], [20, 335], [20, 1375], [1560, 1375], [1560, 1285], [1600, 1285]], { color: C.rose });
 
   return shell('GAYADI 데이터 모델 ERD', '여행 서비스의 핵심 데이터 관계',
-    header('GAYADI 데이터 모델 · ERD', '핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로') + labels
+    header('GAYADI 데이터 모델 · ERD', '')
       + `<g transform="translate(145 0)">${lines}${nodes}</g>`);
 }
 
@@ -455,7 +440,7 @@ function serviceArchitecture() {
   s += diagramContainer(390, 165, 1540, 810, 'GAYADI Server · Spring Boot', '하나의 애플리케이션 안에서 계층과 업무 책임을 분리', C.navy);
   s += diagramLane(430, 250, 1460, 110, 'API 계층', '요청 진입점', C.navy);
   s += diagramNode(630, 275, 330, 60, 'REST Controller', '여행 전 · 중 · 후 API', C.navy, { fill: '#E5EEF8' });
-  s += diagramNode(1040, 275, 330, 60, '인증 · 권한 필터', '사용자와 여행 멤버 확인', C.navy, { fill: '#E5EEF8' });
+  s += diagramNode(1040, 275, 330, 60, '사용자 · 멤버 확인', '업무 요청 기준 검증', C.navy, { fill: '#E5EEF8' });
   s += diagramNode(1450, 275, 330, 60, '검증 · 오류 응답', '입력 검증과 공통 응답 형식', C.navy, { fill: '#E5EEF8' });
 
   s += diagramLane(430, 390, 1460, 160, '애플리케이션', '유스케이스 조합', C.violet);
@@ -486,10 +471,10 @@ function serviceArchitecture() {
   s += diagramNode(2010, 620, 460, 74, '대중교통 경로 API', '실제 경로 후보 계산', C.orange, { dashed: true });
   s += diagramNode(2010, 735, 460, 74, 'FCM · SSE', '변경 제안과 알림 전달', C.orange, { dashed: true });
 
-  s += diagramContainer(390, 1020, 2120, 350, '데이터 · 운영', '현재 저장소와 선택적 운영 구성', C.green);
-  s += diagramCylinder(500, 1135, 240, 125, 'Core DB', '사용자 · 여행 · 일정', C.navy);
-  s += diagramCylinder(820, 1135, 240, 125, 'Place DB', '장소 기본 정보', C.green);
-  s += diagramCylinder(1140, 1135, 240, 125, 'Event DB', '판단에 사용한 이벤트', C.orange);
+  s += diagramContainer(390, 1020, 2120, 350, '데이터 저장소 · 현재 단일 DB', '업무 영역을 나누고 필요할 때 물리 분리', C.green);
+  s += diagramCylinder(500, 1135, 240, 125, 'Core 영역', '사용자 · 여행 · 일정', C.navy);
+  s += diagramCylinder(820, 1135, 240, 125, 'Place 영역', '장소 기본 정보', C.green);
+  s += diagramCylinder(1140, 1135, 240, 125, 'Event 영역', '판단에 사용한 이벤트', C.orange);
   s += diagramCylinder(1460, 1135, 240, 125, 'Redis', '짧은 TTL 캐시 · 선택', C.orange, { dashed: true });
   s += diagramNode(1790, 1135, 600, 125, '운영 확인', 'Actuator · 로그/지표 · GitHub Actions', C.navy, { fill: '#E5EEF8', titleSize: 17 });
 
@@ -498,7 +483,7 @@ function serviceArchitecture() {
   s += diagramEdge([[1205, 510], [1205, 625]], { color: C.violet });
   s += diagramEdge([[1205, 713], [1205, 830]], { color: C.blue });
   s += diagramEdge([[1810, 866], [1950, 866], [1950, 657], [2010, 657]], { label: '운영 연동', at: [1950, 710], color: C.orange, dashed: true });
-  s += diagramEdge([[820, 902], [820, 995], [620, 995], [620, 1135]], { label: 'JPA · Flyway', at: [720, 995], color: C.green });
+  s += diagramEdge([[820, 902], [820, 995], [620, 995], [620, 1135]], { label: 'JDBC · Flyway', at: [720, 995], color: C.green });
 
   return shell('GAYADI 서비스 아키텍처', 'draw.io 표준 형태의 계층형 서비스 아키텍처', s);
 }
@@ -532,7 +517,7 @@ function serviceArchitectureDrawio() {
   vertex('server', '1', 'GAYADI Server · Spring Boot', '모듈러 모놀리스', `${swimlane}fillColor=#E5EEF8;strokeColor=#123C69;`, 270, 40, 1200, 760);
   vertex('apiLane', 'server', 'API 계층', '요청 진입점', `${swimlane}fillColor=#E5EEF8;strokeColor=#123C69;startSize=26;fontSize=14;`, 20, 50, 1160, 105);
   vertex('rest', 'apiLane', 'REST Controller', '여행 전·중·후 API', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 160, 34, 250, 52);
-  vertex('authFilter', 'apiLane', '인증·권한 필터', '사용자와 멤버 확인', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 455, 34, 250, 52);
+  vertex('authFilter', 'apiLane', '사용자·멤버 확인', '업무 요청 기준 검증', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 455, 34, 250, 52);
   vertex('validation', 'apiLane', '검증·오류 응답', '공통 응답 형식', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 750, 34, 250, 52);
 
   vertex('appLane', 'server', '애플리케이션 계층', '유스케이스 조합', `${swimlane}fillColor=#EEE7FF;strokeColor=#6637D9;startSize=26;fontSize=14;`, 20, 175, 1160, 130);
@@ -559,10 +544,10 @@ function serviceArchitectureDrawio() {
   vertex('routeApi', 'external', '대중교통 경로 API', '실제 경로 후보 계산', planned, 35, 400, 350, 70);
   vertex('pushApi', 'external', 'FCM · SSE', '변경 제안과 알림', planned, 35, 510, 350, 70);
 
-  vertex('data', '1', '데이터 · 운영', '현재 저장소와 선택 구성', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;`, 270, 840, 1650, 230);
-  vertex('coreDb', 'data', 'Core DB', '사용자·여행·일정', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5EEF8;strokeColor=#123C69;', 120, 80, 180, 95);
-  vertex('placeDb', 'data', 'Place DB', '장소 기본 정보', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 380, 80, 180, 95);
-  vertex('eventDb', 'data', 'Event DB', '사용한 이벤트', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF1E8;strokeColor=#D85C22;', 640, 80, 180, 95);
+  vertex('data', '1', '데이터 저장소 · 현재 단일 DB', '업무 영역별 분리', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;`, 270, 840, 1650, 230);
+  vertex('coreDb', 'data', 'Core 영역', '사용자·여행·일정', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5EEF8;strokeColor=#123C69;', 120, 80, 180, 95);
+  vertex('placeDb', 'data', 'Place 영역', '장소 기본 정보', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 380, 80, 180, 95);
+  vertex('eventDb', 'data', 'Event 영역', '사용한 이벤트', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF1E8;strokeColor=#D85C22;', 640, 80, 180, 95);
   vertex('redis', 'data', 'Redis', '짧은 TTL 캐시·선택', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;fillColor=#FFF4EC;strokeColor=#D85C22;', 900, 80, 180, 95);
   vertex('ops', 'data', '운영 확인', 'Actuator·로그·GitHub Actions', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 1160, 80, 360, 95);
 
@@ -577,7 +562,7 @@ function serviceArchitectureDrawio() {
   edge('e9', 'externalAdapter', 'eventApi', '', true);
   edge('e10', 'externalAdapter', 'routeApi', '', true);
   edge('e11', 'notifyAdapter', 'pushApi', '', true);
-  edge('e12', 'localAdapter', 'coreDb', 'JPA');
+  edge('e12', 'localAdapter', 'coreDb', 'JDBC');
   edge('e13', 'place', 'placeDb');
   edge('e14', 'event', 'eventDb');
 

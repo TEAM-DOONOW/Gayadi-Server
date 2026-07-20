@@ -34,7 +34,7 @@
         <mxCell id="rest" parent="apiLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontColor=#0F172A;fontSize=13;fontStyle=1;arcSize=10;" value="REST Controller&#xa;여행 전·중·후 API" vertex="1">
           <mxGeometry height="52" width="250" x="80" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="authFilter" parent="apiLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontColor=#0F172A;fontSize=13;fontStyle=1;arcSize=10;" value="인증 · 권한 필터&#xa;사용자와 멤버 확인" vertex="1">
+        <mxCell id="authFilter" parent="apiLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontColor=#0F172A;fontSize=13;fontStyle=1;arcSize=10;" value="사용자 · 멤버 확인&#xa;업무 요청 기준 검증" vertex="1">
           <mxGeometry height="52" width="250" x="380" y="40" as="geometry" />
         </mxCell>
         <mxCell id="validation" parent="apiLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontColor=#0F172A;fontSize=13;fontStyle=1;arcSize=10;" value="요청 검증 · 오류 응답&#xa;입력값과 오류 처리" vertex="1">
@@ -82,7 +82,7 @@
         <mxCell id="infraLane" parent="server" style="swimlane;horizontal=1;startSize=32;rounded=1;html=1;fillColor=#0F766E;swimlaneFillColor=#FFFFFF;strokeColor=#99F6E4;fontColor=#FFFFFF;fontStyle=1;fontSize=14;container=1;collapsible=0;arcSize=6;" value="인프라 계층" vertex="1">
           <mxGeometry height="120" width="1010" x="30" y="504" as="geometry" />
         </mxCell>
-        <mxCell id="localAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#0F766E;strokeWidth=2;fontColor=#134E4A;fontSize=13;fontStyle=1;arcSize=10;" value="DB 저장&#xa;JPA · Flyway" vertex="1">
+        <mxCell id="localAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#0F766E;strokeWidth=2;fontColor=#134E4A;fontSize=13;fontStyle=1;arcSize=10;" value="DB 저장&#xa;JDBC · Flyway" vertex="1">
           <mxGeometry height="58" width="250" x="80" y="46" as="geometry" />
         </mxCell>
         <mxCell id="notifyAdapter" parent="infraLane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=13;fontStyle=1;arcSize=10;" value="알림 전송&#xa;FCM · SSE" vertex="1">
@@ -136,16 +136,16 @@
         <mxCell id="pushApi" parent="external" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#EA580C;strokeWidth=2;dashed=1;fontColor=#7C2D12;fontSize=13;fontStyle=1;arcSize=10;" value="FCM · SSE&#xa;변경 제안과 알림" vertex="1">
           <mxGeometry height="74" width="350" x="35" y="502" as="geometry" />
         </mxCell>
-        <mxCell id="data" parent="1" style="swimlane;horizontal=1;startSize=44;rounded=1;html=1;fillColor=#059669;swimlaneFillColor=#F0FDF4;strokeColor=#059669;fontColor=#FFFFFF;fontStyle=1;fontSize=16;container=1;collapsible=0;arcSize=8;" value="데이터 · 운영" vertex="1">
+        <mxCell id="data" parent="1" style="swimlane;horizontal=1;startSize=44;rounded=1;html=1;fillColor=#059669;swimlaneFillColor=#F0FDF4;strokeColor=#059669;fontColor=#FFFFFF;fontStyle=1;fontSize=16;container=1;collapsible=0;arcSize=8;" value="데이터 저장소 · 현재 단일 DB" vertex="1">
           <mxGeometry height="200" width="1530" x="330" y="820" as="geometry" />
         </mxCell>
-        <mxCell id="coreDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Core DB&#xa;사용자 · 여행 · 일정" vertex="1">
+        <mxCell id="coreDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Core 영역&#xa;사용자 · 여행 · 일정" vertex="1">
           <mxGeometry height="92" width="200" x="70" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="placeDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Place DB&#xa;저장된 장소 정보" vertex="1">
+        <mxCell id="placeDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Place 영역&#xa;저장된 장소 정보" vertex="1">
           <mxGeometry height="92" width="200" x="340" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="eventDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Event DB&#xa;관측된 이벤트 기록" vertex="1">
+        <mxCell id="eventDb" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontSize=13;fontStyle=1;" value="Event 영역&#xa;관측된 이벤트 기록" vertex="1">
           <mxGeometry height="92" width="200" x="610" y="70" as="geometry" />
         </mxCell>
         <mxCell id="redis" parent="data" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;dashed=1;fontColor=#334155;fontSize=13;fontStyle=1;" value="Redis&#xa;경로 · 외부 API 임시 저장" vertex="1">
@@ -162,7 +162,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="e6" edge="1" parent="1" source="localAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="coreDb" value="JPA">
+        <mxCell id="e6" edge="1" parent="1" source="localAdapter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#059669;endArrow=classic;labelBackgroundColor=#FFFFFF;curved=0;" target="coreDb" value="JDBC">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="565" y="809" />

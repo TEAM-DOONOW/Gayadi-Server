@@ -1,243 +1,163 @@
 -- GAYADI ERDCloud Import DDL
--- MySQL 8.x 기준
---
--- 모델을 의도적으로 단순화한 버전이다.
--- - 독립적인 업무 단위만 테이블로 분리한다.
--- - 설문 문항/답변, 경로 구간, 외부 API 상세 응답은 JSON으로 보관한다.
--- - places와 event_observations는 나중에 별도 DB로 분리할 수 있다.
--- - 아래에서는 ERDCloud에서 관계를 보이기 위해 논리 FK를 둔다.
--- - 실제 실행 스키마의 기준은 src/main/resources/db/migration 이며, 이 파일은 발표용 논리 ERD다.
-
--- ============================================================
--- 1. 사용자 / 여행
--- ============================================================
+-- 실제 실행 스키마: src/main/resources/db/migration/V1__create_gayadi_schema.sql
+-- V2의 설문 1건과 서울 장소 4건은 개발용 기준/예시 데이터이며 스키마 정의가 아니다.
 
 CREATE TABLE users (
-    id                  CHAR(36) PRIMARY KEY,
-    nickname            VARCHAR(50) NOT NULL,
-    oauth_provider      VARCHAR(30) NOT NULL,
-    oauth_subject       VARCHAR(255) NOT NULL,
-    status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    UNIQUE KEY uq_users_oauth (oauth_provider, oauth_subject)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id VARCHAR(36) PRIMARY KEY,
+    nickname VARCHAR(80) NOT NULL,
+    oauth_provider VARCHAR(30) NOT NULL DEFAULT 'LOCAL',
+    oauth_subject VARCHAR(120) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_users_oauth UNIQUE (oauth_provider, oauth_subject)
+);
 
 CREATE TABLE trips (
-    id                  CHAR(36) PRIMARY KEY,
-    owner_id            CHAR(36) NOT NULL,
-    title               VARCHAR(100) NOT NULL,
-    destination_name    VARCHAR(100) NOT NULL,
-    start_date          DATE NOT NULL,
-    end_date            DATE NOT NULL,
-    departure_mode      VARCHAR(20) NOT NULL,
-    departure_at        DATETIME(3) NOT NULL,
-    meeting_at          DATETIME(3) NULL,
-    meeting_address     VARCHAR(255) NULL,
-    meeting_latitude    DECIMAL(10,7) NULL,
-    meeting_longitude   DECIMAL(10,7) NULL,
-    invite_code         VARCHAR(100) NULL,
-    status              VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_trips_owner
-        FOREIGN KEY (owner_id) REFERENCES users(id),
-    UNIQUE KEY uq_trips_invite_code (invite_code),
-    KEY idx_trips_owner_status (owner_id, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id VARCHAR(36) PRIMARY KEY,
+    owner_id VARCHAR(36) NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    departure_mode VARCHAR(30) NOT NULL,
+    departure_at TIMESTAMP NOT NULL,
+    meeting_at TIMESTAMP,
+    meeting_location VARCHAR(1000),
+    status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_trips_owner FOREIGN KEY (owner_id) REFERENCES users(id)
+);
 
 CREATE TABLE trip_members (
-    id                    CHAR(36) PRIMARY KEY,
-    trip_id               CHAR(36) NOT NULL,
-    user_id               CHAR(36) NOT NULL,
-    role                  VARCHAR(20) NOT NULL DEFAULT 'MEMBER',
-    participation_status  VARCHAR(20) NOT NULL DEFAULT 'INVITED',
-    departure_location    JSON NULL,
-    return_destination    JSON NULL,
-    route_preferences     JSON NULL,
-    joined_at             DATETIME(3) NULL,
-    created_at            DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_trip_members_trip
-        FOREIGN KEY (trip_id) REFERENCES trips(id),
-    CONSTRAINT fk_trip_members_user
-        FOREIGN KEY (user_id) REFERENCES users(id),
-    UNIQUE KEY uq_trip_members_trip_user (trip_id, user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
--- 2. 설문 / 장소
--- ============================================================
+    id VARCHAR(36) PRIMARY KEY,
+    trip_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'MEMBER',
+    participation_status VARCHAR(20) NOT NULL DEFAULT 'JOINED',
+    departure_location VARCHAR(1000) NOT NULL,
+    return_destination VARCHAR(1000) NOT NULL,
+    route_preferences VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_trip_members_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+    CONSTRAINT fk_trip_members_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT uk_trip_member UNIQUE (trip_id, user_id)
+);
 
 CREATE TABLE surveys (
-    id                  CHAR(36) PRIMARY KEY,
-    survey_type         VARCHAR(30) NOT NULL,
-    title               VARCHAR(100) NOT NULL,
-    version             VARCHAR(30) NOT NULL,
-    questions           JSON NOT NULL,
-    status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    UNIQUE KEY uq_surveys_type_version (survey_type, version)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id VARCHAR(36) PRIMARY KEY,
+    survey_type VARCHAR(40) NOT NULL,
+    version VARCHAR(20) NOT NULL,
+    questions VARCHAR(4000) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    CONSTRAINT uk_survey_version UNIQUE (survey_type, version)
+);
 
 CREATE TABLE survey_responses (
-    id                  CHAR(36) PRIMARY KEY,
-    survey_id           CHAR(36) NOT NULL,
-    user_id             CHAR(36) NOT NULL,
-    trip_id             CHAR(36) NOT NULL,
-    answers             JSON NULL,
-    result_code         VARCHAR(50) NULL,
-    result_data         JSON NULL,
-    completed_at        DATETIME(3) NULL,
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_survey_responses_survey
-        FOREIGN KEY (survey_id) REFERENCES surveys(id),
-    CONSTRAINT fk_survey_responses_user
-        FOREIGN KEY (user_id) REFERENCES users(id),
-    CONSTRAINT fk_survey_responses_trip
-        FOREIGN KEY (trip_id) REFERENCES trips(id),
-    UNIQUE KEY uq_survey_responses_trip_user (trip_id, survey_id, user_id),
-    KEY idx_survey_responses_user (user_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE places (
-    id                  CHAR(36) PRIMARY KEY,
-    name                VARCHAR(200) NOT NULL,
-    category            VARCHAR(50) NOT NULL,
-    address             VARCHAR(255) NULL,
-    latitude            DECIMAL(10,7) NOT NULL,
-    longitude           DECIMAL(10,7) NOT NULL,
-    source              VARCHAR(50) NULL,
-    source_place_id     VARCHAR(255) NULL,
-    basic_info          JSON NULL,
-    status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    synced_at           DATETIME(3) NULL,
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    UNIQUE KEY uq_places_source (source, source_place_id),
-    KEY idx_places_category (category),
-    KEY idx_places_location (latitude, longitude)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
--- 3. 여행 일정
--- ============================================================
+    id VARCHAR(36) PRIMARY KEY,
+    survey_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    trip_id VARCHAR(36),
+    answers VARCHAR(4000) NOT NULL,
+    result_code VARCHAR(40) NOT NULL,
+    result_data VARCHAR(2000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_survey_responses_survey FOREIGN KEY (survey_id) REFERENCES surveys(id),
+    CONSTRAINT fk_survey_responses_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_survey_responses_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+    CONSTRAINT uk_trip_survey_user UNIQUE (trip_id, survey_id, user_id)
+);
 
 CREATE TABLE trip_plans (
-    id                    CHAR(36) PRIMARY KEY,
-    trip_id               CHAR(36) NOT NULL,
-    survey_response_id    CHAR(36) NULL,
-    revision_no           INT NOT NULL DEFAULT 1,
-    status                VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
-    preference_snapshot   JSON NULL,
-    confirmed_at          DATETIME(3) NULL,
-    created_at            DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at            DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_trip_plans_trip
-        FOREIGN KEY (trip_id) REFERENCES trips(id),
-    CONSTRAINT fk_trip_plans_survey_response
-        FOREIGN KEY (survey_response_id) REFERENCES survey_responses(id),
-    UNIQUE KEY uq_trip_plans_trip (trip_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id VARCHAR(36) PRIMARY KEY,
+    trip_id VARCHAR(36) NOT NULL,
+    survey_response_id VARCHAR(36),
+    revision_no INTEGER NOT NULL DEFAULT 1,
+    preference_snapshot VARCHAR(2000),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_trip_plans_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+    CONSTRAINT fk_trip_plans_survey_response FOREIGN KEY (survey_response_id) REFERENCES survey_responses(id),
+    CONSTRAINT uk_trip_plan UNIQUE (trip_id)
+);
+
+CREATE TABLE places (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(160) NOT NULL,
+    category VARCHAR(60) NOT NULL,
+    address VARCHAR(300) NOT NULL,
+    latitude DECIMAL(10, 7) NOT NULL,
+    longitude DECIMAL(10, 7) NOT NULL,
+    source VARCHAR(30) NOT NULL,
+    source_place_id VARCHAR(120) NOT NULL,
+    basic_info VARCHAR(2000),
+    CONSTRAINT uk_place_source UNIQUE (source, source_place_id)
+);
 
 CREATE TABLE trip_plan_items (
-    id                  CHAR(36) PRIMARY KEY,
-    plan_id             CHAR(36) NOT NULL,
-    place_id            CHAR(36) NOT NULL,
-    sequence_no         INT NOT NULL,
-    planned_start_at    DATETIME(3) NULL,
-    planned_end_at      DATETIME(3) NULL,
-    status              VARCHAR(20) NOT NULL DEFAULT 'PLANNED',
-    memo                VARCHAR(500) NULL,
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    updated_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_trip_plan_items_plan
-        FOREIGN KEY (plan_id) REFERENCES trip_plans(id),
-    CONSTRAINT fk_trip_plan_items_place
-        FOREIGN KEY (place_id) REFERENCES places(id),
-    UNIQUE KEY uq_trip_plan_items_sequence (plan_id, sequence_no)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
--- 4. 사용자가 선택한 경로
--- ============================================================
-
-CREATE TABLE trip_routes (
-    id                    CHAR(36) PRIMARY KEY,
-    trip_id               CHAR(36) NOT NULL,
-    member_id             CHAR(36) NULL,
-    scope                 VARCHAR(20) NOT NULL,
-    phase                 VARCHAR(20) NOT NULL,
-    origin                JSON NOT NULL,
-    destination           JSON NOT NULL,
-    departure_at          DATETIME(3) NOT NULL,
-    primary_mode          VARCHAR(30) NOT NULL,
-    duration_seconds      INT NOT NULL,
-    distance_meters       INT NULL,
-    transfer_count        INT NOT NULL DEFAULT 0,
-    fare                  INT NULL,
-    arrival_at            DATETIME(3) NULL,
-    route_data            JSON NULL,
-    provider              VARCHAR(50) NOT NULL,
-    status                VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    valid_until           DATETIME(3) NULL,
-    selected_at           DATETIME(3) NOT NULL,
-    created_at            DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_trip_routes_trip
-        FOREIGN KEY (trip_id) REFERENCES trips(id),
-    CONSTRAINT fk_trip_routes_member
-        FOREIGN KEY (member_id) REFERENCES trip_members(id),
-    KEY idx_trip_routes_trip_phase (trip_id, phase)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================================
--- 5. 날씨 / 혼잡 / 교통 이벤트
--- ============================================================
+    id VARCHAR(36) PRIMARY KEY,
+    plan_id VARCHAR(36) NOT NULL,
+    place_id VARCHAR(36) NOT NULL,
+    sequence_no INTEGER NOT NULL,
+    planned_start TIMESTAMP NOT NULL,
+    planned_end TIMESTAMP NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PLANNED',
+    CONSTRAINT fk_trip_plan_items_plan FOREIGN KEY (plan_id) REFERENCES trip_plans(id) ON DELETE CASCADE,
+    CONSTRAINT fk_trip_plan_items_place FOREIGN KEY (place_id) REFERENCES places(id),
+    CONSTRAINT uk_plan_sequence UNIQUE (plan_id, sequence_no)
+);
 
 CREATE TABLE event_observations (
-    id                  CHAR(36) PRIMARY KEY,
-    event_type          VARCHAR(30) NOT NULL,
-    source              VARCHAR(50) NOT NULL,
-    place_id            CHAR(36) NULL,
-    grid_key            VARCHAR(100) NULL,
-    observed_at         DATETIME(3) NOT NULL,
-    valid_from          DATETIME(3) NULL,
-    valid_to            DATETIME(3) NULL,
-    severity            VARCHAR(20) NULL,
-    normalized_value    JSON NOT NULL,
-    source_updated_at   DATETIME(3) NULL,
-    created_at          DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_event_observations_place
-        FOREIGN KEY (place_id) REFERENCES places(id),
-    KEY idx_event_observations_place_time (place_id, observed_at),
-    KEY idx_event_observations_type_time (event_type, observed_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id VARCHAR(36) PRIMARY KEY,
+    place_id VARCHAR(36),
+    event_type VARCHAR(40) NOT NULL,
+    source VARCHAR(40) NOT NULL,
+    observed_at TIMESTAMP NOT NULL,
+    valid_to TIMESTAMP,
+    severity VARCHAR(20) NOT NULL,
+    normalized_value VARCHAR(2000) NOT NULL,
+    CONSTRAINT fk_event_observations_place FOREIGN KEY (place_id) REFERENCES places(id)
+);
 
 CREATE TABLE change_proposals (
-    id                    CHAR(36) PRIMARY KEY,
-    trip_id               CHAR(36) NOT NULL,
-    plan_id               CHAR(36) NOT NULL,
-    event_id              CHAR(36) NULL,
-    base_revision_no      INT NOT NULL,
-    status                VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    reason                VARCHAR(1000) NOT NULL,
-    options               JSON NOT NULL,
-    selected_option_key   VARCHAR(50) NULL,
-    before_snapshot       JSON NOT NULL,
-    after_snapshot        JSON NULL,
-    estimated_delta_seconds INT NULL,
-    decided_by            CHAR(36) NULL,
-    decided_at            DATETIME(3) NULL,
-    notified_at           DATETIME(3) NULL,
-    expires_at            DATETIME(3) NULL,
-    created_at            DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    CONSTRAINT fk_change_proposals_trip
-        FOREIGN KEY (trip_id) REFERENCES trips(id),
-    CONSTRAINT fk_change_proposals_plan
-        FOREIGN KEY (plan_id) REFERENCES trip_plans(id),
-    CONSTRAINT fk_change_proposals_event
-        FOREIGN KEY (event_id) REFERENCES event_observations(id),
-    CONSTRAINT fk_change_proposals_decider
-        FOREIGN KEY (decided_by) REFERENCES users(id),
-    KEY idx_change_proposals_trip_status (trip_id, status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    id VARCHAR(36) PRIMARY KEY,
+    trip_id VARCHAR(36) NOT NULL,
+    plan_id VARCHAR(36) NOT NULL,
+    event_id VARCHAR(36) NOT NULL,
+    base_revision_no INTEGER NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    reason VARCHAR(500) NOT NULL,
+    options VARCHAR(4000) NOT NULL,
+    selected_option VARCHAR(2000),
+    before_snapshot VARCHAR(4000),
+    after_snapshot VARCHAR(4000),
+    decided_by VARCHAR(36),
+    decided_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_change_proposals_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+    CONSTRAINT fk_change_proposals_plan FOREIGN KEY (plan_id) REFERENCES trip_plans(id) ON DELETE CASCADE,
+    CONSTRAINT fk_change_proposals_event FOREIGN KEY (event_id) REFERENCES event_observations(id),
+    CONSTRAINT fk_change_proposals_decider FOREIGN KEY (decided_by) REFERENCES users(id)
+);
+
+CREATE TABLE trip_routes (
+    id VARCHAR(36) PRIMARY KEY,
+    trip_id VARCHAR(36) NOT NULL,
+    member_id VARCHAR(36),
+    scope VARCHAR(30) NOT NULL,
+    phase VARCHAR(30) NOT NULL,
+    origin VARCHAR(1000) NOT NULL,
+    destination VARCHAR(1000) NOT NULL,
+    duration_minutes INTEGER NOT NULL,
+    transfer_count INTEGER NOT NULL,
+    fare INTEGER NOT NULL,
+    route_data VARCHAR(4000) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'RECOMMENDED',
+    valid_until TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_trip_routes_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+    CONSTRAINT fk_trip_routes_member FOREIGN KEY (member_id) REFERENCES trip_members(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_trip_members_trip ON trip_members(trip_id);
+CREATE INDEX idx_plan_items_plan ON trip_plan_items(plan_id, sequence_no);
+CREATE INDEX idx_events_place_time ON event_observations(place_id, observed_at);
+CREATE INDEX idx_routes_trip_phase ON trip_routes(trip_id, phase);
+CREATE INDEX idx_proposals_trip_status ON change_proposals(trip_id, status);
