@@ -9,9 +9,10 @@ fs.mkdirSync(OUT, { recursive: true });
 const W = 2560;
 const H = 1440;
 const C = {
-  bg: '#F5F7FB', ink: '#162033', muted: '#667085', border: '#CAD3E0', white: '#FFFFFF',
-  navy: '#274C77', violet: '#6D4BAE', green: '#287A68', orange: '#C56E2D',
-  blue: '#2878B7', rose: '#B24F67', success: '#2D7D5A', line: '#8492A6'
+  bg: '#E8EEF6', ink: '#0B1830', muted: '#475569', border: '#9DADC0', white: '#FFFFFF',
+  navy: '#123C69', violet: '#6637D9', green: '#087E62', orange: '#D85C22',
+  blue: '#0568C2', rose: '#C52B5A', success: '#087A55', line: '#607089',
+  cyan: '#0D9FA5', gold: '#D99614'
 };
 
 const esc = (value) => String(value)
@@ -23,28 +24,42 @@ function shell(title, description, content) {
   <title>${esc(title)}</title><desc>${esc(description)}</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#162033" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#071A33" flood-opacity="0.18"/>
+    </filter>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#071A33" flood-opacity="0.12"/>
     </filter>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#748197"/>
+      <path d="M0,0 L10,5 L0,10 Z" fill="#52627A"/>
     </marker>
+    <linearGradient id="pageBackground" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#DEE7F2"/><stop offset="0.52" stop-color="#F4F7FB"/><stop offset="1" stop-color="#E8EEF6"/>
+    </linearGradient>
+    <linearGradient id="topHeader" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#071A33"/><stop offset="0.56" stop-color="#123C69"/><stop offset="1" stop-color="#165A77"/>
+    </linearGradient>
+    <linearGradient id="bottomBand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#071A33"/><stop offset="0.7" stop-color="#102E50"/><stop offset="1" stop-color="#12485C"/>
+    </linearGradient>
     <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
-      <circle cx="1" cy="1" r="1" fill="#D9E0EA"/>
+      <circle cx="1" cy="1" r="1.15" fill="#AAB7C8"/>
     </pattern>
   </defs>
-  <rect width="${W}" height="${H}" fill="${C.bg}"/>
-  <rect width="${W}" height="${H}" fill="url(#grid)" opacity="0.42"/>
+  <rect width="${W}" height="${H}" fill="url(#pageBackground)"/>
+  <rect width="${W}" height="${H}" fill="url(#grid)" opacity="0.24"/>
   <g font-family="Malgun Gothic, Noto Sans KR, Arial, sans-serif">${content}</g>
 </svg>`;
 }
 
 function header(title, subtitle) {
-  return `<rect width="${W}" height="118" fill="#FFFFFF"/>
-  <line x1="0" y1="117" x2="${W}" y2="117" stroke="#DDE3EC" stroke-width="2"/>
-  <text x="64" y="51" font-size="34" font-weight="700" fill="${C.ink}">${esc(title)}</text>
-  <text x="64" y="85" font-size="17" fill="${C.muted}">${esc(subtitle)}</text>
-  <rect x="2350" y="35" width="146" height="48" rx="24" fill="#EEF3F8"/>
-  <text x="2423" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="${C.navy}">GAYADI</text>`;
+  return `<rect width="${W}" height="122" fill="url(#topHeader)"/>
+  <rect x="0" y="118" width="${W}" height="4" fill="${C.cyan}"/>
+  <rect x="64" y="29" width="8" height="62" rx="4" fill="${C.cyan}"/>
+  <text x="92" y="55" font-size="35" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
+  <text x="92" y="88" font-size="17" fill="#D5E0EC">${esc(subtitle)}</text>
+  <g filter="url(#softShadow)"><rect x="2342" y="33" width="154" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.38"/>
+  <circle cx="2371" cy="59" r="8" fill="${C.cyan}"/>
+  <text x="2429" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">GAYADI</text></g>`;
 }
 
 function table({ id, x, y, w, color, note, rows }) {
@@ -52,13 +67,15 @@ function table({ id, x, y, w, color, note, rows }) {
   const rowH = 33;
   const h = head + rows.length * rowH + 10;
   let body = `<g filter="url(#shadow)">
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="#FFFFFF" stroke="${C.border}" stroke-width="1.5"/>
-    <path d="M${x + 8},${y} H${x + w - 8} Q${x + w},${y} ${x + w},${y + 8} V${y + head} H${x} V${y + 8} Q${x},${y} ${x + 8},${y} Z" fill="${color}"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#FFFFFF" stroke="${color}" stroke-width="2"/>
+    <path d="M${x + 14},${y} H${x + w - 14} Q${x + w},${y} ${x + w},${y + 14} V${y + head} H${x} V${y + 14} Q${x},${y} ${x + 14},${y} Z" fill="${color}"/>
+    <rect x="${x + 16}" y="${y + 12}" width="38" height="4" rx="2" fill="#FFFFFF" opacity="0.72"/>
     <text x="${x + 16}" y="${y + 27}" font-size="19" font-weight="700" fill="#FFFFFF">${esc(id)}</text>
-    <text x="${x + 16}" y="${y + 50}" font-size="12.5" fill="#FFFFFF" opacity="0.86">${esc(note)}</text>`;
+    <text x="${x + 16}" y="${y + 50}" font-size="12.5" fill="#FFFFFF" opacity="0.92">${esc(note)}</text>`;
   rows.forEach((row, index) => {
     const top = y + head + index * rowH;
-    if (index) body += `<line x1="${x + 10}" y1="${top}" x2="${x + w - 10}" y2="${top}" stroke="#E7EBF1"/>`;
+    if (index % 2 === 1) body += `<rect x="${x + 2}" y="${top}" width="${w - 4}" height="${rowH}" fill="#EDF2F7"/>`;
+    if (index) body += `<line x1="${x + 10}" y1="${top}" x2="${x + w - 10}" y2="${top}" stroke="#D6DEE8"/>`;
     const keyColor = row[0] === 'PK' ? '#B42318' : row[0] === 'FK' ? '#175CD3' : C.muted;
     body += `<text x="${x + 14}" y="${top + 21}" font-size="11.5" font-weight="700" fill="${keyColor}">${esc(row[0])}</text>
       <text x="${x + 49}" y="${top + 21}" font-size="13" font-weight="500" fill="${C.ink}">${esc(row[1])}</text>
@@ -71,13 +88,14 @@ function relation(points, options = {}) {
   const color = options.color || C.line;
   const dash = options.dashed ? ' stroke-dasharray="8 7"' : '';
   const p = points.map(([x, y]) => `${x},${y}`).join(' ');
-  let out = `<polyline points="${p}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"${dash}/>`;
+  let out = `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-opacity="0.92" stroke-width="5.4" stroke-linejoin="round"/>
+    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.7" stroke-linejoin="round"${dash}/>`;
   if (options.one) out += `<text x="${options.one[0]}" y="${options.one[1]}" font-size="12" font-weight="700" fill="${color}">1</text>`;
   if (options.many) out += `<text x="${options.many[0]}" y="${options.many[1]}" font-size="12" font-weight="700" fill="${color}">N</text>`;
   if (options.label && options.at) {
     const [x, y] = options.at;
     const width = Math.max(68, options.label.length * 12 + 18);
-    out += `<rect x="${x - width / 2}" y="${y - 14}" width="${width}" height="26" rx="13" fill="#FFFFFF" stroke="#D8DFE9"/>
+    out += `<rect x="${x - width / 2}" y="${y - 14}" width="${width}" height="26" rx="13" fill="#FFFFFF" stroke="${color}" stroke-width="1.3"/>
       <text x="${x}" y="${y + 3}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${color}">${esc(options.label)}</text>`;
   }
   return out;
@@ -141,24 +159,25 @@ function erd() {
   lines += relation([[950, 800], [1530, 800], [1530, 1110], [1600, 1110]], { label: '일정 변경', at: [1260, 782], one: [965, 790], many: [1585, 1100] });
   lines += relation([[875, 295], [1505, 295], [1505, 1035], [1600, 1035]], { label: '여행 제안', at: [1450, 330], one: [890, 285], many: [1585, 1025] });
 
-  const labels = `<text x="55" y="145" font-size="12" font-weight="700" fill="${C.navy}">핵심 여행 데이터</text>
-    <text x="985" y="145" font-size="12" font-weight="700" fill="${C.violet}">설문 · 성향 데이터</text>
-    <text x="1745" y="145" font-size="12" font-weight="700" fill="${C.green}">장소 · 실시간 이벤트 데이터</text>
-    <g transform="translate(2190,34)"><rect width="150" height="52" rx="8" fill="#F8FAFC" stroke="#D7DEE8"/>
-      <line x1="14" y1="18" x2="50" y2="18" stroke="${C.line}" stroke-width="2"/><text x="60" y="22" font-size="11" fill="${C.muted}">물리 FK</text>
-      <line x1="14" y1="38" x2="50" y2="38" stroke="${C.green}" stroke-width="2" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" fill="${C.muted}">논리 참조</text></g>`;
+  const labels = `<g filter="url(#softShadow)"><rect x="55" y="130" width="170" height="30" rx="15" fill="${C.navy}"/><text x="140" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
+    <g filter="url(#softShadow)"><rect x="985" y="130" width="174" height="30" rx="15" fill="${C.violet}"/><text x="1072" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
+    <g filter="url(#softShadow)"><rect x="1745" y="130" width="232" height="30" rx="15" fill="${C.green}"/><text x="1861" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
+    <g transform="translate(2158,35)" filter="url(#softShadow)"><rect width="166" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.94" stroke="#8392A7" stroke-width="1.4"/>
+      <line x1="14" y1="18" x2="50" y2="18" stroke="${C.line}" stroke-width="2.5"/><text x="60" y="22" font-size="11" font-weight="700" fill="${C.ink}">물리 FK</text>
+      <line x1="14" y1="38" x2="50" y2="38" stroke="${C.green}" stroke-width="2.5" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" font-weight="700" fill="${C.ink}">논리 참조</text></g>`;
 
   return shell('GAYADI 데이터 모델 ERD', '여행 서비스의 핵심 데이터 관계',
     header('GAYADI 데이터 모델 · ERD', '핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로') + labels + lines + nodes);
 }
 
 function panel(x, y, w, h, color, number, title, subtitle) {
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="#FFFFFF" fill-opacity="0.78" stroke="#D5DDE8" stroke-width="1.5"/>
+  return `<g filter="url(#softShadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="#FFFFFF" stroke="${color}" stroke-width="2.4"/>
+    <rect x="${x + 2}" y="${y + 78}" width="${w - 4}" height="${h - 80}" rx="20" fill="${color}" fill-opacity="0.045"/>
     <path d="M${x + 18},${y} H${x + w - 18} Q${x + w},${y} ${x + w},${y + 18} V${y + 78} H${x} V${y + 18} Q${x},${y} ${x + 18},${y} Z" fill="${color}"/>
-    <circle cx="${x + 42}" cy="${y + 39}" r="22" fill="#FFFFFF" fill-opacity="0.18"/>
+    <circle cx="${x + 42}" cy="${y + 39}" r="23" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.62"/>
     <text x="${x + 42}" y="${y + 45}" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">${number}</text>
     <text x="${x + 80}" y="${y + 31}" font-size="23" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
-    <text x="${x + 80}" y="${y + 57}" font-size="12.5" fill="#FFFFFF" opacity="0.88">${esc(subtitle)}</text>`;
+    <text x="${x + 80}" y="${y + 57}" font-size="12.5" fill="#FFFFFF" opacity="0.94">${esc(subtitle)}</text></g>`;
 }
 
 function step(x, y, w, h, text, options = {}) {
@@ -172,22 +191,25 @@ function step(x, y, w, h, text, options = {}) {
   lines.forEach((line, index) => {
     texts += `<text x="${x + w / 2}" y="${first + index * gap}" text-anchor="middle" font-size="${options.size || 16}" font-weight="${options.weight || 600}" fill="${color}">${esc(line)}</text>`;
   });
-  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.6"/>${texts}</g>`;
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.2"/>
+    <rect x="${x + 10}" y="${y + 13}" width="7" height="${Math.max(18, h - 26)}" rx="3.5" fill="${stroke}"/>${texts}</g>`;
 }
 
 function decision(cx, cy, w, h, text, color) {
-  return `<g filter="url(#shadow)"><polygon points="${cx},${cy - h / 2} ${cx + w / 2},${cy} ${cx},${cy + h / 2} ${cx - w / 2},${cy}" fill="#FFFFFF" stroke="${color}" stroke-width="2"/>
+  return `<g filter="url(#shadow)"><polygon points="${cx},${cy - h / 2} ${cx + w / 2},${cy} ${cx},${cy + h / 2} ${cx - w / 2},${cy}" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="3"/>
+    <polygon points="${cx},${cy - h / 2 + 10} ${cx + w / 2 - 18},${cy} ${cx},${cy + h / 2 - 10} ${cx - w / 2 + 18},${cy}" fill="#FFFFFF" fill-opacity="0.75"/>
     <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="16" font-weight="700" fill="${C.ink}">${esc(text)}</text></g>`;
 }
 
 function flowArrow(points, options = {}) {
   const color = options.color || '#748197';
   const p = points.map(([x, y]) => `${x},${y}`).join(' ');
-  let out = `<polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)"${options.dashed ? ' stroke-dasharray="8 7"' : ''}/>`;
+  let out = `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"${options.dashed ? ' stroke-dasharray="9 7"' : ''}/>`;
   if (options.label && options.at) {
     const [x, y] = options.at;
     const width = Math.max(62, options.label.length * 12 + 18);
-    out += `<rect x="${x - width / 2}" y="${y - 14}" width="${width}" height="26" rx="13" fill="#FFFFFF" stroke="#D7DEE8"/>
+    out += `<rect x="${x - width / 2}" y="${y - 14}" width="${width}" height="26" rx="13" fill="#FFFFFF" stroke="${color}" stroke-width="1.4"/>
       <text x="${x}" y="${y + 3}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${color}">${esc(options.label)}</text>`;
   }
   return out;
@@ -202,12 +224,12 @@ function serviceFlow() {
   // 여행 전
   s += step(250, 245, 380, 64, '여행 생성 · 멤버 초대', { stroke: C.navy });
   s += decision(440, 405, 310, 100, '출발 방식?', C.navy);
-  s += step(85, 515, 310, 88, '모여서 출발\nGROUP_MEETING', { fill: '#EEF4FA', stroke: C.navy, size: 15 });
-  s += step(475, 515, 310, 88, '각자 출발\nINDIVIDUAL', { fill: '#EEF4FA', stroke: C.navy, size: 15 });
+  s += step(85, 515, 310, 88, '모여서 출발\nGROUP_MEETING', { fill: '#DCEAF7', stroke: C.navy, size: 15 });
+  s += step(475, 515, 310, 88, '각자 출발\nINDIVIDUAL', { fill: '#DCEAF7', stroke: C.navy, size: 15 });
   s += step(250, 690, 380, 70, '성향 설문 제출', { stroke: C.violet });
   s += step(220, 825, 440, 82, '장소 후보 조회 · 맞춤 일정 생성', { stroke: C.green });
   s += step(175, 970, 530, 88, '대중교통 출발 경로 추천\n멤버→집결지 또는 멤버→첫 장소', { stroke: C.blue, size: 15 });
-  s += step(250, 1120, 380, 70, '여행 준비 완료 · READY', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F' });
+  s += step(250, 1120, 380, 70, '여행 준비 완료 · READY', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
   s += flowArrow([[440, 309], [440, 355]]);
   s += flowArrow([[350, 440], [240, 515]], { label: '모여서', at: [270, 473], color: C.navy });
   s += flowArrow([[530, 440], [630, 515]], { label: '각자', at: [610, 473], color: C.navy });
@@ -218,13 +240,13 @@ function serviceFlow() {
   s += flowArrow([[440, 1058], [440, 1120]]);
 
   // 여행 중
-  s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#FFF4E8', stroke: C.orange });
+  s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#FFE5D3', stroke: C.orange });
   s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 상태 확인\n주기 조회 + 짧은 캐시', { stroke: C.orange, size: 15 });
   s += decision(1400, 535, 330, 108, '일정 영향 있음?', C.orange);
   s += step(1180, 655, 440, 78, '대체 장소 · 경로 계산', { stroke: C.blue });
   s += step(1150, 785, 500, 82, '변경 이유 · 시간 차이 알림', { stroke: C.rose });
   s += decision(1400, 965, 340, 108, '사용자 승인?', C.rose);
-  s += step(1110, 1090, 580, 92, '미래 일정 항목 수정\nrevision_no 증가 · 변경 이력 저장', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F', size: 15 });
+  s += step(1110, 1090, 580, 92, '미래 일정 항목 수정\nrevision_no 증가 · 변경 이력 저장', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E', size: 15 });
   s += flowArrow([[1400, 303], [1400, 350]]);
   s += flowArrow([[1400, 438], [1400, 481]]);
   s += flowArrow([[1400, 589], [1400, 655]], { label: '예', at: [1436, 620], color: C.orange });
@@ -242,15 +264,16 @@ function serviceFlow() {
   s += step(2045, 300, 390, 76, '마지막 일정 완료', { stroke: C.green });
   s += step(2035, 465, 410, 94, '멤버별 귀가 경로 추천\n마지막 장소 → 각자 귀가지', { stroke: C.blue, size: 15 });
   s += step(2045, 650, 390, 76, '귀가 경로 선택', { stroke: C.blue });
-  s += step(2045, 830, 390, 80, '여행 완료', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F' });
+  s += step(2045, 830, 390, 80, '여행 완료', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
   s += flowArrow([[1930, 1136], [1950, 1136], [1950, 338], [2045, 338]], { label: '마지막 일정', at: [1994, 294], color: C.green });
   s += flowArrow([[2240, 376], [2240, 465]]);
   s += flowArrow([[2240, 559], [2240, 650]]);
   s += flowArrow([[2240, 726], [2240, 830]]);
 
   // 기반 시스템
-  s += `<rect x="50" y="1295" width="2460" height="100" rx="16" fill="#162033"/>
-    <text x="82" y="1327" font-size="12" font-weight="700" fill="#AFC2D8">데이터 및 외부 연동</text>
+  s += `<g filter="url(#shadow)"><rect x="50" y="1295" width="2460" height="100" rx="18" fill="url(#bottomBand)" stroke="#2A6175" stroke-width="2"/>
+    <rect x="50" y="1295" width="10" height="100" rx="5" fill="${C.cyan}"/>
+    <text x="82" y="1327" font-size="12" font-weight="700" fill="#8FDFE1">데이터 및 외부 연동</text>
     <text x="82" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">핵심 DB</text>
     <text x="280" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">장소 DB</text>
     <text x="485" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">이벤트 DB</text>
@@ -259,7 +282,7 @@ function serviceFlow() {
     <text x="1115" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">날씨 · 혼잡 API</text>
     <text x="1410" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">대중교통 · 경로 API</text>
     <text x="1760" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">푸시 알림 / SSE</text>
-    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">로그 · 지표</text>`;
+    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">로그 · 지표</text></g>`;
 
   return shell('GAYADI 서비스 흐름도', '여행 전, 여행 중, 여행 후의 전체 사용자 및 시스템 흐름', s);
 }
@@ -268,48 +291,51 @@ function architectureBox(x, y, w, h, title, lines, options = {}) {
   const stroke = options.stroke || C.border;
   const fill = options.fill || '#FFFFFF';
   const dash = options.dashed ? ' stroke-dasharray="9 7"' : '';
-  let text = `<text x="${x + 18}" y="${y + 30}" font-size="17" font-weight="700" fill="${C.ink}">${esc(title)}</text>`;
+  let text = `<rect x="${x + 10}" y="${y + 13}" width="7" height="${Math.max(22, h - 26)}" rx="3.5" fill="${stroke}"/>
+    <text x="${x + 29}" y="${y + 31}" font-size="17" font-weight="700" fill="${C.ink}">${esc(title)}</text>`;
   lines.forEach((line, index) => {
-    text += `<text x="${x + 18}" y="${y + 58 + index * 23}" font-size="13.5" fill="${C.muted}">${esc(line)}</text>`;
+    text += `<text x="${x + 29}" y="${y + 59 + index * 23}" font-size="13.5" font-weight="500" fill="${C.muted}">${esc(line)}</text>`;
   });
   if (options.badge) {
     const badgeWidth = options.badge.length * 13 + 24;
-    text += `<rect x="${x + w - badgeWidth - 14}" y="${y + 13}" width="${badgeWidth}" height="26" rx="13" fill="${options.badgeFill || '#EEF4FA'}"/>
-      <text x="${x + w - badgeWidth / 2 - 14}" y="${y + 31}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${options.badgeColor || C.navy}">${esc(options.badge)}</text>`;
+    text += `<rect x="${x + w - badgeWidth - 14}" y="${y + 13}" width="${badgeWidth}" height="26" rx="13" fill="${options.badgeFill || stroke}"/>
+      <text x="${x + w - badgeWidth / 2 - 14}" y="${y + 31}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${options.badgeColor || '#FFFFFF'}">${esc(options.badge)}</text>`;
   }
-  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.7"${dash}/>${text}</g>`;
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.1"${dash}/>${text}</g>`;
 }
 
 function serviceArchitecture() {
   let s = header('GAYADI 서비스 아키텍처', '현재 실행되는 Spring MVP와 운영 연동 지점을 한눈에 구분');
   s += `<g transform="translate(1990,35)">
-    <line x1="0" y1="12" x2="38" y2="12" stroke="${C.navy}" stroke-width="2.3"/>
-    <text x="48" y="17" font-size="11.5" fill="${C.muted}">현재 구현</text>
-    <line x1="0" y1="38" x2="38" y2="38" stroke="${C.orange}" stroke-width="2.3" stroke-dasharray="8 6"/>
-    <text x="48" y="43" font-size="11.5" fill="${C.muted}">운영 연동 예정</text></g>`;
+    <line x1="0" y1="12" x2="38" y2="12" stroke="${C.cyan}" stroke-width="3"/>
+    <text x="48" y="17" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text>
+    <line x1="0" y1="38" x2="38" y2="38" stroke="#FF935C" stroke-width="3" stroke-dasharray="8 6"/>
+    <text x="48" y="43" font-size="11.5" font-weight="700" fill="#FFFFFF">운영 연동 예정</text></g>`;
 
   // 사용자 영역
-  s += `<rect x="50" y="160" width="330" height="1090" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#D5DDE8" stroke-width="1.5"/>
-    <rect x="50" y="160" width="330" height="78" rx="18" fill="${C.navy}"/>
+  s += `<g filter="url(#softShadow)"><rect x="50" y="160" width="330" height="1090" rx="22" fill="#FFFFFF" stroke="${C.navy}" stroke-width="2.4"/>
+    <rect x="52" y="238" width="326" height="1010" rx="20" fill="${C.navy}" fill-opacity="0.045"/>
+    <rect x="50" y="160" width="330" height="78" rx="22" fill="${C.navy}"/>
     <rect x="50" y="218" width="330" height="20" fill="${C.navy}"/>
     <text x="78" y="193" font-size="23" font-weight="700" fill="#FFFFFF">사용자 채널</text>
-    <text x="78" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.86">Android 앱 · HTTPS JSON API</text>`;
-  s += architectureBox(90, 290, 250, 128, 'Android 앱', ['여행 생성과 멤버 초대', '일정·경로 확인과 승인'], { stroke: C.navy, fill: '#EEF4FA', badge: '사용자' });
+    <text x="78" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">Android 앱 · HTTPS JSON API</text></g>`;
+  s += architectureBox(90, 290, 250, 128, 'Android 앱', ['여행 생성과 멤버 초대', '일정·경로 확인과 승인'], { stroke: C.navy, fill: '#DCEAF7', badge: '사용자' });
   s += architectureBox(90, 500, 250, 110, '여행 전', ['성향 설문', '맞춤 일정·출발 경로'], { stroke: C.violet });
   s += architectureBox(90, 665, 250, 110, '여행 중', ['상황 알림', '변경안 승인·거절'], { stroke: C.orange });
   s += architectureBox(90, 830, 250, 110, '여행 후', ['멤버별 귀가 경로', '여행 완료'], { stroke: C.green });
 
   // Spring Boot 애플리케이션
-  s += `<rect x="430" y="160" width="1370" height="1090" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#B8C8DC" stroke-width="1.8"/>
-    <rect x="430" y="160" width="1370" height="78" rx="18" fill="${C.navy}"/>
+  s += `<g filter="url(#softShadow)"><rect x="430" y="160" width="1370" height="1090" rx="22" fill="#FFFFFF" stroke="${C.navy}" stroke-width="2.4"/>
+    <rect x="432" y="238" width="1366" height="1010" rx="20" fill="${C.navy}" fill-opacity="0.035"/>
+    <rect x="430" y="160" width="1370" height="78" rx="22" fill="${C.navy}"/>
     <rect x="430" y="218" width="1370" height="20" fill="${C.navy}"/>
     <text x="462" y="193" font-size="23" font-weight="700" fill="#FFFFFF">Spring Boot 모듈러 모놀리스</text>
-    <text x="462" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.86">하나의 서버 안에서 업무 책임만 모듈로 분리</text>`;
-  s += architectureBox(500, 275, 1230, 88, 'API 계층', ['Controller · 입력값 검증 · 공통 오류 응답 · Actuator 상태 확인'], { stroke: C.navy, fill: '#F4F7FB', badge: '현재 구현' });
+    <text x="462" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">하나의 서버 안에서 업무 책임만 모듈로 분리</text></g>`;
+  s += architectureBox(500, 275, 1230, 88, 'API 계층', ['Controller · 입력값 검증 · 공통 오류 응답 · Actuator 상태 확인'], { stroke: C.navy, fill: '#E3ECF6', badge: '현재 구현' });
 
-  s += architectureBox(500, 420, 370, 112, '여행 준비 유스케이스', ['여행·멤버 → 그룹 성향', '일정 생성 → 출발 경로'], { stroke: C.violet, fill: '#FAF7FF' });
-  s += architectureBox(930, 420, 370, 112, '여행 중 대응 유스케이스', ['이벤트 영향 판단', '대안 생성 → 승인 반영'], { stroke: C.orange, fill: '#FFF8F2' });
-  s += architectureBox(1360, 420, 370, 112, '귀가 유스케이스', ['마지막 장소 확인', '멤버별 귀가 경로'], { stroke: C.green, fill: '#F2FAF7' });
+  s += architectureBox(500, 420, 370, 112, '여행 준비 유스케이스', ['여행·멤버 → 그룹 성향', '일정 생성 → 출발 경로'], { stroke: C.violet, fill: '#EEE7FF' });
+  s += architectureBox(930, 420, 370, 112, '여행 중 대응 유스케이스', ['이벤트 영향 판단', '대안 생성 → 승인 반영'], { stroke: C.orange, fill: '#FFE9DA' });
+  s += architectureBox(1360, 420, 370, 112, '귀가 유스케이스', ['마지막 장소 확인', '멤버별 귀가 경로'], { stroke: C.green, fill: '#DFF3EA' });
 
   const moduleY1 = 625;
   const moduleY2 = 770;
@@ -322,29 +348,31 @@ function serviceArchitecture() {
   s += architectureBox(1120, moduleY2, 280, 100, '경로', ['출발·이동·귀가', 'RouteProvider'], { stroke: C.blue });
   s += architectureBox(1430, moduleY2, 280, 100, '공통', ['오류 형식·JSON', '트랜잭션·검증'], { stroke: C.border });
 
-  s += architectureBox(500, 955, 370, 125, '로컬 어댑터', ['H2 기준 장소 데이터', '결정적 대중교통 경로 스텁'], { stroke: C.success, fill: '#F2FAF7', badge: '바로 실행' });
-  s += architectureBox(930, 955, 370, 125, '외부 API 포트', ['장소 · 이벤트 · 경로 공급자를', '구현 교체만으로 연결'], { stroke: C.blue, fill: '#F4F9FD', badge: '교체 가능' });
-  s += architectureBox(1360, 955, 370, 125, '알림 포트', ['변경 제안 전달', '로그 → FCM / SSE 전환'], { stroke: C.orange, dashed: true, badge: '연동 예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+  s += architectureBox(500, 955, 370, 125, '로컬 어댑터', ['H2 기준 장소 데이터', '결정적 대중교통 경로 스텁'], { stroke: C.success, fill: '#DFF3E9', badge: '바로 실행' });
+  s += architectureBox(930, 955, 370, 125, '외부 API 포트', ['장소 · 이벤트 · 경로 공급자를', '구현 교체만으로 연결'], { stroke: C.blue, fill: '#DFEDFA', badge: '교체 가능' });
+  s += architectureBox(1360, 955, 370, 125, '알림 포트', ['변경 제안 전달', '로그 → FCM / SSE 전환'], { stroke: C.orange, dashed: true, badge: '연동 예정' });
 
   // 외부 연동
-  s += `<rect x="1850" y="160" width="660" height="650" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#D5DDE8" stroke-width="1.5"/>
-    <rect x="1850" y="160" width="660" height="78" rx="18" fill="${C.orange}"/>
+  s += `<g filter="url(#softShadow)"><rect x="1850" y="160" width="660" height="650" rx="22" fill="#FFFFFF" stroke="${C.orange}" stroke-width="2.4"/>
+    <rect x="1852" y="238" width="656" height="570" rx="20" fill="${C.orange}" fill-opacity="0.05"/>
+    <rect x="1850" y="160" width="660" height="78" rx="22" fill="${C.orange}"/>
     <rect x="1850" y="218" width="660" height="20" fill="${C.orange}"/>
     <text x="1882" y="193" font-size="23" font-weight="700" fill="#FFFFFF">외부 서비스 연동</text>
-    <text x="1882" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.88">운영 환경에서 공급자별 어댑터로 연결</text>`;
-  s += architectureBox(1900, 285, 560, 82, 'OAuth / OIDC', ['로그인과 토큰 검증'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
-  s += architectureBox(1900, 395, 560, 82, '관광 · 지도 API', ['장소 검색과 상세 정보 동기화'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
-  s += architectureBox(1900, 505, 560, 82, '날씨 · 혼잡 · 교통 API', ['실시간 관측값 수집과 정규화'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
-  s += architectureBox(1900, 615, 560, 82, '대중교통 경로 API · FCM/SSE', ['실제 경로 후보와 변경 알림'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+    <text x="1882" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">운영 환경에서 공급자별 어댑터로 연결</text></g>`;
+  s += architectureBox(1900, 285, 560, 82, 'OAuth / OIDC', ['로그인과 토큰 검증'], { stroke: C.orange, dashed: true, badge: '예정' });
+  s += architectureBox(1900, 395, 560, 82, '관광 · 지도 API', ['장소 검색과 상세 정보 동기화'], { stroke: C.orange, dashed: true, badge: '예정' });
+  s += architectureBox(1900, 505, 560, 82, '날씨 · 혼잡 · 교통 API', ['실시간 관측값 수집과 정규화'], { stroke: C.orange, dashed: true, badge: '예정' });
+  s += architectureBox(1900, 615, 560, 82, '대중교통 경로 API · FCM/SSE', ['실제 경로 후보와 변경 알림'], { stroke: C.orange, dashed: true, badge: '예정' });
 
   // 데이터·운영
-  s += `<rect x="1850" y="850" width="660" height="400" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#D5DDE8" stroke-width="1.5"/>
-    <rect x="1850" y="850" width="660" height="72" rx="18" fill="${C.green}"/>
+  s += `<g filter="url(#softShadow)"><rect x="1850" y="850" width="660" height="400" rx="22" fill="#FFFFFF" stroke="${C.green}" stroke-width="2.4"/>
+    <rect x="1852" y="922" width="656" height="326" rx="20" fill="${C.green}" fill-opacity="0.05"/>
+    <rect x="1850" y="850" width="660" height="72" rx="22" fill="${C.green}"/>
     <rect x="1850" y="902" width="660" height="20" fill="${C.green}"/>
-    <text x="1882" y="893" font-size="23" font-weight="700" fill="#FFFFFF">데이터 · 운영</text>`;
-  s += architectureBox(1900, 965, 255, 112, 'H2 / PostgreSQL', ['로컬 / 운영 DB', 'Flyway 11개 테이블'], { stroke: C.green, fill: '#F2FAF7', badge: '구현' });
-  s += architectureBox(2190, 965, 270, 112, 'Redis', ['경로 후보 TTL', '외부 API 짧은 캐시'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
-  s += architectureBox(1900, 1110, 560, 92, '운영 확인', ['Actuator Health · 로그/지표 · GitHub Actions 빌드/테스트'], { stroke: C.navy, fill: '#F4F7FB', badge: '구현' });
+    <text x="1882" y="893" font-size="23" font-weight="700" fill="#FFFFFF">데이터 · 운영</text></g>`;
+  s += architectureBox(1900, 965, 255, 112, 'H2 / PostgreSQL', ['로컬 / 운영 DB', 'Flyway 11개 테이블'], { stroke: C.green, fill: '#DFF3E9', badge: '구현' });
+  s += architectureBox(2190, 965, 270, 112, 'Redis', ['경로 후보 TTL', '외부 API 짧은 캐시'], { stroke: C.orange, dashed: true, badge: '예정' });
+  s += architectureBox(1900, 1110, 560, 92, '운영 확인', ['Actuator Health · 로그/지표 · GitHub Actions 빌드/테스트'], { stroke: C.navy, fill: '#E3ECF6', badge: '구현' });
 
   // 주요 연결선
   s += flowArrow([[340, 354], [420, 354], [420, 319], [500, 319]], { label: 'HTTPS', at: [420, 330], color: C.navy });
