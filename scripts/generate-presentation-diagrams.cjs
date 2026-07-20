@@ -159,15 +159,16 @@ function erd() {
   lines += relation([[950, 800], [1530, 800], [1530, 1110], [1600, 1110]], { label: '일정 변경', at: [1260, 782], one: [965, 790], many: [1585, 1100] });
   lines += relation([[875, 295], [1505, 295], [1505, 1035], [1600, 1035]], { label: '여행 제안', at: [1450, 330], one: [890, 285], many: [1585, 1025] });
 
-  const labels = `<g><rect x="55" y="127" width="170" height="25" rx="12.5" fill="${C.navy}"/><text x="140" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
-    <g><rect x="985" y="127" width="174" height="25" rx="12.5" fill="${C.violet}"/><text x="1072" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
-    <g><rect x="1745" y="127" width="232" height="25" rx="12.5" fill="${C.green}"/><text x="1861" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
+  const labels = `<g><rect x="200" y="127" width="170" height="25" rx="12.5" fill="${C.navy}"/><text x="285" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
+    <g><rect x="1130" y="127" width="174" height="25" rx="12.5" fill="${C.violet}"/><text x="1217" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
+    <g><rect x="1890" y="127" width="232" height="25" rx="12.5" fill="${C.green}"/><text x="2006" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
     <g transform="translate(2158,35)" filter="url(#softShadow)"><rect width="166" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.94" stroke="#8392A7" stroke-width="1.4"/>
       <line x1="14" y1="18" x2="50" y2="18" stroke="${C.line}" stroke-width="2.5"/><text x="60" y="22" font-size="11" font-weight="700" fill="${C.ink}">물리 FK</text>
       <line x1="14" y1="38" x2="50" y2="38" stroke="${C.green}" stroke-width="2.5" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" font-weight="700" fill="${C.ink}">논리 참조</text></g>`;
 
   return shell('GAYADI 데이터 모델 ERD', '여행 서비스의 핵심 데이터 관계',
-    header('GAYADI 데이터 모델 · ERD', '핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로') + labels + lines + nodes);
+    header('GAYADI 데이터 모델 · ERD', '핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로') + labels
+      + `<g transform="translate(145 0)">${lines}${nodes}</g>`);
 }
 
 function panel(x, y, w, h, color, number, title, subtitle) {
