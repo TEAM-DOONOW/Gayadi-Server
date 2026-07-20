@@ -85,6 +85,14 @@ function relation(points, options = {}) {
 
 function erd() {
   const boxes = {};
+  const displayNames = {
+    users: 'USERS · 사용자', trips: 'TRIPS · 여행', trip_members: 'TRIP_MEMBERS · 여행 멤버',
+    surveys: 'SURVEYS · 설문', survey_responses: 'SURVEY_RESPONSES · 설문 응답',
+    trip_plans: 'TRIP_PLANS · 현재 일정', trip_plan_items: 'TRIP_PLAN_ITEMS · 일정 항목',
+    trip_routes: 'TRIP_ROUTES · 선택 경로', places: 'PLACES · 장소',
+    event_observations: 'EVENT_OBSERVATIONS · 이벤트 관측',
+    change_proposals: 'CHANGE_PROPOSALS · 변경 제안'
+  };
   const defs = [
     ['users', 55, 170, 335, C.navy, '사용자 및 소셜 로그인 계정', [
       ['PK', 'id', 'UUID'], ['', 'nickname', 'VARCHAR'], ['', 'oauth_provider', 'VARCHAR'], ['', 'oauth_subject', 'VARCHAR'], ['', 'status', 'VARCHAR']]],
@@ -112,7 +120,7 @@ function erd() {
 
   let nodes = '';
   for (const [key, x, y, w, color, note, rows] of defs) {
-    boxes[key] = table({ id: key.toUpperCase(), x, y, w, color, note, rows });
+    boxes[key] = table({ id: displayNames[key], x, y, w, color, note, rows });
     nodes += boxes[key].svg;
   }
 
@@ -133,15 +141,15 @@ function erd() {
   lines += relation([[950, 800], [1530, 800], [1530, 1110], [1600, 1110]], { label: '일정 변경', at: [1260, 782], one: [965, 790], many: [1585, 1100] });
   lines += relation([[875, 295], [1505, 295], [1505, 1035], [1600, 1035]], { label: '여행 제안', at: [1450, 330], one: [890, 285], many: [1585, 1025] });
 
-  const labels = `<text x="55" y="145" font-size="12" font-weight="700" fill="${C.navy}">CORE DOMAIN</text>
-    <text x="985" y="145" font-size="12" font-weight="700" fill="${C.violet}">SURVEY</text>
-    <text x="1745" y="145" font-size="12" font-weight="700" fill="${C.green}">PLACE · EVENT</text>
+  const labels = `<text x="55" y="145" font-size="12" font-weight="700" fill="${C.navy}">핵심 여행 데이터</text>
+    <text x="985" y="145" font-size="12" font-weight="700" fill="${C.violet}">설문 · 성향 데이터</text>
+    <text x="1745" y="145" font-size="12" font-weight="700" fill="${C.green}">장소 · 실시간 이벤트 데이터</text>
     <g transform="translate(2190,34)"><rect width="150" height="52" rx="8" fill="#F8FAFC" stroke="#D7DEE8"/>
       <line x1="14" y1="18" x2="50" y2="18" stroke="${C.line}" stroke-width="2"/><text x="60" y="22" font-size="11" fill="${C.muted}">물리 FK</text>
       <line x1="14" y1="38" x2="50" y2="38" stroke="${C.green}" stroke-width="2" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" fill="${C.muted}">논리 참조</text></g>`;
 
   return shell('GAYADI 데이터 모델 ERD', '여행 서비스의 핵심 데이터 관계',
-    header('GAYADI 데이터 모델 · ERD', '출시 기준 핵심 모델 11개  |  Core · Survey · Place · Event') + labels + lines + nodes);
+    header('GAYADI 데이터 모델 · ERD', '핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로') + labels + lines + nodes);
 }
 
 function panel(x, y, w, h, color, number, title, subtitle) {
@@ -194,12 +202,12 @@ function serviceFlow() {
   // 여행 전
   s += step(250, 245, 380, 64, '여행 생성 · 멤버 초대', { stroke: C.navy });
   s += decision(440, 405, 310, 100, '출발 방식?', C.navy);
-  s += step(85, 515, 310, 88, 'GROUP_MEETING\n집결지 + 멤버 출발지', { fill: '#EEF4FA', stroke: C.navy, size: 15 });
-  s += step(475, 515, 310, 88, 'INDIVIDUAL\n멤버별 출발지', { fill: '#EEF4FA', stroke: C.navy, size: 15 });
+  s += step(85, 515, 310, 88, '모여서 출발\nGROUP_MEETING', { fill: '#EEF4FA', stroke: C.navy, size: 15 });
+  s += step(475, 515, 310, 88, '각자 출발\nINDIVIDUAL', { fill: '#EEF4FA', stroke: C.navy, size: 15 });
   s += step(250, 690, 380, 70, '성향 설문 제출', { stroke: C.violet });
   s += step(220, 825, 440, 82, '장소 후보 조회 · 맞춤 일정 생성', { stroke: C.green });
-  s += step(175, 970, 530, 88, '대중교통 경로 추천 · 선택\nTO_MEETING / DEPARTURE', { stroke: C.blue, size: 15 });
-  s += step(250, 1120, 380, 70, '일정 확정 · READY', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F' });
+  s += step(175, 970, 530, 88, '대중교통 출발 경로 추천\n멤버→집결지 또는 멤버→첫 장소', { stroke: C.blue, size: 15 });
+  s += step(250, 1120, 380, 70, '여행 준비 완료 · READY', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F' });
   s += flowArrow([[440, 309], [440, 355]]);
   s += flowArrow([[350, 440], [240, 515]], { label: '모여서', at: [270, 473], color: C.navy });
   s += flowArrow([[530, 440], [630, 515]], { label: '각자', at: [610, 473], color: C.navy });
@@ -210,8 +218,8 @@ function serviceFlow() {
   s += flowArrow([[440, 1058], [440, 1120]]);
 
   // 여행 중
-  s += step(1190, 235, 420, 68, '여행 시작 · IN_PROGRESS', { fill: '#FFF4E8', stroke: C.orange });
-  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 모니터링\nScheduler + Redis Cache', { stroke: C.orange, size: 15 });
+  s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#FFF4E8', stroke: C.orange });
+  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 상태 확인\n주기 조회 + 짧은 캐시', { stroke: C.orange, size: 15 });
   s += decision(1400, 535, 330, 108, '일정 영향 있음?', C.orange);
   s += step(1180, 655, 440, 78, '대체 장소 · 경로 계산', { stroke: C.blue });
   s += step(1150, 785, 500, 82, '변경 이유 · 시간 차이 알림', { stroke: C.rose });
@@ -232,9 +240,9 @@ function serviceFlow() {
 
   // 여행 후
   s += step(2045, 300, 390, 76, '마지막 일정 완료', { stroke: C.green });
-  s += step(2035, 465, 410, 94, '멤버별 귀가 경로 추천\nRETURN · 대중교통 우선', { stroke: C.blue, size: 15 });
+  s += step(2035, 465, 410, 94, '멤버별 귀가 경로 추천\n마지막 장소 → 각자 귀가지', { stroke: C.blue, size: 15 });
   s += step(2045, 650, 390, 76, '귀가 경로 선택', { stroke: C.blue });
-  s += step(2045, 830, 390, 80, '여행 완료 · COMPLETED', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F' });
+  s += step(2045, 830, 390, 80, '여행 완료', { fill: '#EAF7F0', stroke: C.success, color: '#185C3F' });
   s += flowArrow([[1930, 1136], [1950, 1136], [1950, 338], [2045, 338]], { label: '마지막 일정', at: [1994, 294], color: C.green });
   s += flowArrow([[2240, 376], [2240, 465]]);
   s += flowArrow([[2240, 559], [2240, 650]]);
@@ -242,18 +250,115 @@ function serviceFlow() {
 
   // 기반 시스템
   s += `<rect x="50" y="1295" width="2460" height="100" rx="16" fill="#162033"/>
-    <text x="82" y="1327" font-size="12" font-weight="700" fill="#AFC2D8">DATA &amp; INTEGRATIONS</text>
-    <text x="82" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Core DB</text>
-    <text x="280" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Place DB</text>
-    <text x="485" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Event DB</text>
-    <text x="690" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Redis Cache</text>
+    <text x="82" y="1327" font-size="12" font-weight="700" fill="#AFC2D8">데이터 및 외부 연동</text>
+    <text x="82" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">핵심 DB</text>
+    <text x="280" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">장소 DB</text>
+    <text x="485" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">이벤트 DB</text>
+    <text x="690" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Redis 캐시</text>
     <text x="930" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">관광 API</text>
     <text x="1115" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">날씨 · 혼잡 API</text>
     <text x="1410" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">대중교통 · 경로 API</text>
-    <text x="1760" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">FCM Push / SSE</text>
-    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">Logs · Metrics</text>`;
+    <text x="1760" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">푸시 알림 / SSE</text>
+    <text x="2110" y="1370" font-size="16" font-weight="600" fill="#FFFFFF">로그 · 지표</text>`;
 
   return shell('GAYADI 서비스 흐름도', '여행 전, 여행 중, 여행 후의 전체 사용자 및 시스템 흐름', s);
+}
+
+function architectureBox(x, y, w, h, title, lines, options = {}) {
+  const stroke = options.stroke || C.border;
+  const fill = options.fill || '#FFFFFF';
+  const dash = options.dashed ? ' stroke-dasharray="9 7"' : '';
+  let text = `<text x="${x + 18}" y="${y + 30}" font-size="17" font-weight="700" fill="${C.ink}">${esc(title)}</text>`;
+  lines.forEach((line, index) => {
+    text += `<text x="${x + 18}" y="${y + 58 + index * 23}" font-size="13.5" fill="${C.muted}">${esc(line)}</text>`;
+  });
+  if (options.badge) {
+    const badgeWidth = options.badge.length * 13 + 24;
+    text += `<rect x="${x + w - badgeWidth - 14}" y="${y + 13}" width="${badgeWidth}" height="26" rx="13" fill="${options.badgeFill || '#EEF4FA'}"/>
+      <text x="${x + w - badgeWidth / 2 - 14}" y="${y + 31}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${options.badgeColor || C.navy}">${esc(options.badge)}</text>`;
+  }
+  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.7"${dash}/>${text}</g>`;
+}
+
+function serviceArchitecture() {
+  let s = header('GAYADI 서비스 아키텍처', '현재 실행되는 Spring MVP와 운영 연동 지점을 한눈에 구분');
+  s += `<g transform="translate(1990,35)">
+    <line x1="0" y1="12" x2="38" y2="12" stroke="${C.navy}" stroke-width="2.3"/>
+    <text x="48" y="17" font-size="11.5" fill="${C.muted}">현재 구현</text>
+    <line x1="0" y1="38" x2="38" y2="38" stroke="${C.orange}" stroke-width="2.3" stroke-dasharray="8 6"/>
+    <text x="48" y="43" font-size="11.5" fill="${C.muted}">운영 연동 예정</text></g>`;
+
+  // 사용자 영역
+  s += `<rect x="50" y="160" width="330" height="1090" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#D5DDE8" stroke-width="1.5"/>
+    <rect x="50" y="160" width="330" height="78" rx="18" fill="${C.navy}"/>
+    <rect x="50" y="218" width="330" height="20" fill="${C.navy}"/>
+    <text x="78" y="193" font-size="23" font-weight="700" fill="#FFFFFF">사용자 채널</text>
+    <text x="78" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.86">Android 앱 · HTTPS JSON API</text>`;
+  s += architectureBox(90, 290, 250, 128, 'Android 앱', ['여행 생성과 멤버 초대', '일정·경로 확인과 승인'], { stroke: C.navy, fill: '#EEF4FA', badge: '사용자' });
+  s += architectureBox(90, 500, 250, 110, '여행 전', ['성향 설문', '맞춤 일정·출발 경로'], { stroke: C.violet });
+  s += architectureBox(90, 665, 250, 110, '여행 중', ['상황 알림', '변경안 승인·거절'], { stroke: C.orange });
+  s += architectureBox(90, 830, 250, 110, '여행 후', ['멤버별 귀가 경로', '여행 완료'], { stroke: C.green });
+
+  // Spring Boot 애플리케이션
+  s += `<rect x="430" y="160" width="1370" height="1090" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#B8C8DC" stroke-width="1.8"/>
+    <rect x="430" y="160" width="1370" height="78" rx="18" fill="${C.navy}"/>
+    <rect x="430" y="218" width="1370" height="20" fill="${C.navy}"/>
+    <text x="462" y="193" font-size="23" font-weight="700" fill="#FFFFFF">Spring Boot 모듈러 모놀리스</text>
+    <text x="462" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.86">하나의 서버 안에서 업무 책임만 모듈로 분리</text>`;
+  s += architectureBox(500, 275, 1230, 88, 'API 계층', ['Controller · 입력값 검증 · 공통 오류 응답 · Actuator 상태 확인'], { stroke: C.navy, fill: '#F4F7FB', badge: '현재 구현' });
+
+  s += architectureBox(500, 420, 370, 112, '여행 준비 유스케이스', ['여행·멤버 → 그룹 성향', '일정 생성 → 출발 경로'], { stroke: C.violet, fill: '#FAF7FF' });
+  s += architectureBox(930, 420, 370, 112, '여행 중 대응 유스케이스', ['이벤트 영향 판단', '대안 생성 → 승인 반영'], { stroke: C.orange, fill: '#FFF8F2' });
+  s += architectureBox(1360, 420, 370, 112, '귀가 유스케이스', ['마지막 장소 확인', '멤버별 귀가 경로'], { stroke: C.green, fill: '#F2FAF7' });
+
+  const moduleY1 = 625;
+  const moduleY2 = 770;
+  s += architectureBox(500, moduleY1, 280, 100, '인증 · 사용자', ['개발 사용자', 'OAuth 교체 경계'], { stroke: C.navy });
+  s += architectureBox(810, moduleY1, 280, 100, '여행 · 멤버', ['출발 방식', '출발지·귀가지'], { stroke: C.navy });
+  s += architectureBox(1120, moduleY1, 280, 100, '설문 · 성향', ['범용 설문', '그룹 성향 집계'], { stroke: C.violet });
+  s += architectureBox(1430, moduleY1, 280, 100, '일정 · 변경', ['현재 일정', 'revision·승인 이력'], { stroke: C.rose });
+  s += architectureBox(500, moduleY2, 280, 100, '장소', ['장소 원장', '성향별 후보 조회'], { stroke: C.green });
+  s += architectureBox(810, moduleY2, 280, 100, '이벤트', ['날씨·혼잡·교통', '영향 판단'], { stroke: C.orange });
+  s += architectureBox(1120, moduleY2, 280, 100, '경로', ['출발·이동·귀가', 'RouteProvider'], { stroke: C.blue });
+  s += architectureBox(1430, moduleY2, 280, 100, '공통', ['오류 형식·JSON', '트랜잭션·검증'], { stroke: C.border });
+
+  s += architectureBox(500, 955, 370, 125, '로컬 어댑터', ['H2 기준 장소 데이터', '결정적 대중교통 경로 스텁'], { stroke: C.success, fill: '#F2FAF7', badge: '바로 실행' });
+  s += architectureBox(930, 955, 370, 125, '외부 API 포트', ['장소 · 이벤트 · 경로 공급자를', '구현 교체만으로 연결'], { stroke: C.blue, fill: '#F4F9FD', badge: '교체 가능' });
+  s += architectureBox(1360, 955, 370, 125, '알림 포트', ['변경 제안 전달', '로그 → FCM / SSE 전환'], { stroke: C.orange, dashed: true, badge: '연동 예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+
+  // 외부 연동
+  s += `<rect x="1850" y="160" width="660" height="650" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#D5DDE8" stroke-width="1.5"/>
+    <rect x="1850" y="160" width="660" height="78" rx="18" fill="${C.orange}"/>
+    <rect x="1850" y="218" width="660" height="20" fill="${C.orange}"/>
+    <text x="1882" y="193" font-size="23" font-weight="700" fill="#FFFFFF">외부 서비스 연동</text>
+    <text x="1882" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.88">운영 환경에서 공급자별 어댑터로 연결</text>`;
+  s += architectureBox(1900, 285, 560, 82, 'OAuth / OIDC', ['로그인과 토큰 검증'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+  s += architectureBox(1900, 395, 560, 82, '관광 · 지도 API', ['장소 검색과 상세 정보 동기화'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+  s += architectureBox(1900, 505, 560, 82, '날씨 · 혼잡 · 교통 API', ['실시간 관측값 수집과 정규화'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+  s += architectureBox(1900, 615, 560, 82, '대중교통 경로 API · FCM/SSE', ['실제 경로 후보와 변경 알림'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+
+  // 데이터·운영
+  s += `<rect x="1850" y="850" width="660" height="400" rx="18" fill="#FFFFFF" fill-opacity="0.80" stroke="#D5DDE8" stroke-width="1.5"/>
+    <rect x="1850" y="850" width="660" height="72" rx="18" fill="${C.green}"/>
+    <rect x="1850" y="902" width="660" height="20" fill="${C.green}"/>
+    <text x="1882" y="893" font-size="23" font-weight="700" fill="#FFFFFF">데이터 · 운영</text>`;
+  s += architectureBox(1900, 965, 255, 112, 'H2 / PostgreSQL', ['로컬 / 운영 DB', 'Flyway 11개 테이블'], { stroke: C.green, fill: '#F2FAF7', badge: '구현' });
+  s += architectureBox(2190, 965, 270, 112, 'Redis', ['경로 후보 TTL', '외부 API 짧은 캐시'], { stroke: C.orange, dashed: true, badge: '예정', badgeFill: '#FFF3E8', badgeColor: C.orange });
+  s += architectureBox(1900, 1110, 560, 92, '운영 확인', ['Actuator Health · 로그/지표 · GitHub Actions 빌드/테스트'], { stroke: C.navy, fill: '#F4F7FB', badge: '구현' });
+
+  // 주요 연결선
+  s += flowArrow([[340, 354], [420, 354], [420, 319], [500, 319]], { label: 'HTTPS', at: [420, 330], color: C.navy });
+  s += flowArrow([[1115, 363], [1115, 410]], { color: C.navy });
+  s += `<line x1="685" y1="565" x2="1545" y2="565" stroke="${C.line}" stroke-width="2"/>
+    <line x1="685" y1="532" x2="685" y2="565" stroke="${C.line}" stroke-width="2"/>
+    <line x1="1115" y1="532" x2="1115" y2="565" stroke="${C.line}" stroke-width="2"/>
+    <line x1="1545" y1="532" x2="1545" y2="565" stroke="${C.line}" stroke-width="2"/>
+    <line x1="1115" y1="565" x2="1115" y2="610" stroke="${C.line}" stroke-width="2" marker-end="url(#arrow)"/>`;
+  s += flowArrow([[1115, 870], [1115, 930]], { label: '어댑터', at: [1160, 910], color: C.blue });
+  s += flowArrow([[1730, 1018], [1815, 1018], [1815, 655], [1900, 655]], { label: '운영 연동', at: [1815, 830], color: C.orange, dashed: true });
+  s += flowArrow([[1710, 820], [1785, 820], [1785, 1020], [1900, 1020]], { label: '저장', at: [1785, 940], color: C.green });
+
+  return shell('GAYADI 서비스 아키텍처', '현재 구현된 Spring 모듈과 향후 외부 연동 경계', s);
 }
 
 async function render(name, svg) {
@@ -272,7 +377,12 @@ async function render(name, svg) {
 (async () => {
   const output = [];
   output.push(await render('gayadi-erd-presentation', erd()));
+  output.push(await render('gayadi-service-architecture-presentation', serviceArchitecture()));
   output.push(await render('gayadi-service-flow-presentation', serviceFlow()));
+  fs.copyFileSync(
+    path.join(OUT, 'gayadi-service-architecture-presentation.png'),
+    path.join(ROOT, 'docs', 'architecture', 'travel-realtime-architecture.png')
+  );
   output.flatMap((item) => [item.svgPath, item.pngPath]).forEach((file) => console.log(file));
 })().catch((error) => {
   console.error(error);

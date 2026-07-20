@@ -17,11 +17,11 @@
   <g font-family="Malgun Gothic, Noto Sans KR, Arial, sans-serif"><rect width="2560" height="118" fill="#FFFFFF"/>
   <line x1="0" y1="117" x2="2560" y2="117" stroke="#DDE3EC" stroke-width="2"/>
   <text x="64" y="51" font-size="34" font-weight="700" fill="#162033">GAYADI 데이터 모델 · ERD</text>
-  <text x="64" y="85" font-size="17" fill="#667085">출시 기준 핵심 모델 11개  |  Core · Survey · Place · Event</text>
+  <text x="64" y="85" font-size="17" fill="#667085">핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로</text>
   <rect x="2350" y="35" width="146" height="48" rx="24" fill="#EEF3F8"/>
-  <text x="2423" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#274C77">GAYADI</text><text x="55" y="145" font-size="12" font-weight="700" fill="#274C77">CORE DOMAIN</text>
-    <text x="985" y="145" font-size="12" font-weight="700" fill="#6D4BAE">SURVEY</text>
-    <text x="1745" y="145" font-size="12" font-weight="700" fill="#287A68">PLACE · EVENT</text>
+  <text x="2423" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#274C77">GAYADI</text><text x="55" y="145" font-size="12" font-weight="700" fill="#274C77">핵심 여행 데이터</text>
+    <text x="985" y="145" font-size="12" font-weight="700" fill="#6D4BAE">설문 · 성향 데이터</text>
+    <text x="1745" y="145" font-size="12" font-weight="700" fill="#287A68">장소 · 실시간 이벤트 데이터</text>
     <g transform="translate(2190,34)"><rect width="150" height="52" rx="8" fill="#F8FAFC" stroke="#D7DEE8"/>
       <line x1="14" y1="18" x2="50" y2="18" stroke="#8492A6" stroke-width="2"/><text x="60" y="22" font-size="11" fill="#667085">물리 FK</text>
       <line x1="14" y1="38" x2="50" y2="38" stroke="#287A68" stroke-width="2" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" fill="#667085">논리 참조</text></g><polyline points="390,265 475,265" fill="none" stroke="#8492A6" stroke-width="2" stroke-linejoin="round"/><text x="403" y="255" font-size="12" font-weight="700" fill="#8492A6">1</text><text x="458" y="255" font-size="12" font-weight="700" fill="#8492A6">N</text><rect x="398" y="224" width="68" height="26" rx="13" fill="#FFFFFF" stroke="#D8DFE9"/>
@@ -41,7 +41,7 @@
       <text x="1450" y="333" text-anchor="middle" font-size="11.5" font-weight="700" fill="#8492A6">여행 제안</text><g filter="url(#shadow)">
     <rect x="55" y="170" width="335" height="243" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M63,170 H382 Q390,170 390,178 V238 H55 V178 Q55,170 63,170 Z" fill="#274C77"/>
-    <text x="71" y="197" font-size="19" font-weight="700" fill="#FFFFFF">USERS</text>
+    <text x="71" y="197" font-size="19" font-weight="700" fill="#FFFFFF">USERS · 사용자</text>
     <text x="71" y="220" font-size="12.5" fill="#FFFFFF" opacity="0.86">사용자 및 소셜 로그인 계정</text><text x="69" y="259" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="104" y="259" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="377" y="259" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="65" y1="271" x2="380" y2="271" stroke="#E7EBF1"/><text x="69" y="292" font-size="11.5" font-weight="700" fill="#667085"></text>
@@ -55,7 +55,7 @@
       <text x="377" y="391" text-anchor="end" font-size="11.5" fill="#667085">VARCHAR</text></g><g filter="url(#shadow)">
     <rect x="475" y="160" width="400" height="276" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M483,160 H867 Q875,160 875,168 V228 H475 V168 Q475,160 483,160 Z" fill="#274C77"/>
-    <text x="491" y="187" font-size="19" font-weight="700" fill="#FFFFFF">TRIPS</text>
+    <text x="491" y="187" font-size="19" font-weight="700" fill="#FFFFFF">TRIPS · 여행</text>
     <text x="491" y="210" font-size="12.5" fill="#FFFFFF" opacity="0.86">여행과 출발 방식의 기준 정보</text><text x="489" y="249" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="524" y="249" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="862" y="249" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="485" y1="261" x2="865" y2="261" stroke="#E7EBF1"/><text x="489" y="282" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -71,7 +71,7 @@
       <text x="862" y="414" text-anchor="end" font-size="11.5" fill="#667085">VARCHAR</text></g><g filter="url(#shadow)">
     <rect x="55" y="505" width="415" height="309" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M63,505 H462 Q470,505 470,513 V573 H55 V513 Q55,505 63,505 Z" fill="#274C77"/>
-    <text x="71" y="532" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_MEMBERS</text>
+    <text x="71" y="532" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_MEMBERS · 여행 멤버</text>
     <text x="71" y="555" font-size="12.5" fill="#FFFFFF" opacity="0.86">참가자별 출발지·귀가지를 관리</text><text x="69" y="594" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="104" y="594" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="457" y="594" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="65" y1="606" x2="460" y2="606" stroke="#E7EBF1"/><text x="69" y="627" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -89,7 +89,7 @@
       <text x="457" y="792" text-anchor="end" font-size="11.5" fill="#667085">JSON</text></g><g filter="url(#shadow)">
     <rect x="985" y="160" width="355" height="243" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M993,160 H1332 Q1340,160 1340,168 V228 H985 V168 Q985,160 993,160 Z" fill="#6D4BAE"/>
-    <text x="1001" y="187" font-size="19" font-weight="700" fill="#FFFFFF">SURVEYS</text>
+    <text x="1001" y="187" font-size="19" font-weight="700" fill="#FFFFFF">SURVEYS · 설문</text>
     <text x="1001" y="210" font-size="12.5" fill="#FFFFFF" opacity="0.86">성향·만족도 등 범용 설문 정의</text><text x="999" y="249" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="1034" y="249" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="1327" y="249" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="995" y1="261" x2="1330" y2="261" stroke="#E7EBF1"/><text x="999" y="282" font-size="11.5" font-weight="700" fill="#667085"></text>
@@ -103,7 +103,7 @@
       <text x="1327" y="381" text-anchor="end" font-size="11.5" fill="#667085">VARCHAR</text></g><g filter="url(#shadow)">
     <rect x="985" y="455" width="390" height="276" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M993,455 H1367 Q1375,455 1375,463 V523 H985 V463 Q985,455 993,455 Z" fill="#6D4BAE"/>
-    <text x="1001" y="482" font-size="19" font-weight="700" fill="#FFFFFF">SURVEY_RESPONSES</text>
+    <text x="1001" y="482" font-size="19" font-weight="700" fill="#FFFFFF">SURVEY_RESPONSES · 설문 응답</text>
     <text x="1001" y="505" font-size="12.5" fill="#FFFFFF" opacity="0.86">응답 원본과 계산 결과</text><text x="999" y="544" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="1034" y="544" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="1362" y="544" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="995" y1="556" x2="1365" y2="556" stroke="#E7EBF1"/><text x="999" y="577" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -119,7 +119,7 @@
       <text x="1362" y="709" text-anchor="end" font-size="11.5" fill="#667085">JSON</text></g><g filter="url(#shadow)">
     <rect x="545" y="620" width="405" height="276" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M553,620 H942 Q950,620 950,628 V688 H545 V628 Q545,620 553,620 Z" fill="#274C77"/>
-    <text x="561" y="647" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_PLANS</text>
+    <text x="561" y="647" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_PLANS · 현재 일정</text>
     <text x="561" y="670" font-size="12.5" fill="#FFFFFF" opacity="0.86">여행당 하나의 현재 일정</text><text x="559" y="709" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="594" y="709" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="937" y="709" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="555" y1="721" x2="940" y2="721" stroke="#E7EBF1"/><text x="559" y="742" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -135,7 +135,7 @@
       <text x="937" y="874" text-anchor="end" font-size="11.5" fill="#667085">VARCHAR</text></g><g filter="url(#shadow)">
     <rect x="1040" y="850" width="430" height="276" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M1048,850 H1462 Q1470,850 1470,858 V918 H1040 V858 Q1040,850 1048,850 Z" fill="#274C77"/>
-    <text x="1056" y="877" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_PLAN_ITEMS</text>
+    <text x="1056" y="877" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_PLAN_ITEMS · 일정 항목</text>
     <text x="1056" y="900" font-size="12.5" fill="#FFFFFF" opacity="0.86">장소별 방문 순서와 예정 시간</text><text x="1054" y="939" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="1089" y="939" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="1457" y="939" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="1050" y1="951" x2="1460" y2="951" stroke="#E7EBF1"/><text x="1054" y="972" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -151,7 +151,7 @@
       <text x="1457" y="1104" text-anchor="end" font-size="11.5" fill="#667085">VARCHAR</text></g><g filter="url(#shadow)">
     <rect x="55" y="960" width="455" height="309" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M63,960 H502 Q510,960 510,968 V1028 H55 V968 Q55,960 63,960 Z" fill="#2878B7"/>
-    <text x="71" y="987" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_ROUTES</text>
+    <text x="71" y="987" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_ROUTES · 선택 경로</text>
     <text x="71" y="1010" font-size="12.5" fill="#FFFFFF" opacity="0.86">선택된 출발·이동·귀가 경로</text><text x="69" y="1049" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="104" y="1049" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="497" y="1049" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="65" y1="1061" x2="500" y2="1061" stroke="#E7EBF1"/><text x="69" y="1082" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -169,7 +169,7 @@
       <text x="497" y="1247" text-anchor="end" font-size="11.5" fill="#667085">VARCHAR</text></g><g filter="url(#shadow)">
     <rect x="1745" y="160" width="430" height="276" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M1753,160 H2167 Q2175,160 2175,168 V228 H1745 V168 Q1745,160 1753,160 Z" fill="#287A68"/>
-    <text x="1761" y="187" font-size="19" font-weight="700" fill="#FFFFFF">PLACES</text>
+    <text x="1761" y="187" font-size="19" font-weight="700" fill="#FFFFFF">PLACES · 장소</text>
     <text x="1761" y="210" font-size="12.5" fill="#FFFFFF" opacity="0.86">외부 장소 API를 보완하는 장소 원장</text><text x="1759" y="249" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="1794" y="249" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="2162" y="249" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="1755" y1="261" x2="2165" y2="261" stroke="#E7EBF1"/><text x="1759" y="282" font-size="11.5" font-weight="700" fill="#667085"></text>
@@ -185,7 +185,7 @@
       <text x="2162" y="414" text-anchor="end" font-size="11.5" fill="#667085">JSON</text></g><g filter="url(#shadow)">
     <rect x="1745" y="530" width="455" height="276" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M1753,530 H2192 Q2200,530 2200,538 V598 H1745 V538 Q1745,530 1753,530 Z" fill="#C56E2D"/>
-    <text x="1761" y="557" font-size="19" font-weight="700" fill="#FFFFFF">EVENT_OBSERVATIONS</text>
+    <text x="1761" y="557" font-size="19" font-weight="700" fill="#FFFFFF">EVENT_OBSERVATIONS · 이벤트 관측</text>
     <text x="1761" y="580" font-size="12.5" fill="#FFFFFF" opacity="0.86">정규화한 날씨·혼잡·교통 관측값</text><text x="1759" y="619" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="1794" y="619" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="2187" y="619" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="1755" y1="631" x2="2190" y2="631" stroke="#E7EBF1"/><text x="1759" y="652" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
@@ -201,7 +201,7 @@
       <text x="2187" y="784" text-anchor="end" font-size="11.5" fill="#667085">JSON</text></g><g filter="url(#shadow)">
     <rect x="1600" y="960" width="610" height="309" rx="8" fill="#FFFFFF" stroke="#CAD3E0" stroke-width="1.5"/>
     <path d="M1608,960 H2202 Q2210,960 2210,968 V1028 H1600 V968 Q1600,960 1608,960 Z" fill="#B24F67"/>
-    <text x="1616" y="987" font-size="19" font-weight="700" fill="#FFFFFF">CHANGE_PROPOSALS</text>
+    <text x="1616" y="987" font-size="19" font-weight="700" fill="#FFFFFF">CHANGE_PROPOSALS · 변경 제안</text>
     <text x="1616" y="1010" font-size="12.5" fill="#FFFFFF" opacity="0.86">일정 변경 제안·승인·감사 기록</text><text x="1614" y="1049" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
       <text x="1649" y="1049" font-size="13" font-weight="500" fill="#162033">id</text>
       <text x="2197" y="1049" text-anchor="end" font-size="11.5" fill="#667085">UUID</text><line x1="1610" y1="1061" x2="2200" y2="1061" stroke="#E7EBF1"/><text x="1614" y="1082" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>

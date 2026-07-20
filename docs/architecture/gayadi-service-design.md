@@ -190,10 +190,9 @@ erDiagram
 
 ```mermaid
 flowchart TB
-    APP[Android 앱] --> EDGE[HTTPS · API Gateway / Load Balancer]
+    APP[모바일 앱] --> API[REST API · 입력 검증]
 
-    subgraph SERVER[Spring Boot Modular Monolith]
-        EDGE --> API[Controller · 인증/권한 · 입력 검증]
+    subgraph SERVER[Spring Boot 모듈러 모놀리스]
         API --> USECASE[Application Service\n여행 전·중·후 유스케이스 조합]
 
         USECASE --> AUTH[인증·사용자]
@@ -203,29 +202,21 @@ flowchart TB
         USECASE --> PLACE[장소 검색·동기화]
         USECASE --> EVENT[날씨·혼잡·교통 이벤트]
         USECASE --> ROUTE[경로 추천·선택]
-        USECASE --> NOTIFY[알림·SSE]
+        USECASE --> COMMON[공통 예외·검증]
 
-        SCHEDULER[Scheduler\n이벤트 수집·캐시 갱신] --> EVENT
         EVENT --> PLAN
         PLAN --> ROUTE
-        PLAN --> NOTIFY
-
-        ADAPTER[External API Adapter\ntimeout · retry · circuit breaker]
-        AUTH --> ADAPTER
-        PLACE --> ADAPTER
-        EVENT --> ADAPTER
-        ROUTE --> ADAPTER
     end
 
-    USECASE --> PG[(PostgreSQL\ncore · place · event schema)]
-    USECASE --> REDIS[(Redis\nAPI 응답 캐시 · 분산 락 · 임시 경로 후보)]
-    ADAPTER --> EXT[OAuth · 관광 · 날씨 · 혼잡 · 교통 API]
-    NOTIFY --> PUSH[FCM Push / SSE]
-    API --> OBS[Logs · Metrics · Tracing]
-    ADAPTER --> SECRET[Secret Manager]
+    USECASE --> DB[(H2 로컬 · PostgreSQL 운영)]
+    PLACE -. 운영 연동 .-> PLACE_API[관광·지도 API]
+    EVENT -. 운영 연동 .-> EVENT_API[날씨·혼잡 API]
+    ROUTE -. 운영 연동 .-> ROUTE_API[대중교통 경로 API]
+    PLAN -. 운영 연동 .-> PUSH[FCM Push · SSE]
+    USECASE -. 선택 도입 .-> REDIS[(Redis 캐시)]
 ```
 
-위 모듈들은 각각 별도 서버가 아니라 하나의 Spring Boot 애플리케이션 안에 있는 코드 경계다. Controller가 모듈을 직접 섞어 호출하지 않고, Application Service가 여행 생성·코스 추천·실시간 변경 같은 유스케이스를 조합한다.
+위 모듈들은 각각 별도 서버가 아니라 하나의 Spring Boot 애플리케이션 안에 있는 코드 경계다. 현재 MVP는 로컬 어댑터로 끝까지 실행되며, 실제 관광·날씨·혼잡·교통 공급자는 같은 인터페이스의 운영 어댑터로 교체한다. Controller가 모듈을 직접 섞어 호출하지 않고, Application Service가 여행 생성·코스 추천·실시간 변경 같은 유스케이스를 조합한다.
 
 ### 7.1 모듈 책임
 
@@ -238,29 +229,33 @@ flowchart TB
 | 장소 | 장소 검색, 외부 장소 ID 매핑, 기본 정보 동기화 |
 | 이벤트 | 날씨·혼잡·교통 데이터 정규화, 일정 영향 이벤트 생성 |
 | 경로 | 외부 경로 API 호출, 후보 캐시, 선택 경로 저장 |
-| 알림 | 변경 제안 Push 발송, 앱 실행 중 SSE 전달 |
-| External API Adapter | 공급자별 요청/응답 변환, timeout, retry, circuit breaker |
+| 공통 | 예외 응답, 입력 검증, 공통 설정 |
+| 외부 연동 어댑터 | 공급자별 요청/응답 변환, timeout, retry, circuit breaker |
 
 ### 7.2 데이터와 백그라운드 처리
 
-- PostgreSQL: 사용자, 여행, 설문 응답, 일정, 장소, 판단에 사용한 이벤트
-- Redis: 자주 바뀌는 날씨·혼잡·경로 응답, 아직 선택하지 않은 경로 후보, 분산 락
-- Scheduler: 출발이 임박했거나 진행 중인 여행의 장소만 선별해 외부 데이터를 갱신
+- H2: 별도 설치 없이 로컬에서 전체 흐름을 확인하기 위한 개발용 DB
+- PostgreSQL: 사용자, 여행, 설문 응답, 일정, 장소, 판단에 사용한 이벤트를 보관하는 운영 DB
+- Redis(선택): 자주 바뀌는 날씨·혼잡·경로 응답과 아직 선택하지 않은 경로 후보를 짧게 캐시
+- Scheduler(운영 연동 시): 출발이 임박했거나 진행 중인 여행의 장소만 선별해 외부 데이터를 갱신
 - 외부 API Adapter: 공급자가 바뀌어도 도메인 모듈이 영향을 적게 받도록 표준 모델로 변환
-- Push/SSE: 백그라운드에서는 Push, 앱에서 여행 화면을 보는 동안에는 SSE 사용
+- Push/SSE(운영 연동 시): 백그라운드에서는 Push, 앱에서 여행 화면을 보는 동안에는 SSE 사용
 - 알림 재시도: `change_proposals.notified_at`이 없는 제안을 다시 발송해 일시적 Push 실패를 복구
 
 ### 7.3 MVP와 확장 기준
 
-- MVP: Spring Boot 1개, PostgreSQL 1개, Redis 1개로 시작한다.
+- 현재 MVP: Spring Boot 애플리케이션 1개와 H2 또는 PostgreSQL 1개로 시작한다.
+- 외부 응답량이나 호출 비용이 커질 때 Redis 캐시를 추가한다.
 - 서버가 여러 대가 되면 Scheduler 중복 실행을 Redis 분산 락으로 막는다.
 - 외부 데이터 수집과 일정 재계산이 API 응답을 지연시킬 때 Worker를 분리한다.
 - 알림과 변경 이벤트가 크게 늘어날 때 이벤트 큐를 추가한다.
 - `core`, `place`, `event` DB는 데이터량과 운영 주기가 실제로 달라질 때 물리적으로 분리한다.
 
-확장형 배치 구조는 아래 이미지를 참고한다. MVP 구성과 혼동하지 않도록 Worker, 이벤트 큐, OpenSearch는 확장 조건이 충족된 뒤 도입한다.
+아래 그림은 현재 서버 경계와 출시 전 연동 지점을 함께 보여준다. 실선은 현재 MVP, 점선은 운영 연동 예정 범위다.
 
-![GAYADI 확장형 아키텍처](./travel-realtime-architecture.png)
+![GAYADI 서비스 아키텍처](../presentation/gayadi-service-architecture-presentation.png)
+
+[확대 가능한 SVG 원본](../presentation/gayadi-service-architecture-presentation.svg)
 
 ## 8. 서비스 흐름도
 

@@ -79,10 +79,10 @@ DB_PASSWORD=...
 - [서비스 설계서](docs/architecture/gayadi-service-design.md)
 - [ERDCloud Import SQL](docs/database/gayadi-erdcloud.sql)
 - [발표용 ERD PNG](docs/presentation/gayadi-erd-presentation.png) / [SVG](docs/presentation/gayadi-erd-presentation.svg)
+- [발표용 서비스 아키텍처 PNG](docs/presentation/gayadi-service-architecture-presentation.png) / [SVG](docs/presentation/gayadi-service-architecture-presentation.svg)
 - [발표용 서비스 흐름도 PNG](docs/presentation/gayadi-service-flow-presentation.png) / [SVG](docs/presentation/gayadi-service-flow-presentation.svg)
-- [확장형 아키텍처 이미지](docs/architecture/travel-realtime-architecture.png)
 
-발표 이미지는 `scripts/generate-presentation-diagrams.cjs`로 재생성할 수 있습니다.
+세 그림은 각각 데이터 구조, 서버 구성, 여행 전·중·후 사용자 흐름을 설명합니다. 서비스 아키텍처의 실선은 현재 MVP에 구현된 연결이고, 점선은 실제 출시 전에 공급자 API와 연결할 영역입니다. 발표 이미지는 `scripts/generate-presentation-diagrams.cjs`로 재생성할 수 있습니다.
 
 ## 아직 운영 연동이 필요한 범위
 
