@@ -33,9 +33,9 @@
   <text x="92" y="88" font-size="17" fill="#D5E0EC">핵심 테이블 11개  |  여행 · 설문 · 일정 · 장소 · 이벤트 · 경로</text>
   <g filter="url(#softShadow)"><rect x="2342" y="33" width="154" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.38"/>
   <circle cx="2371" cy="59" r="8" fill="#0D9FA5"/>
-  <text x="2429" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">GAYADI</text></g><g filter="url(#softShadow)"><rect x="55" y="130" width="170" height="30" rx="15" fill="#123C69"/><text x="140" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
-    <g filter="url(#softShadow)"><rect x="985" y="130" width="174" height="30" rx="15" fill="#6637D9"/><text x="1072" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
-    <g filter="url(#softShadow)"><rect x="1745" y="130" width="232" height="30" rx="15" fill="#087E62"/><text x="1861" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
+  <text x="2429" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">GAYADI</text></g><g><rect x="55" y="127" width="170" height="25" rx="12.5" fill="#123C69"/><text x="140" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
+    <g><rect x="985" y="127" width="174" height="25" rx="12.5" fill="#6637D9"/><text x="1072" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
+    <g><rect x="1745" y="127" width="232" height="25" rx="12.5" fill="#087E62"/><text x="1861" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
     <g transform="translate(2158,35)" filter="url(#softShadow)"><rect width="166" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.94" stroke="#8392A7" stroke-width="1.4"/>
       <line x1="14" y1="18" x2="50" y2="18" stroke="#607089" stroke-width="2.5"/><text x="60" y="22" font-size="11" font-weight="700" fill="#0B1830">물리 FK</text>
       <line x1="14" y1="38" x2="50" y2="38" stroke="#087E62" stroke-width="2.5" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" font-weight="700" fill="#0B1830">논리 참조</text></g><polyline points="390,265 475,265" fill="none" stroke="#FFFFFF" stroke-opacity="0.92" stroke-width="5.4" stroke-linejoin="round"/>

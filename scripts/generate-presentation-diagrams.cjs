@@ -159,9 +159,9 @@ function erd() {
   lines += relation([[950, 800], [1530, 800], [1530, 1110], [1600, 1110]], { label: '일정 변경', at: [1260, 782], one: [965, 790], many: [1585, 1100] });
   lines += relation([[875, 295], [1505, 295], [1505, 1035], [1600, 1035]], { label: '여행 제안', at: [1450, 330], one: [890, 285], many: [1585, 1025] });
 
-  const labels = `<g filter="url(#softShadow)"><rect x="55" y="130" width="170" height="30" rx="15" fill="${C.navy}"/><text x="140" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
-    <g filter="url(#softShadow)"><rect x="985" y="130" width="174" height="30" rx="15" fill="${C.violet}"/><text x="1072" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
-    <g filter="url(#softShadow)"><rect x="1745" y="130" width="232" height="30" rx="15" fill="${C.green}"/><text x="1861" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
+  const labels = `<g><rect x="55" y="127" width="170" height="25" rx="12.5" fill="${C.navy}"/><text x="140" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">핵심 여행 데이터</text></g>
+    <g><rect x="985" y="127" width="174" height="25" rx="12.5" fill="${C.violet}"/><text x="1072" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">설문 · 성향 데이터</text></g>
+    <g><rect x="1745" y="127" width="232" height="25" rx="12.5" fill="${C.green}"/><text x="1861" y="144" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">장소 · 실시간 이벤트 데이터</text></g>
     <g transform="translate(2158,35)" filter="url(#softShadow)"><rect width="166" height="52" rx="12" fill="#FFFFFF" fill-opacity="0.94" stroke="#8392A7" stroke-width="1.4"/>
       <line x1="14" y1="18" x2="50" y2="18" stroke="${C.line}" stroke-width="2.5"/><text x="60" y="22" font-size="11" font-weight="700" fill="${C.ink}">물리 FK</text>
       <line x1="14" y1="38" x2="50" y2="38" stroke="${C.green}" stroke-width="2.5" stroke-dasharray="8 7"/><text x="60" y="42" font-size="11" font-weight="700" fill="${C.ink}">논리 참조</text></g>`;
@@ -304,7 +304,7 @@ function architectureBox(x, y, w, h, title, lines, options = {}) {
   return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.1"${dash}/>${text}</g>`;
 }
 
-function serviceArchitecture() {
+function legacyServiceArchitecture() {
   let s = header('GAYADI 서비스 아키텍처', '현재 실행되는 Spring MVP와 운영 연동 지점을 한눈에 구분');
   s += `<g transform="translate(1990,35)">
     <line x1="0" y1="12" x2="38" y2="12" stroke="${C.cyan}" stroke-width="3"/>
@@ -389,6 +389,209 @@ function serviceArchitecture() {
   return shell('GAYADI 서비스 아키텍처', '현재 구현된 Spring 모듈과 향후 외부 연동 경계', s);
 }
 
+function diagramContainer(x, y, w, h, title, subtitle, color) {
+  return `<g filter="url(#softShadow)">
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#FFFFFF" stroke="${color}" stroke-width="2.4"/>
+    <path d="M${x + 6},${y} H${x + w - 6} Q${x + w},${y} ${x + w},${y + 6} V${y + 62} H${x} V${y + 6} Q${x},${y} ${x + 6},${y} Z" fill="${color}"/>
+    <text x="${x + 24}" y="${y + 29}" font-size="21" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
+    <text x="${x + 24}" y="${y + 50}" font-size="12.5" fill="#FFFFFF" opacity="0.92">${esc(subtitle)}</text>
+  </g>`;
+}
+
+function diagramLane(x, y, w, h, title, subtitle, color) {
+  return `<g>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#F8FAFC" stroke="#93A4B8" stroke-width="1.8"/>
+    <rect x="${x}" y="${y}" width="170" height="${h}" rx="4" fill="${color}" fill-opacity="0.13"/>
+    <line x1="${x + 170}" y1="${y}" x2="${x + 170}" y2="${y + h}" stroke="${color}" stroke-width="2"/>
+    <rect x="${x + 18}" y="${y + 19}" width="8" height="${h - 38}" rx="4" fill="${color}"/>
+    <text x="${x + 42}" y="${y + h / 2 - 5}" font-size="17" font-weight="700" fill="${C.ink}">${esc(title)}</text>
+    <text x="${x + 42}" y="${y + h / 2 + 19}" font-size="11.5" fill="${C.muted}">${esc(subtitle)}</text>
+  </g>`;
+}
+
+function diagramNode(x, y, w, h, title, subtitle, color, options = {}) {
+  const dash = options.dashed ? ' stroke-dasharray="9 6"' : '';
+  const fill = options.fill || '#FFFFFF';
+  const titleY = subtitle ? y + h / 2 - 2 : y + h / 2 + 6;
+  return `<g>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${fill}" stroke="${color}" stroke-width="2"${dash}/>
+    <rect x="${x}" y="${y}" width="${w}" height="9" rx="4.5" fill="${color}"/>
+    <text x="${x + w / 2}" y="${titleY}" text-anchor="middle" font-size="${options.titleSize || 15}" font-weight="700" fill="${C.ink}">${esc(title)}</text>
+    ${subtitle ? `<text x="${x + w / 2}" y="${titleY + 24}" text-anchor="middle" font-size="${options.subtitleSize || 11.5}" fill="${C.muted}">${esc(subtitle)}</text>` : ''}
+  </g>`;
+}
+
+function diagramCylinder(x, y, w, h, title, subtitle, color, options = {}) {
+  const dash = options.dashed ? ' stroke-dasharray="9 6"' : '';
+  return `<g>
+    <path d="M${x},${y + 18} V${y + h - 18} C${x},${y + h + 4} ${x + w},${y + h + 4} ${x + w},${y + h - 18} V${y + 18}" fill="#FFFFFF" stroke="${color}" stroke-width="2"${dash}/>
+    <ellipse cx="${x + w / 2}" cy="${y + 18}" rx="${w / 2}" ry="18" fill="${color}" fill-opacity="0.17" stroke="${color}" stroke-width="2"${dash}/>
+    <path d="M${x},${y + h - 18} C${x},${y + h + 4} ${x + w},${y + h + 4} ${x + w},${y + h - 18}" fill="none" stroke="${color}" stroke-width="2"${dash}/>
+    <text x="${x + w / 2}" y="${y + 62}" text-anchor="middle" font-size="16" font-weight="700" fill="${C.ink}">${esc(title)}</text>
+    <text x="${x + w / 2}" y="${y + 88}" text-anchor="middle" font-size="11.5" fill="${C.muted}">${esc(subtitle)}</text>
+  </g>`;
+}
+
+function diagramEdge(points, options = {}) {
+  const color = options.color || '#53657A';
+  const p = points.map(([x, y]) => `${x},${y}`).join(' ');
+  const dash = options.dashed ? ' stroke-dasharray="10 7"' : '';
+  let out = `<polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"${dash}/>`;
+  if (options.label && options.at) {
+    const [x, y] = options.at;
+    const width = Math.max(72, options.label.length * 13 + 20);
+    out += `<rect x="${x - width / 2}" y="${y - 15}" width="${width}" height="28" rx="4" fill="#FFFFFF" stroke="${color}" stroke-width="1.3"/>
+      <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${color}">${esc(options.label)}</text>`;
+  }
+  return out;
+}
+
+function serviceArchitecture() {
+  let s = header('GAYADI 서비스 아키텍처', 'draw.io 표준 형태 · 계층형 모듈 구조 · 직교 연결선');
+  s += `<g transform="translate(1965,37)">
+    <line x1="0" y1="12" x2="42" y2="12" stroke="${C.cyan}" stroke-width="3"/>
+    <text x="53" y="17" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text>
+    <line x1="0" y1="39" x2="42" y2="39" stroke="#FF935C" stroke-width="3" stroke-dasharray="9 6"/>
+    <text x="53" y="44" font-size="11.5" font-weight="700" fill="#FFFFFF">운영 연동 예정</text></g>`;
+
+  s += diagramContainer(50, 165, 300, 810, '클라이언트', '사용자와 모바일 앱', C.cyan);
+  s += diagramNode(90, 300, 220, 150, 'Android 앱', 'REST API 호출 · 알림 수신', C.cyan, { fill: '#E8F7F8', titleSize: 18 });
+  s += diagramNode(90, 545, 220, 62, '여행 전', '설문 · 일정 · 출발 경로', C.violet);
+  s += diagramNode(90, 650, 220, 62, '여행 중', '상황 감지 · 변경 승인', C.orange);
+  s += diagramNode(90, 755, 220, 62, '여행 후', '귀가 경로 · 여행 완료', C.green);
+
+  s += diagramContainer(390, 165, 1540, 810, 'GAYADI Server · Spring Boot', '하나의 애플리케이션 안에서 계층과 업무 책임을 분리', C.navy);
+  s += diagramLane(430, 250, 1460, 110, 'API 계층', '요청 진입점', C.navy);
+  s += diagramNode(630, 275, 330, 60, 'REST Controller', '여행 전 · 중 · 후 API', C.navy, { fill: '#E5EEF8' });
+  s += diagramNode(1040, 275, 330, 60, '인증 · 권한 필터', '사용자와 여행 멤버 확인', C.navy, { fill: '#E5EEF8' });
+  s += diagramNode(1450, 275, 330, 60, '검증 · 오류 응답', '입력 검증과 공통 응답 형식', C.navy, { fill: '#E5EEF8' });
+
+  s += diagramLane(430, 390, 1460, 160, '애플리케이션', '유스케이스 조합', C.violet);
+  s += diagramNode(630, 430, 350, 80, '여행 준비', '멤버 → 설문 → 일정 → 출발 경로', C.violet, { fill: '#EEE7FF' });
+  s += diagramNode(1050, 430, 350, 80, '여행 중 대응', '이벤트 판단 → 대안 → 승인 반영', C.orange, { fill: '#FFE9DA' });
+  s += diagramNode(1470, 430, 350, 80, '귀가', '마지막 장소 → 멤버별 귀가 경로', C.green, { fill: '#DFF3EA' });
+
+  s += diagramLane(430, 580, 1460, 180, '도메인 모듈', '업무 규칙과 데이터', C.blue);
+  const modules = [
+    ['인증·사용자', '사용자 식별', C.navy], ['여행·멤버', '출발 방식', C.navy],
+    ['설문·성향', '그룹 성향', C.violet], ['일정·변경', 'revision', C.rose],
+    ['장소', '장소 원장', C.green], ['이벤트', '상황 판단', C.orange],
+    ['경로', '출발·귀가', C.blue], ['공통', '예외·검증', '#667085']
+  ];
+  modules.forEach(([title, subtitle, color], index) => {
+    s += diagramNode(630 + index * 155, 625, 135, 88, title, subtitle, color, { titleSize: 13.5, subtitleSize: 10.5 });
+  });
+
+  s += diagramLane(430, 790, 1460, 150, '인프라 계층', '외부 기술 교체 경계', C.green);
+  s += diagramNode(650, 830, 340, 72, '로컬 어댑터', 'H2 장소 데이터 · 경로 스텁', C.green, { fill: '#E3F4EC' });
+  s += diagramNode(1050, 830, 340, 72, '알림 어댑터', '로그 → FCM / SSE 교체', C.orange, { dashed: true });
+  s += diagramNode(1450, 830, 360, 72, '외부 API 어댑터', '관광 · 날씨 · 혼잡 · 대중교통', C.orange, { dashed: true, fill: '#FFF4EC' });
+
+  s += diagramContainer(1970, 165, 540, 810, '외부 서비스', '운영 환경에서 연결', C.orange);
+  s += diagramNode(2010, 275, 460, 74, 'OAuth / OIDC', '로그인과 토큰 검증', C.orange, { dashed: true });
+  s += diagramNode(2010, 390, 460, 74, '관광 · 지도 API', '장소 검색과 상세 정보', C.orange, { dashed: true });
+  s += diagramNode(2010, 505, 460, 74, '날씨 · 혼잡 API', '실시간 관측값 수집', C.orange, { dashed: true });
+  s += diagramNode(2010, 620, 460, 74, '대중교통 경로 API', '실제 경로 후보 계산', C.orange, { dashed: true });
+  s += diagramNode(2010, 735, 460, 74, 'FCM · SSE', '변경 제안과 알림 전달', C.orange, { dashed: true });
+
+  s += diagramContainer(390, 1020, 2120, 350, '데이터 · 운영', '현재 저장소와 선택적 운영 구성', C.green);
+  s += diagramCylinder(500, 1135, 240, 125, 'Core DB', '사용자 · 여행 · 일정', C.navy);
+  s += diagramCylinder(820, 1135, 240, 125, 'Place DB', '장소 기본 정보', C.green);
+  s += diagramCylinder(1140, 1135, 240, 125, 'Event DB', '판단에 사용한 이벤트', C.orange);
+  s += diagramCylinder(1460, 1135, 240, 125, 'Redis', '짧은 TTL 캐시 · 선택', C.orange, { dashed: true });
+  s += diagramNode(1790, 1135, 600, 125, '운영 확인', 'Actuator · 로그/지표 · GitHub Actions', C.navy, { fill: '#E5EEF8', titleSize: 17 });
+
+  s += diagramEdge([[310, 375], [370, 375], [370, 305], [630, 305]], { label: 'HTTPS · JSON', at: [450, 305], color: C.navy });
+  s += diagramEdge([[1205, 335], [1205, 430]], { color: C.navy });
+  s += diagramEdge([[1205, 510], [1205, 625]], { color: C.violet });
+  s += diagramEdge([[1205, 713], [1205, 830]], { color: C.blue });
+  s += diagramEdge([[1810, 866], [1950, 866], [1950, 657], [2010, 657]], { label: '운영 연동', at: [1950, 710], color: C.orange, dashed: true });
+  s += diagramEdge([[820, 902], [820, 995], [620, 995], [620, 1135]], { label: 'JPA · Flyway', at: [720, 995], color: C.green });
+
+  return shell('GAYADI 서비스 아키텍처', 'draw.io 표준 형태의 계층형 서비스 아키텍처', s);
+}
+
+function drawioValue(title, subtitle = '') {
+  const html = subtitle
+    ? `<b>${title}</b><br><font color="#475569" style="font-size:11px">${subtitle}</font>`
+    : `<b>${title}</b>`;
+  return esc(html);
+}
+
+function serviceArchitectureDrawio() {
+  const cells = [];
+  const vertex = (id, parent, title, subtitle, style, x, y, w, h) => {
+    cells.push(`<mxCell id="${id}" value="${drawioValue(title, subtitle)}" style="${style}" vertex="1" parent="${parent}"><mxGeometry x="${x}" y="${y}" width="${w}" height="${h}" as="geometry"/></mxCell>`);
+  };
+  const edge = (id, source, target, label = '', dashed = false) => {
+    const style = `edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=classic;${dashed ? 'dashed=1;strokeColor=#D85C22;' : 'strokeColor=#53657A;'}`;
+    cells.push(`<mxCell id="${id}" value="${esc(label)}" style="${style}" edge="1" source="${source}" target="${target}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`);
+  };
+  const swimlane = 'swimlane;startSize=32;rounded=1;html=1;fontStyle=1;fontSize=16;container=1;collapsible=0;pointerEvents=0;';
+  const node = 'rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;';
+  const planned = `${node}dashed=1;fillColor=#FFF4EC;strokeColor=#D85C22;`;
+
+  vertex('client', '1', '클라이언트', '사용자와 모바일 앱', `${swimlane}fillColor=#E8F7F8;strokeColor=#0D9FA5;`, 20, 40, 220, 760);
+  vertex('app', 'client', 'Android 앱', '여행 전·중·후 화면', `${node}fillColor=#E8F7F8;strokeColor=#0D9FA5;`, 30, 80, 160, 80);
+  vertex('before', 'client', '여행 전', '설문·일정·출발 경로', `${node}fillColor=#EEE7FF;strokeColor=#6637D9;`, 30, 230, 160, 65);
+  vertex('during', 'client', '여행 중', '상황 감지·변경 승인', `${node}fillColor=#FFE9DA;strokeColor=#D85C22;`, 30, 340, 160, 65);
+  vertex('after', 'client', '여행 후', '귀가 경로·완료', `${node}fillColor=#DFF3EA;strokeColor=#087E62;`, 30, 450, 160, 65);
+
+  vertex('server', '1', 'GAYADI Server · Spring Boot', '모듈러 모놀리스', `${swimlane}fillColor=#E5EEF8;strokeColor=#123C69;`, 270, 40, 1200, 760);
+  vertex('apiLane', 'server', 'API 계층', '요청 진입점', `${swimlane}fillColor=#E5EEF8;strokeColor=#123C69;startSize=26;fontSize=14;`, 20, 50, 1160, 105);
+  vertex('rest', 'apiLane', 'REST Controller', '여행 전·중·후 API', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 160, 34, 250, 52);
+  vertex('authFilter', 'apiLane', '인증·권한 필터', '사용자와 멤버 확인', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 455, 34, 250, 52);
+  vertex('validation', 'apiLane', '검증·오류 응답', '공통 응답 형식', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 750, 34, 250, 52);
+
+  vertex('appLane', 'server', '애플리케이션 계층', '유스케이스 조합', `${swimlane}fillColor=#EEE7FF;strokeColor=#6637D9;startSize=26;fontSize=14;`, 20, 175, 1160, 130);
+  vertex('prepareUsecase', 'appLane', '여행 준비', '멤버→설문→일정→출발 경로', `${node}fillColor=#EEE7FF;strokeColor=#6637D9;`, 150, 38, 270, 68);
+  vertex('duringUsecase', 'appLane', '여행 중 대응', '이벤트→대안→승인 반영', `${node}fillColor=#FFE9DA;strokeColor=#D85C22;`, 445, 38, 270, 68);
+  vertex('returnUsecase', 'appLane', '귀가', '멤버별 귀가 경로', `${node}fillColor=#DFF3EA;strokeColor=#087E62;`, 740, 38, 270, 68);
+
+  vertex('domainLane', 'server', '도메인 모듈', '업무 규칙과 데이터', `${swimlane}fillColor=#EAF3FC;strokeColor=#0568C2;startSize=26;fontSize=14;`, 20, 325, 1160, 160);
+  const drawioModules = [
+    ['auth', '인증·사용자', '#123C69'], ['trip', '여행·멤버', '#123C69'], ['survey', '설문·성향', '#6637D9'], ['plan', '일정·변경', '#C52B5A'],
+    ['place', '장소', '#087E62'], ['event', '이벤트', '#D85C22'], ['route', '경로', '#0568C2'], ['common', '공통', '#667085']
+  ];
+  drawioModules.forEach(([id, title, color], index) => vertex(id, 'domainLane', title, '', `${node}fillColor=#FFFFFF;strokeColor=${color};fontSize=12;`, 115 + index * 128, 55, 110, 62));
+
+  vertex('infraLane', 'server', '인프라 계층', '외부 기술 교체 경계', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;startSize=26;fontSize=14;`, 20, 505, 1160, 145);
+  vertex('localAdapter', 'infraLane', '로컬 어댑터', 'H2 데이터·경로 스텁', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 170, 45, 250, 70);
+  vertex('notifyAdapter', 'infraLane', '알림 어댑터', '로그→FCM/SSE', planned, 455, 45, 250, 70);
+  vertex('externalAdapter', 'infraLane', '외부 API 어댑터', '장소·이벤트·경로', planned, 740, 45, 250, 70);
+
+  vertex('external', '1', '외부 서비스', '운영 환경 연동', `${swimlane}fillColor=#FFF4EC;strokeColor=#D85C22;`, 1500, 40, 420, 760);
+  vertex('oauth', 'external', 'OAuth / OIDC', '로그인과 토큰 검증', planned, 35, 70, 350, 70);
+  vertex('placeApi', 'external', '관광·지도 API', '장소 검색과 상세 정보', planned, 35, 180, 350, 70);
+  vertex('eventApi', 'external', '날씨·혼잡 API', '실시간 관측값 수집', planned, 35, 290, 350, 70);
+  vertex('routeApi', 'external', '대중교통 경로 API', '실제 경로 후보 계산', planned, 35, 400, 350, 70);
+  vertex('pushApi', 'external', 'FCM · SSE', '변경 제안과 알림', planned, 35, 510, 350, 70);
+
+  vertex('data', '1', '데이터 · 운영', '현재 저장소와 선택 구성', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;`, 270, 840, 1650, 230);
+  vertex('coreDb', 'data', 'Core DB', '사용자·여행·일정', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5EEF8;strokeColor=#123C69;', 120, 80, 180, 95);
+  vertex('placeDb', 'data', 'Place DB', '장소 기본 정보', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 380, 80, 180, 95);
+  vertex('eventDb', 'data', 'Event DB', '사용한 이벤트', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF1E8;strokeColor=#D85C22;', 640, 80, 180, 95);
+  vertex('redis', 'data', 'Redis', '짧은 TTL 캐시·선택', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;dashed=1;fillColor=#FFF4EC;strokeColor=#D85C22;', 900, 80, 180, 95);
+  vertex('ops', 'data', '운영 확인', 'Actuator·로그·GitHub Actions', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 1160, 80, 360, 95);
+
+  edge('e1', 'app', 'rest', 'HTTPS');
+  edge('e2', 'rest', 'prepareUsecase');
+  edge('e3', 'prepareUsecase', 'trip');
+  edge('e4', 'prepareUsecase', 'survey');
+  edge('e5', 'duringUsecase', 'event');
+  edge('e6', 'duringUsecase', 'plan');
+  edge('e7', 'returnUsecase', 'route');
+  edge('e8', 'externalAdapter', 'placeApi', '운영 연동', true);
+  edge('e9', 'externalAdapter', 'eventApi', '', true);
+  edge('e10', 'externalAdapter', 'routeApi', '', true);
+  edge('e11', 'notifyAdapter', 'pushApi', '', true);
+  edge('e12', 'localAdapter', 'coreDb', 'JPA');
+  edge('e13', 'place', 'placeDb');
+  edge('e14', 'event', 'eventDb');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="app.diagrams.net" agent="Codex draw.io plugin" version="26.0.9"><diagram id="gayadi-architecture" name="서비스 아키텍처"><mxGraphModel adaptiveColors="auto" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
+}
+
 async function render(name, svg) {
   const svgPath = path.join(OUT, `${name}.svg`);
   const pngPath = path.join(OUT, `${name}.png`);
@@ -407,11 +610,14 @@ async function render(name, svg) {
   output.push(await render('gayadi-erd-presentation', erd()));
   output.push(await render('gayadi-service-architecture-presentation', serviceArchitecture()));
   output.push(await render('gayadi-service-flow-presentation', serviceFlow()));
+  const drawioPath = path.join(OUT, 'gayadi-service-architecture.drawio');
+  fs.writeFileSync(drawioPath, serviceArchitectureDrawio(), 'utf8');
   fs.copyFileSync(
     path.join(OUT, 'gayadi-service-architecture-presentation.png'),
     path.join(ROOT, 'docs', 'architecture', 'travel-realtime-architecture.png')
   );
   output.flatMap((item) => [item.svgPath, item.pngPath]).forEach((file) => console.log(file));
+  console.log(drawioPath);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

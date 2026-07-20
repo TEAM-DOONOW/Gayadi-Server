@@ -3,7 +3,7 @@
 세 그림은 같은 서비스를 서로 다른 관점에서 설명한다.
 
 1. [ERD](gayadi-erd-presentation.svg): 어떤 데이터를 저장하고 테이블이 어떻게 연결되는지 보여준다. `TRIPS`를 중심으로 여행 멤버, 설문 응답, 일정, 장소, 이벤트, 경로를 읽으면 된다.
-2. [서비스 아키텍처](gayadi-service-architecture-presentation.svg): Spring Boot 애플리케이션 내부 모듈과 DB·외부 API의 경계를 보여준다. 실선은 현재 MVP, 점선은 운영 연동 예정 범위다.
+2. [서비스 아키텍처](gayadi-service-architecture-presentation.svg): Spring Boot 애플리케이션 내부 모듈과 DB·외부 API의 경계를 보여준다. 실선은 현재 MVP, 점선은 운영 연동 예정 범위다. [draw.io 편집 원본](gayadi-service-architecture.drawio)을 diagrams.net에서 열어 직접 수정할 수 있다.
 3. [서비스 흐름도](gayadi-service-flow-presentation.svg): 여행 전, 여행 중, 여행 후에 사용자가 경험하는 흐름과 각 단계에서 사용하는 데이터를 보여준다.
 
 ## 발표할 때 강조할 내용

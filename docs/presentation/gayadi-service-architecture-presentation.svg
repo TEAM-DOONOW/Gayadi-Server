@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1440" viewBox="0 0 2560 1440">
-  <title>GAYADI 서비스 아키텍처</title><desc>현재 구현된 Spring 모듈과 향후 외부 연동 경계</desc>
+  <title>GAYADI 서비스 아키텍처</title><desc>draw.io 표준 형태의 계층형 서비스 아키텍처</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
       <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#071A33" flood-opacity="0.18"/>
@@ -30,82 +30,222 @@
   <rect x="0" y="118" width="2560" height="4" fill="#0D9FA5"/>
   <rect x="64" y="29" width="8" height="62" rx="4" fill="#0D9FA5"/>
   <text x="92" y="55" font-size="35" font-weight="700" fill="#FFFFFF">GAYADI 서비스 아키텍처</text>
-  <text x="92" y="88" font-size="17" fill="#D5E0EC">현재 실행되는 Spring MVP와 운영 연동 지점을 한눈에 구분</text>
+  <text x="92" y="88" font-size="17" fill="#D5E0EC">draw.io 표준 형태 · 계층형 모듈 구조 · 직교 연결선</text>
   <g filter="url(#softShadow)"><rect x="2342" y="33" width="154" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.38"/>
   <circle cx="2371" cy="59" r="8" fill="#0D9FA5"/>
-  <text x="2429" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">GAYADI</text></g><g transform="translate(1990,35)">
-    <line x1="0" y1="12" x2="38" y2="12" stroke="#0D9FA5" stroke-width="3"/>
-    <text x="48" y="17" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text>
-    <line x1="0" y1="38" x2="38" y2="38" stroke="#FF935C" stroke-width="3" stroke-dasharray="8 6"/>
-    <text x="48" y="43" font-size="11.5" font-weight="700" fill="#FFFFFF">운영 연동 예정</text></g><g filter="url(#softShadow)"><rect x="50" y="160" width="330" height="1090" rx="22" fill="#FFFFFF" stroke="#123C69" stroke-width="2.4"/>
-    <rect x="52" y="238" width="326" height="1010" rx="20" fill="#123C69" fill-opacity="0.045"/>
-    <rect x="50" y="160" width="330" height="78" rx="22" fill="#123C69"/>
-    <rect x="50" y="218" width="330" height="20" fill="#123C69"/>
-    <text x="78" y="193" font-size="23" font-weight="700" fill="#FFFFFF">사용자 채널</text>
-    <text x="78" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">Android 앱 · HTTPS JSON API</text></g><g filter="url(#shadow)"><rect x="90" y="290" width="250" height="128" rx="14" fill="#DCEAF7" stroke="#123C69" stroke-width="2.1"/><rect x="100" y="303" width="7" height="102" rx="3.5" fill="#123C69"/>
-    <text x="119" y="321" font-size="17" font-weight="700" fill="#0B1830">Android 앱</text><text x="119" y="349" font-size="13.5" font-weight="500" fill="#475569">여행 생성과 멤버 초대</text><text x="119" y="372" font-size="13.5" font-weight="500" fill="#475569">일정·경로 확인과 승인</text><rect x="263" y="303" width="63" height="26" rx="13" fill="#123C69"/>
-      <text x="294.5" y="321" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">사용자</text></g><g filter="url(#shadow)"><rect x="90" y="500" width="250" height="110" rx="14" fill="#FFFFFF" stroke="#6637D9" stroke-width="2.1"/><rect x="100" y="513" width="7" height="84" rx="3.5" fill="#6637D9"/>
-    <text x="119" y="531" font-size="17" font-weight="700" fill="#0B1830">여행 전</text><text x="119" y="559" font-size="13.5" font-weight="500" fill="#475569">성향 설문</text><text x="119" y="582" font-size="13.5" font-weight="500" fill="#475569">맞춤 일정·출발 경로</text></g><g filter="url(#shadow)"><rect x="90" y="665" width="250" height="110" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1"/><rect x="100" y="678" width="7" height="84" rx="3.5" fill="#D85C22"/>
-    <text x="119" y="696" font-size="17" font-weight="700" fill="#0B1830">여행 중</text><text x="119" y="724" font-size="13.5" font-weight="500" fill="#475569">상황 알림</text><text x="119" y="747" font-size="13.5" font-weight="500" fill="#475569">변경안 승인·거절</text></g><g filter="url(#shadow)"><rect x="90" y="830" width="250" height="110" rx="14" fill="#FFFFFF" stroke="#087E62" stroke-width="2.1"/><rect x="100" y="843" width="7" height="84" rx="3.5" fill="#087E62"/>
-    <text x="119" y="861" font-size="17" font-weight="700" fill="#0B1830">여행 후</text><text x="119" y="889" font-size="13.5" font-weight="500" fill="#475569">멤버별 귀가 경로</text><text x="119" y="912" font-size="13.5" font-weight="500" fill="#475569">여행 완료</text></g><g filter="url(#softShadow)"><rect x="430" y="160" width="1370" height="1090" rx="22" fill="#FFFFFF" stroke="#123C69" stroke-width="2.4"/>
-    <rect x="432" y="238" width="1366" height="1010" rx="20" fill="#123C69" fill-opacity="0.035"/>
-    <rect x="430" y="160" width="1370" height="78" rx="22" fill="#123C69"/>
-    <rect x="430" y="218" width="1370" height="20" fill="#123C69"/>
-    <text x="462" y="193" font-size="23" font-weight="700" fill="#FFFFFF">Spring Boot 모듈러 모놀리스</text>
-    <text x="462" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">하나의 서버 안에서 업무 책임만 모듈로 분리</text></g><g filter="url(#shadow)"><rect x="500" y="275" width="1230" height="88" rx="14" fill="#E3ECF6" stroke="#123C69" stroke-width="2.1"/><rect x="510" y="288" width="7" height="62" rx="3.5" fill="#123C69"/>
-    <text x="529" y="306" font-size="17" font-weight="700" fill="#0B1830">API 계층</text><text x="529" y="334" font-size="13.5" font-weight="500" fill="#475569">Controller · 입력값 검증 · 공통 오류 응답 · Actuator 상태 확인</text><rect x="1627" y="288" width="89" height="26" rx="13" fill="#123C69"/>
-      <text x="1671.5" y="306" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text></g><g filter="url(#shadow)"><rect x="500" y="420" width="370" height="112" rx="14" fill="#EEE7FF" stroke="#6637D9" stroke-width="2.1"/><rect x="510" y="433" width="7" height="86" rx="3.5" fill="#6637D9"/>
-    <text x="529" y="451" font-size="17" font-weight="700" fill="#0B1830">여행 준비 유스케이스</text><text x="529" y="479" font-size="13.5" font-weight="500" fill="#475569">여행·멤버 → 그룹 성향</text><text x="529" y="502" font-size="13.5" font-weight="500" fill="#475569">일정 생성 → 출발 경로</text></g><g filter="url(#shadow)"><rect x="930" y="420" width="370" height="112" rx="14" fill="#FFE9DA" stroke="#D85C22" stroke-width="2.1"/><rect x="940" y="433" width="7" height="86" rx="3.5" fill="#D85C22"/>
-    <text x="959" y="451" font-size="17" font-weight="700" fill="#0B1830">여행 중 대응 유스케이스</text><text x="959" y="479" font-size="13.5" font-weight="500" fill="#475569">이벤트 영향 판단</text><text x="959" y="502" font-size="13.5" font-weight="500" fill="#475569">대안 생성 → 승인 반영</text></g><g filter="url(#shadow)"><rect x="1360" y="420" width="370" height="112" rx="14" fill="#DFF3EA" stroke="#087E62" stroke-width="2.1"/><rect x="1370" y="433" width="7" height="86" rx="3.5" fill="#087E62"/>
-    <text x="1389" y="451" font-size="17" font-weight="700" fill="#0B1830">귀가 유스케이스</text><text x="1389" y="479" font-size="13.5" font-weight="500" fill="#475569">마지막 장소 확인</text><text x="1389" y="502" font-size="13.5" font-weight="500" fill="#475569">멤버별 귀가 경로</text></g><g filter="url(#shadow)"><rect x="500" y="625" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#123C69" stroke-width="2.1"/><rect x="510" y="638" width="7" height="74" rx="3.5" fill="#123C69"/>
-    <text x="529" y="656" font-size="17" font-weight="700" fill="#0B1830">인증 · 사용자</text><text x="529" y="684" font-size="13.5" font-weight="500" fill="#475569">개발 사용자</text><text x="529" y="707" font-size="13.5" font-weight="500" fill="#475569">OAuth 교체 경계</text></g><g filter="url(#shadow)"><rect x="810" y="625" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#123C69" stroke-width="2.1"/><rect x="820" y="638" width="7" height="74" rx="3.5" fill="#123C69"/>
-    <text x="839" y="656" font-size="17" font-weight="700" fill="#0B1830">여행 · 멤버</text><text x="839" y="684" font-size="13.5" font-weight="500" fill="#475569">출발 방식</text><text x="839" y="707" font-size="13.5" font-weight="500" fill="#475569">출발지·귀가지</text></g><g filter="url(#shadow)"><rect x="1120" y="625" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#6637D9" stroke-width="2.1"/><rect x="1130" y="638" width="7" height="74" rx="3.5" fill="#6637D9"/>
-    <text x="1149" y="656" font-size="17" font-weight="700" fill="#0B1830">설문 · 성향</text><text x="1149" y="684" font-size="13.5" font-weight="500" fill="#475569">범용 설문</text><text x="1149" y="707" font-size="13.5" font-weight="500" fill="#475569">그룹 성향 집계</text></g><g filter="url(#shadow)"><rect x="1430" y="625" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#C52B5A" stroke-width="2.1"/><rect x="1440" y="638" width="7" height="74" rx="3.5" fill="#C52B5A"/>
-    <text x="1459" y="656" font-size="17" font-weight="700" fill="#0B1830">일정 · 변경</text><text x="1459" y="684" font-size="13.5" font-weight="500" fill="#475569">현재 일정</text><text x="1459" y="707" font-size="13.5" font-weight="500" fill="#475569">revision·승인 이력</text></g><g filter="url(#shadow)"><rect x="500" y="770" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#087E62" stroke-width="2.1"/><rect x="510" y="783" width="7" height="74" rx="3.5" fill="#087E62"/>
-    <text x="529" y="801" font-size="17" font-weight="700" fill="#0B1830">장소</text><text x="529" y="829" font-size="13.5" font-weight="500" fill="#475569">장소 원장</text><text x="529" y="852" font-size="13.5" font-weight="500" fill="#475569">성향별 후보 조회</text></g><g filter="url(#shadow)"><rect x="810" y="770" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1"/><rect x="820" y="783" width="7" height="74" rx="3.5" fill="#D85C22"/>
-    <text x="839" y="801" font-size="17" font-weight="700" fill="#0B1830">이벤트</text><text x="839" y="829" font-size="13.5" font-weight="500" fill="#475569">날씨·혼잡·교통</text><text x="839" y="852" font-size="13.5" font-weight="500" fill="#475569">영향 판단</text></g><g filter="url(#shadow)"><rect x="1120" y="770" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#0568C2" stroke-width="2.1"/><rect x="1130" y="783" width="7" height="74" rx="3.5" fill="#0568C2"/>
-    <text x="1149" y="801" font-size="17" font-weight="700" fill="#0B1830">경로</text><text x="1149" y="829" font-size="13.5" font-weight="500" fill="#475569">출발·이동·귀가</text><text x="1149" y="852" font-size="13.5" font-weight="500" fill="#475569">RouteProvider</text></g><g filter="url(#shadow)"><rect x="1430" y="770" width="280" height="100" rx="14" fill="#FFFFFF" stroke="#9DADC0" stroke-width="2.1"/><rect x="1440" y="783" width="7" height="74" rx="3.5" fill="#9DADC0"/>
-    <text x="1459" y="801" font-size="17" font-weight="700" fill="#0B1830">공통</text><text x="1459" y="829" font-size="13.5" font-weight="500" fill="#475569">오류 형식·JSON</text><text x="1459" y="852" font-size="13.5" font-weight="500" fill="#475569">트랜잭션·검증</text></g><g filter="url(#shadow)"><rect x="500" y="955" width="370" height="125" rx="14" fill="#DFF3E9" stroke="#087A55" stroke-width="2.1"/><rect x="510" y="968" width="7" height="99" rx="3.5" fill="#087A55"/>
-    <text x="529" y="986" font-size="17" font-weight="700" fill="#0B1830">로컬 어댑터</text><text x="529" y="1014" font-size="13.5" font-weight="500" fill="#475569">H2 기준 장소 데이터</text><text x="529" y="1037" font-size="13.5" font-weight="500" fill="#475569">결정적 대중교통 경로 스텁</text><rect x="767" y="968" width="89" height="26" rx="13" fill="#087A55"/>
-      <text x="811.5" y="986" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">바로 실행</text></g><g filter="url(#shadow)"><rect x="930" y="955" width="370" height="125" rx="14" fill="#DFEDFA" stroke="#0568C2" stroke-width="2.1"/><rect x="940" y="968" width="7" height="99" rx="3.5" fill="#0568C2"/>
-    <text x="959" y="986" font-size="17" font-weight="700" fill="#0B1830">외부 API 포트</text><text x="959" y="1014" font-size="13.5" font-weight="500" fill="#475569">장소 · 이벤트 · 경로 공급자를</text><text x="959" y="1037" font-size="13.5" font-weight="500" fill="#475569">구현 교체만으로 연결</text><rect x="1197" y="968" width="89" height="26" rx="13" fill="#0568C2"/>
-      <text x="1241.5" y="986" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">교체 가능</text></g><g filter="url(#shadow)"><rect x="1360" y="955" width="370" height="125" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1" stroke-dasharray="9 7"/><rect x="1370" y="968" width="7" height="99" rx="3.5" fill="#D85C22"/>
-    <text x="1389" y="986" font-size="17" font-weight="700" fill="#0B1830">알림 포트</text><text x="1389" y="1014" font-size="13.5" font-weight="500" fill="#475569">변경 제안 전달</text><text x="1389" y="1037" font-size="13.5" font-weight="500" fill="#475569">로그 → FCM / SSE 전환</text><rect x="1627" y="968" width="89" height="26" rx="13" fill="#D85C22"/>
-      <text x="1671.5" y="986" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">연동 예정</text></g><g filter="url(#softShadow)"><rect x="1850" y="160" width="660" height="650" rx="22" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.4"/>
-    <rect x="1852" y="238" width="656" height="570" rx="20" fill="#D85C22" fill-opacity="0.05"/>
-    <rect x="1850" y="160" width="660" height="78" rx="22" fill="#D85C22"/>
-    <rect x="1850" y="218" width="660" height="20" fill="#D85C22"/>
-    <text x="1882" y="193" font-size="23" font-weight="700" fill="#FFFFFF">외부 서비스 연동</text>
-    <text x="1882" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">운영 환경에서 공급자별 어댑터로 연결</text></g><g filter="url(#shadow)"><rect x="1900" y="285" width="560" height="82" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1" stroke-dasharray="9 7"/><rect x="1910" y="298" width="7" height="56" rx="3.5" fill="#D85C22"/>
-    <text x="1929" y="316" font-size="17" font-weight="700" fill="#0B1830">OAuth / OIDC</text><text x="1929" y="344" font-size="13.5" font-weight="500" fill="#475569">로그인과 토큰 검증</text><rect x="2396" y="298" width="50" height="26" rx="13" fill="#D85C22"/>
-      <text x="2421" y="316" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">예정</text></g><g filter="url(#shadow)"><rect x="1900" y="395" width="560" height="82" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1" stroke-dasharray="9 7"/><rect x="1910" y="408" width="7" height="56" rx="3.5" fill="#D85C22"/>
-    <text x="1929" y="426" font-size="17" font-weight="700" fill="#0B1830">관광 · 지도 API</text><text x="1929" y="454" font-size="13.5" font-weight="500" fill="#475569">장소 검색과 상세 정보 동기화</text><rect x="2396" y="408" width="50" height="26" rx="13" fill="#D85C22"/>
-      <text x="2421" y="426" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">예정</text></g><g filter="url(#shadow)"><rect x="1900" y="505" width="560" height="82" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1" stroke-dasharray="9 7"/><rect x="1910" y="518" width="7" height="56" rx="3.5" fill="#D85C22"/>
-    <text x="1929" y="536" font-size="17" font-weight="700" fill="#0B1830">날씨 · 혼잡 · 교통 API</text><text x="1929" y="564" font-size="13.5" font-weight="500" fill="#475569">실시간 관측값 수집과 정규화</text><rect x="2396" y="518" width="50" height="26" rx="13" fill="#D85C22"/>
-      <text x="2421" y="536" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">예정</text></g><g filter="url(#shadow)"><rect x="1900" y="615" width="560" height="82" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1" stroke-dasharray="9 7"/><rect x="1910" y="628" width="7" height="56" rx="3.5" fill="#D85C22"/>
-    <text x="1929" y="646" font-size="17" font-weight="700" fill="#0B1830">대중교통 경로 API · FCM/SSE</text><text x="1929" y="674" font-size="13.5" font-weight="500" fill="#475569">실제 경로 후보와 변경 알림</text><rect x="2396" y="628" width="50" height="26" rx="13" fill="#D85C22"/>
-      <text x="2421" y="646" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">예정</text></g><g filter="url(#softShadow)"><rect x="1850" y="850" width="660" height="400" rx="22" fill="#FFFFFF" stroke="#087E62" stroke-width="2.4"/>
-    <rect x="1852" y="922" width="656" height="326" rx="20" fill="#087E62" fill-opacity="0.05"/>
-    <rect x="1850" y="850" width="660" height="72" rx="22" fill="#087E62"/>
-    <rect x="1850" y="902" width="660" height="20" fill="#087E62"/>
-    <text x="1882" y="893" font-size="23" font-weight="700" fill="#FFFFFF">데이터 · 운영</text></g><g filter="url(#shadow)"><rect x="1900" y="965" width="255" height="112" rx="14" fill="#DFF3E9" stroke="#087E62" stroke-width="2.1"/><rect x="1910" y="978" width="7" height="86" rx="3.5" fill="#087E62"/>
-    <text x="1929" y="996" font-size="17" font-weight="700" fill="#0B1830">H2 / PostgreSQL</text><text x="1929" y="1024" font-size="13.5" font-weight="500" fill="#475569">로컬 / 운영 DB</text><text x="1929" y="1047" font-size="13.5" font-weight="500" fill="#475569">Flyway 11개 테이블</text><rect x="2091" y="978" width="50" height="26" rx="13" fill="#087E62"/>
-      <text x="2116" y="996" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">구현</text></g><g filter="url(#shadow)"><rect x="2190" y="965" width="270" height="112" rx="14" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.1" stroke-dasharray="9 7"/><rect x="2200" y="978" width="7" height="86" rx="3.5" fill="#D85C22"/>
-    <text x="2219" y="996" font-size="17" font-weight="700" fill="#0B1830">Redis</text><text x="2219" y="1024" font-size="13.5" font-weight="500" fill="#475569">경로 후보 TTL</text><text x="2219" y="1047" font-size="13.5" font-weight="500" fill="#475569">외부 API 짧은 캐시</text><rect x="2396" y="978" width="50" height="26" rx="13" fill="#D85C22"/>
-      <text x="2421" y="996" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">예정</text></g><g filter="url(#shadow)"><rect x="1900" y="1110" width="560" height="92" rx="14" fill="#E3ECF6" stroke="#123C69" stroke-width="2.1"/><rect x="1910" y="1123" width="7" height="66" rx="3.5" fill="#123C69"/>
-    <text x="1929" y="1141" font-size="17" font-weight="700" fill="#0B1830">운영 확인</text><text x="1929" y="1169" font-size="13.5" font-weight="500" fill="#475569">Actuator Health · 로그/지표 · GitHub Actions 빌드/테스트</text><rect x="2396" y="1123" width="50" height="26" rx="13" fill="#123C69"/>
-      <text x="2421" y="1141" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">구현</text></g><polyline points="340,354 420,354 420,319 500,319" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="340,354 420,354 420,319 500,319" fill="none" stroke="#123C69" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/><rect x="381" y="316" width="78" height="26" rx="13" fill="#FFFFFF" stroke="#123C69" stroke-width="1.4"/>
-      <text x="420" y="333" text-anchor="middle" font-size="11.5" font-weight="700" fill="#123C69">HTTPS</text><polyline points="1115,363 1115,410" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="1115,363 1115,410" fill="none" stroke="#123C69" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/><line x1="685" y1="565" x2="1545" y2="565" stroke="#607089" stroke-width="2"/>
-    <line x1="685" y1="532" x2="685" y2="565" stroke="#607089" stroke-width="2"/>
-    <line x1="1115" y1="532" x2="1115" y2="565" stroke="#607089" stroke-width="2"/>
-    <line x1="1545" y1="532" x2="1545" y2="565" stroke="#607089" stroke-width="2"/>
-    <line x1="1115" y1="565" x2="1115" y2="610" stroke="#607089" stroke-width="2" marker-end="url(#arrow)"/><polyline points="1115,870 1115,930" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="1115,870 1115,930" fill="none" stroke="#0568C2" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/><rect x="1129" y="896" width="62" height="26" rx="13" fill="#FFFFFF" stroke="#0568C2" stroke-width="1.4"/>
-      <text x="1160" y="913" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0568C2">어댑터</text><polyline points="1730,1018 1815,1018 1815,655 1900,655" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="1730,1018 1815,1018 1815,655 1900,655" fill="none" stroke="#D85C22" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="9 7"/><rect x="1776" y="816" width="78" height="26" rx="13" fill="#FFFFFF" stroke="#D85C22" stroke-width="1.4"/>
-      <text x="1815" y="833" text-anchor="middle" font-size="11.5" font-weight="700" fill="#D85C22">운영 연동</text><polyline points="1710,820 1785,820 1785,1020 1900,1020" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="1710,820 1785,820 1785,1020 1900,1020" fill="none" stroke="#087E62" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/><rect x="1754" y="926" width="62" height="26" rx="13" fill="#FFFFFF" stroke="#087E62" stroke-width="1.4"/>
-      <text x="1785" y="943" text-anchor="middle" font-size="11.5" font-weight="700" fill="#087E62">저장</text></g>
+  <text x="2429" y="65" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">GAYADI</text></g><g transform="translate(1965,37)">
+    <line x1="0" y1="12" x2="42" y2="12" stroke="#0D9FA5" stroke-width="3"/>
+    <text x="53" y="17" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text>
+    <line x1="0" y1="39" x2="42" y2="39" stroke="#FF935C" stroke-width="3" stroke-dasharray="9 6"/>
+    <text x="53" y="44" font-size="11.5" font-weight="700" fill="#FFFFFF">운영 연동 예정</text></g><g filter="url(#softShadow)">
+    <rect x="50" y="165" width="300" height="810" rx="6" fill="#FFFFFF" stroke="#0D9FA5" stroke-width="2.4"/>
+    <path d="M56,165 H344 Q350,165 350,171 V227 H50 V171 Q50,165 56,165 Z" fill="#0D9FA5"/>
+    <text x="74" y="194" font-size="21" font-weight="700" fill="#FFFFFF">클라이언트</text>
+    <text x="74" y="215" font-size="12.5" fill="#FFFFFF" opacity="0.92">사용자와 모바일 앱</text>
+  </g><g>
+    <rect x="90" y="300" width="220" height="150" rx="5" fill="#E8F7F8" stroke="#0D9FA5" stroke-width="2"/>
+    <rect x="90" y="300" width="220" height="9" rx="4.5" fill="#0D9FA5"/>
+    <text x="200" y="373" text-anchor="middle" font-size="18" font-weight="700" fill="#0B1830">Android 앱</text>
+    <text x="200" y="397" text-anchor="middle" font-size="11.5" fill="#475569">REST API 호출 · 알림 수신</text>
+  </g><g>
+    <rect x="90" y="545" width="220" height="62" rx="5" fill="#FFFFFF" stroke="#6637D9" stroke-width="2"/>
+    <rect x="90" y="545" width="220" height="9" rx="4.5" fill="#6637D9"/>
+    <text x="200" y="574" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">여행 전</text>
+    <text x="200" y="598" text-anchor="middle" font-size="11.5" fill="#475569">설문 · 일정 · 출발 경로</text>
+  </g><g>
+    <rect x="90" y="650" width="220" height="62" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2"/>
+    <rect x="90" y="650" width="220" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="200" y="679" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">여행 중</text>
+    <text x="200" y="703" text-anchor="middle" font-size="11.5" fill="#475569">상황 감지 · 변경 승인</text>
+  </g><g>
+    <rect x="90" y="755" width="220" height="62" rx="5" fill="#FFFFFF" stroke="#087E62" stroke-width="2"/>
+    <rect x="90" y="755" width="220" height="9" rx="4.5" fill="#087E62"/>
+    <text x="200" y="784" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">여행 후</text>
+    <text x="200" y="808" text-anchor="middle" font-size="11.5" fill="#475569">귀가 경로 · 여행 완료</text>
+  </g><g filter="url(#softShadow)">
+    <rect x="390" y="165" width="1540" height="810" rx="6" fill="#FFFFFF" stroke="#123C69" stroke-width="2.4"/>
+    <path d="M396,165 H1924 Q1930,165 1930,171 V227 H390 V171 Q390,165 396,165 Z" fill="#123C69"/>
+    <text x="414" y="194" font-size="21" font-weight="700" fill="#FFFFFF">GAYADI Server · Spring Boot</text>
+    <text x="414" y="215" font-size="12.5" fill="#FFFFFF" opacity="0.92">하나의 애플리케이션 안에서 계층과 업무 책임을 분리</text>
+  </g><g>
+    <rect x="430" y="250" width="1460" height="110" rx="4" fill="#F8FAFC" stroke="#93A4B8" stroke-width="1.8"/>
+    <rect x="430" y="250" width="170" height="110" rx="4" fill="#123C69" fill-opacity="0.13"/>
+    <line x1="600" y1="250" x2="600" y2="360" stroke="#123C69" stroke-width="2"/>
+    <rect x="448" y="269" width="8" height="72" rx="4" fill="#123C69"/>
+    <text x="472" y="300" font-size="17" font-weight="700" fill="#0B1830">API 계층</text>
+    <text x="472" y="324" font-size="11.5" fill="#475569">요청 진입점</text>
+  </g><g>
+    <rect x="630" y="275" width="330" height="60" rx="5" fill="#E5EEF8" stroke="#123C69" stroke-width="2"/>
+    <rect x="630" y="275" width="330" height="9" rx="4.5" fill="#123C69"/>
+    <text x="795" y="303" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">REST Controller</text>
+    <text x="795" y="327" text-anchor="middle" font-size="11.5" fill="#475569">여행 전 · 중 · 후 API</text>
+  </g><g>
+    <rect x="1040" y="275" width="330" height="60" rx="5" fill="#E5EEF8" stroke="#123C69" stroke-width="2"/>
+    <rect x="1040" y="275" width="330" height="9" rx="4.5" fill="#123C69"/>
+    <text x="1205" y="303" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">인증 · 권한 필터</text>
+    <text x="1205" y="327" text-anchor="middle" font-size="11.5" fill="#475569">사용자와 여행 멤버 확인</text>
+  </g><g>
+    <rect x="1450" y="275" width="330" height="60" rx="5" fill="#E5EEF8" stroke="#123C69" stroke-width="2"/>
+    <rect x="1450" y="275" width="330" height="9" rx="4.5" fill="#123C69"/>
+    <text x="1615" y="303" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">검증 · 오류 응답</text>
+    <text x="1615" y="327" text-anchor="middle" font-size="11.5" fill="#475569">입력 검증과 공통 응답 형식</text>
+  </g><g>
+    <rect x="430" y="390" width="1460" height="160" rx="4" fill="#F8FAFC" stroke="#93A4B8" stroke-width="1.8"/>
+    <rect x="430" y="390" width="170" height="160" rx="4" fill="#6637D9" fill-opacity="0.13"/>
+    <line x1="600" y1="390" x2="600" y2="550" stroke="#6637D9" stroke-width="2"/>
+    <rect x="448" y="409" width="8" height="122" rx="4" fill="#6637D9"/>
+    <text x="472" y="465" font-size="17" font-weight="700" fill="#0B1830">애플리케이션</text>
+    <text x="472" y="489" font-size="11.5" fill="#475569">유스케이스 조합</text>
+  </g><g>
+    <rect x="630" y="430" width="350" height="80" rx="5" fill="#EEE7FF" stroke="#6637D9" stroke-width="2"/>
+    <rect x="630" y="430" width="350" height="9" rx="4.5" fill="#6637D9"/>
+    <text x="805" y="468" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">여행 준비</text>
+    <text x="805" y="492" text-anchor="middle" font-size="11.5" fill="#475569">멤버 → 설문 → 일정 → 출발 경로</text>
+  </g><g>
+    <rect x="1050" y="430" width="350" height="80" rx="5" fill="#FFE9DA" stroke="#D85C22" stroke-width="2"/>
+    <rect x="1050" y="430" width="350" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="1225" y="468" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">여행 중 대응</text>
+    <text x="1225" y="492" text-anchor="middle" font-size="11.5" fill="#475569">이벤트 판단 → 대안 → 승인 반영</text>
+  </g><g>
+    <rect x="1470" y="430" width="350" height="80" rx="5" fill="#DFF3EA" stroke="#087E62" stroke-width="2"/>
+    <rect x="1470" y="430" width="350" height="9" rx="4.5" fill="#087E62"/>
+    <text x="1645" y="468" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">귀가</text>
+    <text x="1645" y="492" text-anchor="middle" font-size="11.5" fill="#475569">마지막 장소 → 멤버별 귀가 경로</text>
+  </g><g>
+    <rect x="430" y="580" width="1460" height="180" rx="4" fill="#F8FAFC" stroke="#93A4B8" stroke-width="1.8"/>
+    <rect x="430" y="580" width="170" height="180" rx="4" fill="#0568C2" fill-opacity="0.13"/>
+    <line x1="600" y1="580" x2="600" y2="760" stroke="#0568C2" stroke-width="2"/>
+    <rect x="448" y="599" width="8" height="142" rx="4" fill="#0568C2"/>
+    <text x="472" y="665" font-size="17" font-weight="700" fill="#0B1830">도메인 모듈</text>
+    <text x="472" y="689" font-size="11.5" fill="#475569">업무 규칙과 데이터</text>
+  </g><g>
+    <rect x="630" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#123C69" stroke-width="2"/>
+    <rect x="630" y="625" width="135" height="9" rx="4.5" fill="#123C69"/>
+    <text x="697.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">인증·사용자</text>
+    <text x="697.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">사용자 식별</text>
+  </g><g>
+    <rect x="785" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#123C69" stroke-width="2"/>
+    <rect x="785" y="625" width="135" height="9" rx="4.5" fill="#123C69"/>
+    <text x="852.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">여행·멤버</text>
+    <text x="852.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">출발 방식</text>
+  </g><g>
+    <rect x="940" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#6637D9" stroke-width="2"/>
+    <rect x="940" y="625" width="135" height="9" rx="4.5" fill="#6637D9"/>
+    <text x="1007.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">설문·성향</text>
+    <text x="1007.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">그룹 성향</text>
+  </g><g>
+    <rect x="1095" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#C52B5A" stroke-width="2"/>
+    <rect x="1095" y="625" width="135" height="9" rx="4.5" fill="#C52B5A"/>
+    <text x="1162.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">일정·변경</text>
+    <text x="1162.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">revision</text>
+  </g><g>
+    <rect x="1250" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#087E62" stroke-width="2"/>
+    <rect x="1250" y="625" width="135" height="9" rx="4.5" fill="#087E62"/>
+    <text x="1317.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">장소</text>
+    <text x="1317.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">장소 원장</text>
+  </g><g>
+    <rect x="1405" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2"/>
+    <rect x="1405" y="625" width="135" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="1472.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">이벤트</text>
+    <text x="1472.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">상황 판단</text>
+  </g><g>
+    <rect x="1560" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#0568C2" stroke-width="2"/>
+    <rect x="1560" y="625" width="135" height="9" rx="4.5" fill="#0568C2"/>
+    <text x="1627.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">경로</text>
+    <text x="1627.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">출발·귀가</text>
+  </g><g>
+    <rect x="1715" y="625" width="135" height="88" rx="5" fill="#FFFFFF" stroke="#667085" stroke-width="2"/>
+    <rect x="1715" y="625" width="135" height="9" rx="4.5" fill="#667085"/>
+    <text x="1782.5" y="667" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0B1830">공통</text>
+    <text x="1782.5" y="691" text-anchor="middle" font-size="10.5" fill="#475569">예외·검증</text>
+  </g><g>
+    <rect x="430" y="790" width="1460" height="150" rx="4" fill="#F8FAFC" stroke="#93A4B8" stroke-width="1.8"/>
+    <rect x="430" y="790" width="170" height="150" rx="4" fill="#087E62" fill-opacity="0.13"/>
+    <line x1="600" y1="790" x2="600" y2="940" stroke="#087E62" stroke-width="2"/>
+    <rect x="448" y="809" width="8" height="112" rx="4" fill="#087E62"/>
+    <text x="472" y="860" font-size="17" font-weight="700" fill="#0B1830">인프라 계층</text>
+    <text x="472" y="884" font-size="11.5" fill="#475569">외부 기술 교체 경계</text>
+  </g><g>
+    <rect x="650" y="830" width="340" height="72" rx="5" fill="#E3F4EC" stroke="#087E62" stroke-width="2"/>
+    <rect x="650" y="830" width="340" height="9" rx="4.5" fill="#087E62"/>
+    <text x="820" y="864" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">로컬 어댑터</text>
+    <text x="820" y="888" text-anchor="middle" font-size="11.5" fill="#475569">H2 장소 데이터 · 경로 스텁</text>
+  </g><g>
+    <rect x="1050" y="830" width="340" height="72" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="1050" y="830" width="340" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="1220" y="864" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">알림 어댑터</text>
+    <text x="1220" y="888" text-anchor="middle" font-size="11.5" fill="#475569">로그 → FCM / SSE 교체</text>
+  </g><g>
+    <rect x="1450" y="830" width="360" height="72" rx="5" fill="#FFF4EC" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="1450" y="830" width="360" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="1630" y="864" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">외부 API 어댑터</text>
+    <text x="1630" y="888" text-anchor="middle" font-size="11.5" fill="#475569">관광 · 날씨 · 혼잡 · 대중교통</text>
+  </g><g filter="url(#softShadow)">
+    <rect x="1970" y="165" width="540" height="810" rx="6" fill="#FFFFFF" stroke="#D85C22" stroke-width="2.4"/>
+    <path d="M1976,165 H2504 Q2510,165 2510,171 V227 H1970 V171 Q1970,165 1976,165 Z" fill="#D85C22"/>
+    <text x="1994" y="194" font-size="21" font-weight="700" fill="#FFFFFF">외부 서비스</text>
+    <text x="1994" y="215" font-size="12.5" fill="#FFFFFF" opacity="0.92">운영 환경에서 연결</text>
+  </g><g>
+    <rect x="2010" y="275" width="460" height="74" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="2010" y="275" width="460" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="2240" y="310" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">OAuth / OIDC</text>
+    <text x="2240" y="334" text-anchor="middle" font-size="11.5" fill="#475569">로그인과 토큰 검증</text>
+  </g><g>
+    <rect x="2010" y="390" width="460" height="74" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="2010" y="390" width="460" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="2240" y="425" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">관광 · 지도 API</text>
+    <text x="2240" y="449" text-anchor="middle" font-size="11.5" fill="#475569">장소 검색과 상세 정보</text>
+  </g><g>
+    <rect x="2010" y="505" width="460" height="74" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="2010" y="505" width="460" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="2240" y="540" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">날씨 · 혼잡 API</text>
+    <text x="2240" y="564" text-anchor="middle" font-size="11.5" fill="#475569">실시간 관측값 수집</text>
+  </g><g>
+    <rect x="2010" y="620" width="460" height="74" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="2010" y="620" width="460" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="2240" y="655" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">대중교통 경로 API</text>
+    <text x="2240" y="679" text-anchor="middle" font-size="11.5" fill="#475569">실제 경로 후보 계산</text>
+  </g><g>
+    <rect x="2010" y="735" width="460" height="74" rx="5" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <rect x="2010" y="735" width="460" height="9" rx="4.5" fill="#D85C22"/>
+    <text x="2240" y="770" text-anchor="middle" font-size="15" font-weight="700" fill="#0B1830">FCM · SSE</text>
+    <text x="2240" y="794" text-anchor="middle" font-size="11.5" fill="#475569">변경 제안과 알림 전달</text>
+  </g><g filter="url(#softShadow)">
+    <rect x="390" y="1020" width="2120" height="350" rx="6" fill="#FFFFFF" stroke="#087E62" stroke-width="2.4"/>
+    <path d="M396,1020 H2504 Q2510,1020 2510,1026 V1082 H390 V1026 Q390,1020 396,1020 Z" fill="#087E62"/>
+    <text x="414" y="1049" font-size="21" font-weight="700" fill="#FFFFFF">데이터 · 운영</text>
+    <text x="414" y="1070" font-size="12.5" fill="#FFFFFF" opacity="0.92">현재 저장소와 선택적 운영 구성</text>
+  </g><g>
+    <path d="M500,1153 V1242 C500,1264 740,1264 740,1242 V1153" fill="#FFFFFF" stroke="#123C69" stroke-width="2"/>
+    <ellipse cx="620" cy="1153" rx="120" ry="18" fill="#123C69" fill-opacity="0.17" stroke="#123C69" stroke-width="2"/>
+    <path d="M500,1242 C500,1264 740,1264 740,1242" fill="none" stroke="#123C69" stroke-width="2"/>
+    <text x="620" y="1197" text-anchor="middle" font-size="16" font-weight="700" fill="#0B1830">Core DB</text>
+    <text x="620" y="1223" text-anchor="middle" font-size="11.5" fill="#475569">사용자 · 여행 · 일정</text>
+  </g><g>
+    <path d="M820,1153 V1242 C820,1264 1060,1264 1060,1242 V1153" fill="#FFFFFF" stroke="#087E62" stroke-width="2"/>
+    <ellipse cx="940" cy="1153" rx="120" ry="18" fill="#087E62" fill-opacity="0.17" stroke="#087E62" stroke-width="2"/>
+    <path d="M820,1242 C820,1264 1060,1264 1060,1242" fill="none" stroke="#087E62" stroke-width="2"/>
+    <text x="940" y="1197" text-anchor="middle" font-size="16" font-weight="700" fill="#0B1830">Place DB</text>
+    <text x="940" y="1223" text-anchor="middle" font-size="11.5" fill="#475569">장소 기본 정보</text>
+  </g><g>
+    <path d="M1140,1153 V1242 C1140,1264 1380,1264 1380,1242 V1153" fill="#FFFFFF" stroke="#D85C22" stroke-width="2"/>
+    <ellipse cx="1260" cy="1153" rx="120" ry="18" fill="#D85C22" fill-opacity="0.17" stroke="#D85C22" stroke-width="2"/>
+    <path d="M1140,1242 C1140,1264 1380,1264 1380,1242" fill="none" stroke="#D85C22" stroke-width="2"/>
+    <text x="1260" y="1197" text-anchor="middle" font-size="16" font-weight="700" fill="#0B1830">Event DB</text>
+    <text x="1260" y="1223" text-anchor="middle" font-size="11.5" fill="#475569">판단에 사용한 이벤트</text>
+  </g><g>
+    <path d="M1460,1153 V1242 C1460,1264 1700,1264 1700,1242 V1153" fill="#FFFFFF" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <ellipse cx="1580" cy="1153" rx="120" ry="18" fill="#D85C22" fill-opacity="0.17" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <path d="M1460,1242 C1460,1264 1700,1264 1700,1242" fill="none" stroke="#D85C22" stroke-width="2" stroke-dasharray="9 6"/>
+    <text x="1580" y="1197" text-anchor="middle" font-size="16" font-weight="700" fill="#0B1830">Redis</text>
+    <text x="1580" y="1223" text-anchor="middle" font-size="11.5" fill="#475569">짧은 TTL 캐시 · 선택</text>
+  </g><g>
+    <rect x="1790" y="1135" width="600" height="125" rx="5" fill="#E5EEF8" stroke="#123C69" stroke-width="2"/>
+    <rect x="1790" y="1135" width="600" height="9" rx="4.5" fill="#123C69"/>
+    <text x="2090" y="1195.5" text-anchor="middle" font-size="17" font-weight="700" fill="#0B1830">운영 확인</text>
+    <text x="2090" y="1219.5" text-anchor="middle" font-size="11.5" fill="#475569">Actuator · 로그/지표 · GitHub Actions</text>
+  </g><polyline points="310,375 370,375 370,305 630,305" fill="none" stroke="#123C69" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/><rect x="362" y="290" width="176" height="28" rx="4" fill="#FFFFFF" stroke="#123C69" stroke-width="1.3"/>
+      <text x="450" y="309" text-anchor="middle" font-size="11.5" font-weight="700" fill="#123C69">HTTPS · JSON</text><polyline points="1205,335 1205,430" fill="none" stroke="#123C69" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/><polyline points="1205,510 1205,625" fill="none" stroke="#6637D9" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/><polyline points="1205,713 1205,830" fill="none" stroke="#0568C2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/><polyline points="1810,866 1950,866 1950,657 2010,657" fill="none" stroke="#D85C22" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="10 7"/><rect x="1907.5" y="695" width="85" height="28" rx="4" fill="#FFFFFF" stroke="#D85C22" stroke-width="1.3"/>
+      <text x="1950" y="714" text-anchor="middle" font-size="11.5" font-weight="700" fill="#D85C22">운영 연동</text><polyline points="820,902 820,995 620,995 620,1135" fill="none" stroke="#087E62" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/><rect x="632" y="980" width="176" height="28" rx="4" fill="#FFFFFF" stroke="#087E62" stroke-width="1.3"/>
+      <text x="720" y="999" text-anchor="middle" font-size="11.5" font-weight="700" fill="#087E62">JPA · Flyway</text></g>
 </svg>

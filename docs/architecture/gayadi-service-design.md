@@ -257,6 +257,8 @@ flowchart TB
 
 [확대 가능한 SVG 원본](../presentation/gayadi-service-architecture-presentation.svg)
 
+[draw.io 편집 원본](../presentation/gayadi-service-architecture.drawio)
+
 ## 8. 서비스 흐름도
 
 ```mermaid
