@@ -121,12 +121,12 @@ class EventService(
         return proposal(proposalId)
     }
 
-    private fun proposal(id: String): Map<String, Any> =
-        linkedMapOf<String, Any>(
-            *jdbc.sql("SELECT * FROM change_proposals WHERE id = ?")
-                .param(id).query().listOfRows().firstOrNull()?.entries?.toTypedArray()
-                ?: throw ApiException(HttpStatus.NOT_FOUND, "변경 제안을 찾을 수 없습니다.")
-        )
+    private fun proposal(id: String): Map<String, Any> {
+        val row = jdbc.sql("SELECT * FROM change_proposals WHERE id = ?")
+            .param(id).query().listOfRows().firstOrNull()
+            ?: throw ApiException(HttpStatus.NOT_FOUND, "변경 제안을 찾을 수 없습니다.")
+        return LinkedHashMap(row)
+    }
 
     private fun reason(command: Observation): String =
         "${command.eventType} 이벤트가 ${command.severity} 단계로 관측되었습니다."

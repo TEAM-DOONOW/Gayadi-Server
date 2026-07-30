@@ -13,7 +13,7 @@ import java.net.http.HttpResponse
 class HttpSmokeIntegrationTests {
 
     @LocalServerPort
-    lateinit var port: String
+    var port: Int = 0
 
     private val client = HttpClient.newHttpClient()
 

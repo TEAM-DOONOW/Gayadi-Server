@@ -72,11 +72,10 @@ class PlanService(
 
     fun get(tripId: String): Map<String, Any> {
         trips.requireTrip(tripId)
-        val plan = linkedMapOf<String, Any>(
-            *jdbc.sql("SELECT * FROM trip_plans WHERE trip_id = ?")
-                .param(tripId).query().listOfRows().firstOrNull()?.entries?.toTypedArray()
-                ?: throw ApiException(HttpStatus.NOT_FOUND, "생성된 일정이 없습니다.")
-        )
+        val row = jdbc.sql("SELECT * FROM trip_plans WHERE trip_id = ?")
+            .param(tripId).query().listOfRows().firstOrNull()
+            ?: throw ApiException(HttpStatus.NOT_FOUND, "생성된 일정이 없습니다.")
+        val plan = LinkedHashMap(row)
         val planId = value(plan, "id").toString()
         val items = jdbc.sql(
             """

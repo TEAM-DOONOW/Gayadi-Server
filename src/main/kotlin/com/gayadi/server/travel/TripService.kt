@@ -46,15 +46,14 @@ class TripService(
     }
 
     fun get(tripId: String): Map<String, Any> {
-        val trip = linkedMapOf<String, Any>(
-            *jdbc.sql(
-                """
-                SELECT id, owner_id, title, departure_mode, departure_at, meeting_at, meeting_location, status, created_at
-                FROM trips WHERE id = ?
-                """
-            ).param(tripId).query().listOfRows().firstOrNull()?.entries?.toTypedArray()
-                ?: throw ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다.")
-        )
+        val row = jdbc.sql(
+            """
+            SELECT id, owner_id, title, departure_mode, departure_at, meeting_at, meeting_location, status, created_at
+            FROM trips WHERE id = ?
+            """
+        ).param(tripId).query().listOfRows().firstOrNull()
+            ?: throw ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다.")
+        val trip = LinkedHashMap(row)
         trip["members"] = members(tripId)
         return trip
     }
