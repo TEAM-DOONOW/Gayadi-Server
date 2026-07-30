@@ -10,6 +10,10 @@ spring:
   h2:
     console:
       enabled: false
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: false
 
 server:
   forward-headers-strategy: framework

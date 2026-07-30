@@ -12,6 +12,18 @@ spring:
     console:
       enabled: ${H2_CONSOLE_ENABLED:true}
       path: /h2-console
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: gpt-4o-mini
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        initialize-schema: false
 
 server:
   port: ${SERVER_PORT:8080}
@@ -35,7 +47,7 @@ info:
   app:
     name: GAYADI Server
     description: Adaptive group travel planning API
-    version: 0.1.0
+    version: 0.2.0
 
 logging:
   level:

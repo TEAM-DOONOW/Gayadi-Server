@@ -2,7 +2,7 @@
 .github
 .idea
 .vscode
-target
+build
 logs
 .env*
 *.iml

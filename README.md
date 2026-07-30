@@ -6,27 +6,48 @@ GAYADI는 여행자의 성향과 날씨·혼잡·교통 변화를 반영해 여�
 - 출발 전: `GROUP_MEETING` 또는 `INDIVIDUAL` 방식에 맞는 대중교통 경로를 추천합니다.
 - 여행 중: 날씨·혼잡·교통 이벤트가 일정에 영향을 주면 대안을 만들고, 사용자 승인 후 미래 일정만 수정합니다.
 - 여행 후: 마지막 장소에서 멤버별 귀가 목적지까지 `RETURN` 경로를 추천합니다.
+- **AI 추천**: Spring AI + OpenAI 기반 RAG 파이프라인으로 성향·위치·키워드 기반 장소를 추천합니다.
+
+## 기술 스택
+
+- **언어**: Kotlin 2.1 + Java 21
+- **프레임워크**: Spring Boot 4.1
+- **빌드**: Gradle Kotlin DSL
+- **AI**: Spring AI 1.0 (OpenAI Chat + Embedding, Vector Store)
+- **DB**: H2(로컬) / PostgreSQL + pgvector(운영)
+- **마이그레이션**: Flyway
+
+## 아키텍처
+
+```
+[배치 — Airflow / Python]
+관광공사·기상청·축제 API 수집 → 정제 → Embedding → Vector DB 적재
+
+[서빙 — Spring Boot / Kotlin / Spring AI]
+Android 요청 → VectorStore 유사도 검색 → ChatClient LLM 추천 → 응답
+```
 
 ## 현재 구현
 
-Spring Boot 4.1과 Java 21 기반의 실행 가능한 modular monolith MVP입니다.
+Spring Boot 4.1과 Kotlin 기반의 실행 가능한 modular monolith MVP입니다.
 
-- 모듈: `auth`, `travel`, `survey`, `schedule`, `place`, `event`, `route`, `common`
+- 모듈: `auth`, `travel`, `survey`, `schedule`, `place`, `event`, `route`, `common`, `recommendation`, `config`
 - 로컬 DB: H2 메모리 DB + Flyway
-- 운영 DB: PostgreSQL 환경변수 설정
+- 운영 DB: PostgreSQL + pgvector 환경변수 설정
 - 외부 경로 API: `RouteProvider` 포트와 결정적 로컬 스텁 구현
+- AI 추천: `OPENAI_API_KEY` 설정 시 활성화 (없어도 기존 API는 정상 동작)
 - 운영 확인: Actuator health/info/metrics
 - 일정 변경: 현재 `trip_plan`을 유지하고 `revision_no` 증가 + `change_proposals` 감사 기록
 
-외부 관광·날씨·혼잡·대중교통 API가 없어도 로컬에서 전체 핵심 흐름을 실행할 수 있습니다. 운영 연동 시 각 로컬 어댑터를 실제 공급자 어댑터로 교체합니다.
+외부 관광·날씨·혼잡·대중교통 API가 없어도 로컬에서 전체 핵심 흐름을 실행할 수 있습니다.
 
 ## 실행 방법
 
-필수 환경은 JDK 21입니다. Maven은 Wrapper가 포함되어 있어 별도 설치가 필요 없습니다.
+필수 환경은 JDK 21입니다. Gradle Wrapper가 포함되어 있어 별도 설치가 필요 없습니다.
 
 ```powershell
-.\mvnw.cmd clean verify
-.\mvnw.cmd spring-boot:run
+.\gradlew.bat clean build
+.\gradlew.bat bootRun
 ```
 
 기동 후 확인:
@@ -44,6 +65,7 @@ SPRING_PROFILES_ACTIVE=prod
 DB_URL=jdbc:postgresql://localhost:5432/gayadi
 DB_USERNAME=gayadi
 DB_PASSWORD=...
+OPENAI_API_KEY=sk-...
 ```
 
 ## 핵심 API
@@ -61,6 +83,8 @@ DB_PASSWORD=...
 | 여행 중 | `POST /api/v1/trips/{tripId}/change-proposals/{proposalId}/decision` | 변경안 승인·거절 |
 | 여행 후 | `POST /api/v1/trips/{tripId}/routes/recommend?phase=RETURN&memberId=...` | 멤버별 귀가 경로 추천 |
 | 여행 후 | `POST /api/v1/trips/{tripId}/complete` | 여행 완료 |
+| **AI 추천** | `POST /api/v1/recommendations/places` | 성향·위치·키워드 기반 장소 추천 (OpenAI 필요) |
+| **관리** | `POST /api/v1/admin/embed-places` | 장소 데이터 Vector DB 임베딩 (OpenAI 필요) |
 
 `TravelFlowIntegrationTests`가 사용자 생성부터 설문, 일정, 모여서 출발, 이벤트 변경 승인, revision 증가, 귀가 및 완료까지 검증합니다.
 
@@ -82,12 +106,11 @@ DB_PASSWORD=...
 - [발표용 서비스 아키텍처 PNG](docs/presentation/gayadi-service-architecture-presentation.png) / [SVG](docs/presentation/gayadi-service-architecture-presentation.svg) / [draw.io 편집 원본](docs/presentation/gayadi-service-architecture.drawio)
 - [발표용 서비스 흐름도 PNG](docs/presentation/gayadi-service-flow-presentation.png) / [SVG](docs/presentation/gayadi-service-flow-presentation.svg)
 
-세 그림은 각각 데이터 구조, 서버 구성, 여행 전·중·후 사용자 흐름을 설명합니다. 서비스 아키텍처는 내부 모듈, 데이터 저장소, 외부 서비스의 전체 연결을 한 가지 형식으로 보여줍니다. ERD와 서비스 흐름도는 `scripts/generate-presentation-diagrams.cjs`로 재생성하며, 서비스 아키텍처는 draw.io 편집 원본에서 PNG·SVG로 내보냅니다.
-
 ## 아직 운영 연동이 필요한 범위
 
 - OAuth/OIDC 토큰 검증과 여행 멤버 권한을 principal 기반으로 전환
 - 관광·날씨·혼잡·대중교통 공급자 API 어댑터
+- Airflow DAG: 공공 API 수집 → 정제 → Embedding → Vector DB 적재 배치
 - Redis 기반 경로 후보 TTL 캐시
 - FCM/SSE 알림
 - PostgreSQL Testcontainers 통합 테스트와 CI/CD
