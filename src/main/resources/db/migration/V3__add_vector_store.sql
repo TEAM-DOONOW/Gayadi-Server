@@ -1,3 +1,3 @@
 -- pgvector 확장 + Vector Store 테이블 (PostgreSQL 전용)
 -- H2에서는 CREATE EXTENSION을 지원하지 않으므로 이 마이그레이션은 H2에서 건너뜁니다.
--- Flyway의 H2 호환성을 위해 조건부 실행 대신 별도 프로파일에서 관리합니다.
+-- Spring AI pgvector starter가 초기화를 담당하므로 별도 DDL은 불필요합니다.
