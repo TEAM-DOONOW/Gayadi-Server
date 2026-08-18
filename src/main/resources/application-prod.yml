@@ -10,10 +10,11 @@ spring:
   h2:
     console:
       enabled: false
-  ai:
-    vectorstore:
-      pgvector:
-        initialize-schema: false
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
 
 server:
   forward-headers-strategy: framework

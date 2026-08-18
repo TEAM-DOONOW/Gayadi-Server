@@ -5,11 +5,8 @@ spring:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
-      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
-      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
   datasource:
     url: ${DB_URL:jdbc:h2:mem:gayadi;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE}
     username: ${DB_USERNAME:sa}
@@ -19,9 +16,12 @@ spring:
     enabled: true
   h2:
     console:
-      enabled: ${H2_CONSOLE_ENABLED:true}
+      enabled: ${H2_CONSOLE_ENABLED:false}
       path: /h2-console
   ai:
+    model:
+      chat: ${AI_CHAT_MODEL:none}
+      embedding: ${AI_EMBEDDING_MODEL:none}
     openai:
       api-key: ${OPENAI_API_KEY:}
       chat:
@@ -30,9 +30,34 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
-    vectorstore:
-      pgvector:
-        initialize-schema: false
+firebase:
+  enabled: ${FIREBASE_ENABLED:false}
+  project-id: ${FIREBASE_PROJECT_ID:}
+  service-account-key-path: ${FIREBASE_SERVICE_ACCOUNT_KEY_PATH:}
+
+tour:
+  api:
+    key: ${TOUR_API_KEY:}
+    base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
+    mobile-app: ${TOUR_API_MOBILE_APP:Gayadi}
+
+app:
+  ai:
+    enabled: ${APP_AI_ENABLED:false}
+    vector-store-file: ${AI_VECTOR_STORE_FILE:.data/place-vectors.json}
+  admin:
+    user-id: ${ADMIN_USER_ID:0}
+  jwt:
+    secret: ${JWT_SECRET:gayadi-dev-jwt-secret-change-me-in-production}
+    expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:604800}
+
+springdoc:
+  api-docs:
+    path: /api/openapi
+  swagger-ui:
+    path: /api/docs
+  paths-to-match: /api/**
+  packages-to-scan: com.gayadi.server
 
 firebase:
   enabled: ${FIREBASE_ENABLED:false}
@@ -47,7 +72,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: ${ACTUATOR_ENDPOINTS:health,info}
   endpoint:
     health:
       probes:
@@ -59,8 +84,8 @@ management:
 
 info:
   app:
-    name: GAYADI Server
-    description: Adaptive group travel planning API
+    name: 가야디 서버
+    description: 여행 성향과 현장 상황을 반영하는 여행 계획 API
     version: 0.3.0
 
 logging:
