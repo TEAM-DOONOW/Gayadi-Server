@@ -1,9 +1,19 @@
 package com.gayadi.server.survey;
 
+import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.travel.TripService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,54 +21,90 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "설문", description = "여행 성향 문항, 제출 결과와 여행별 성향을 제공합니다.")
 public class SurveyController {
 
     private final SurveyService service;
+    private final TripService trips;
 
-    public SurveyController(SurveyService service) {
+    public SurveyController(SurveyService service, TripService trips) {
         this.service = service;
+        this.trips = trips;
     }
 
-    @GetMapping("/surveys/personality")
+    @GetMapping("/surveys/travel-personality-v1")
+    @Operation(summary = "여행 성향 설문 조회")
+    @ApiResponse(responseCode = "200", description = "여행 성향 문항과 결과 종류입니다.",
+            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Survey.class)))
     public Map<String, Object> personalitySurvey() {
         return service.personalitySurvey();
     }
 
+    @GetMapping("/surveys/travel-personality-v1/results/{resultCode}")
+    @Operation(summary = "여행 성향 결과 조회")
+    @ApiResponse(responseCode = "200", description = "여행 성향 결과의 상세 정보입니다.",
+            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.PersonalityResult.class)))
+    public Map<String, Object> result(@PathVariable String resultCode) {
+        return service.result(resultCode);
+    }
+
+    @PostMapping("/surveys/travel-personality-v1/submissions")
+    @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "내 여행 성향 답변 제출")
+    @ApiResponse(responseCode = "201", description = "답변을 채점한 여행 성향 결과입니다.",
+            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.SurveySubmission.class)))
+    public Map<String, Object> submission(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody ResponseRequest request) {
+        return service.respond(null, userId, request.getAnswers());
+    }
+
     @PostMapping("/trips/{tripId}/survey-responses")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> respond(
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "여행별 성향 답변 제출")
+    @ApiResponse(responseCode = "201", description = "여행에 저장한 성향 답변 결과입니다.",
+            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.SurveySubmission.class)))
+    public Map<String, Object> tripSubmission(
+            @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody ResponseRequest request) {
-        return service.respond(tripId, request.getUserId(), request.getResponses());
+        return service.respond(Long.valueOf(tripId), userId, request.getAnswers());
     }
 
     @GetMapping("/trips/{tripId}/personality-profile")
-    public Map<String, Object> groupProfile(@PathVariable long tripId) {
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "여행 참여자 성향 요약")
+    @ApiResponse(responseCode = "200", description = "여행 참여자의 성향 분포입니다.",
+            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.GroupPersonality.class)))
+    public Map<String, Object> groupProfile(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable long tripId) {
+        trips.requireMember(tripId, userId);
         return service.groupProfile(tripId);
     }
 
     public static class ResponseRequest {
-        @NotNull
-        private Long userId;
         @NotEmpty
         @Valid
-        private List<ResponseItem> responses;
+        private List<ResponseItem> answers;
 
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-        public List<ResponseItem> getResponses() { return responses; }
-        public void setResponses(List<ResponseItem> responses) { this.responses = responses; }
+        public List<ResponseItem> getAnswers() { return answers; }
+        public void setAnswers(List<ResponseItem> answers) { this.answers = answers; }
     }
 
     public static class ResponseItem {
         @NotNull
-        private Long questionId;
+        @Pattern(regexp = "q\\d{2}", message = "문항 식별자 형식이 올바르지 않습니다.")
+        private String questionId;
         @NotNull
-        private Long optionId;
+        @Pattern(regexp = "[a-z]", message = "선택지 식별자 형식이 올바르지 않습니다.")
+        private String optionId;
 
-        public Long getQuestionId() { return questionId; }
-        public void setQuestionId(Long questionId) { this.questionId = questionId; }
-        public Long getOptionId() { return optionId; }
-        public void setOptionId(Long optionId) { this.optionId = optionId; }
+        public String getQuestionId() { return questionId; }
+        public void setQuestionId(String questionId) { this.questionId = questionId; }
+        public String getOptionId() { return optionId; }
+        public void setOptionId(String optionId) { this.optionId = optionId; }
     }
 }

@@ -1,277 +1,277 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1440" viewBox="0 0 2560 1440">
-  <title>GAYADI 데이터 모델 ERD</title><desc>여행 서비스의 핵심 데이터 관계</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1400" viewBox="0 0 2560 1400">
+  <title>GAYADI 데이터 모델 · ERD</title>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#071A33" flood-opacity="0.18"/>
-    </filter>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#071A33" flood-opacity="0.12"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#0F172A" flood-opacity="0.16"/>
     </filter>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#52627A"/>
+      <path d="M0,0 L10,5 L0,10 Z" fill="#64748B"/>
     </marker>
-    <linearGradient id="pageBackground" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#DEE7F2"/><stop offset="0.52" stop-color="#F4F7FB"/><stop offset="1" stop-color="#E8EEF6"/>
-    </linearGradient>
-    <linearGradient id="topHeader" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#071A33"/><stop offset="0.56" stop-color="#123C69"/><stop offset="1" stop-color="#165A77"/>
-    </linearGradient>
-    <linearGradient id="bottomBand" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#071A33"/><stop offset="0.7" stop-color="#102E50"/><stop offset="1" stop-color="#12485C"/>
-    </linearGradient>
     <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
-      <circle cx="1" cy="1" r="1.15" fill="#AAB7C8"/>
+      <circle cx="1" cy="1" r="1" fill="#CBD5E1"/>
     </pattern>
   </defs>
-  <rect width="2560" height="1440" fill="#FFFFFF"/>
-  <rect width="2560" height="1440" fill="url(#grid)" opacity="0.08"/>
-  <g font-family="Malgun Gothic, Noto Sans KR, Arial, sans-serif"><g filter="url(#softShadow)">
-    <rect x="64" y="28" width="2432" height="80" rx="10" fill="#0F172A"/>
-    <text x="94" y="77" font-size="29" font-weight="700" fill="#FFFFFF">GAYADI 데이터 모델 · ERD</text>
-  </g><g transform="translate(145 0)"><polyline points="390,230 475,230" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="390,230 475,230" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linejoin="round"/><polyline points="225,404 225,520" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="225,404 225,520" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linejoin="round"/><polyline points="475,330 445,330 445,600 470,600" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="475,330 445,330 445,600 470,600" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linejoin="round"/><polyline points="1160,371 1160,455" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="1160,371 1160,455" fill="none" stroke="#7C3AED" stroke-width="2.6" stroke-linejoin="round"/><polyline points="390,300 420,300 420,435 955,435 955,555 985,555" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="390,300 420,300 420,435 955,435 955,555 985,555" fill="none" stroke="#7C3AED" stroke-width="2.6" stroke-linejoin="round"/><polyline points="875,395 925,395 925,585 985,585" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="875,395 925,395 925,585 985,585" fill="none" stroke="#7C3AED" stroke-width="2.6" stroke-linejoin="round"/><polyline points="675,503 675,600" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="675,503 675,600" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linejoin="round"/><polyline points="985,650 950,650" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="985,650 950,650" fill="none" stroke="#7C3AED" stroke-width="2.6" stroke-linejoin="round"/><polyline points="950,800 1010,800 1010,955 1040,955" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="950,800 1010,800 1010,955 1040,955" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linejoin="round"/><polyline points="1745,345 1570,345 1570,980 1470,980" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="1745,345 1570,345 1570,980 1470,980" fill="none" stroke="#059669" stroke-width="2.6" stroke-linejoin="round"/><polyline points="265,873 265,900" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="265,873 265,900" fill="none" stroke="#2563EB" stroke-width="2.6" stroke-linejoin="round"/><polyline points="475,455 500,455 500,1000 510,1000" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="475,455 500,455 500,1000 510,1000" fill="none" stroke="#2563EB" stroke-width="2.6" stroke-linejoin="round"/><polyline points="1960,503 1960,535" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="1960,503 1960,535" fill="none" stroke="#EA580C" stroke-width="2.6" stroke-linejoin="round"/><polyline points="1970,855 1970,885" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="1970,855 1970,885" fill="none" stroke="#EA580C" stroke-width="2.6" stroke-linejoin="round"/><polyline points="950,835 1530,835 1530,1060 1600,1060" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="950,835 1530,835 1530,1060 1600,1060" fill="none" stroke="#DB2777" stroke-width="2.6" stroke-linejoin="round"/><polyline points="875,430 1510,430 1510,955 1600,955" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="875,430 1510,430 1510,955 1600,955" fill="none" stroke="#DB2777" stroke-width="2.6" stroke-linejoin="round"/><polyline points="55,335 20,335 20,1375 1560,1375 1560,1285 1600,1285" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="55,335 20,335 20,1375 1560,1375 1560,1285 1600,1285" fill="none" stroke="#DB2777" stroke-width="2.6" stroke-linejoin="round"/><g filter="url(#shadow)">
-    <rect x="55" y="150" width="335" height="254" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2"/>
-    <path d="M69,150 H376 Q390,150 390,164 V196 H55 V164 Q55,150 69,150 Z" fill="#1E3A8A"/>
-    <text x="71" y="180" font-size="19" font-weight="700" fill="#FFFFFF">USERS · 사용자</text><text x="69" y="217" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="121" y="217" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="377" y="217" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="57" y="229" width="331" height="33" fill="#EDF2F7"/><line x1="65" y1="229" x2="380" y2="229" stroke="#D6DEE8"/><text x="69" y="250" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="250" font-size="13" font-weight="500" fill="#0F172A">nickname</text>
-      <text x="377" y="250" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(80)</text><line x1="65" y1="262" x2="380" y2="262" stroke="#D6DEE8"/><text x="69" y="283" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="283" font-size="13" font-weight="500" fill="#0F172A">oauth_provider</text>
-      <text x="377" y="283" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(30)</text><rect x="57" y="295" width="331" height="33" fill="#EDF2F7"/><line x1="65" y1="295" x2="380" y2="295" stroke="#D6DEE8"/><text x="69" y="316" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="316" font-size="13" font-weight="500" fill="#0F172A">oauth_subject</text>
-      <text x="377" y="316" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(120)</text><line x1="65" y1="328" x2="380" y2="328" stroke="#D6DEE8"/><text x="69" y="349" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="349" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="377" y="349" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><rect x="57" y="361" width="331" height="33" fill="#EDF2F7"/><line x1="65" y1="361" x2="380" y2="361" stroke="#D6DEE8"/><text x="69" y="382" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="382" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="377" y="382" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
-    <rect x="475" y="150" width="400" height="353" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2"/>
-    <path d="M489,150 H861 Q875,150 875,164 V196 H475 V164 Q475,150 489,150 Z" fill="#1E3A8A"/>
-    <text x="491" y="180" font-size="19" font-weight="700" fill="#FFFFFF">TRIPS · 여행</text><text x="489" y="217" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="541" y="217" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="862" y="217" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="477" y="229" width="396" height="33" fill="#EDF2F7"/><line x1="485" y1="229" x2="865" y2="229" stroke="#D6DEE8"/><text x="489" y="250" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="541" y="250" font-size="13" font-weight="500" fill="#0F172A">owner_id</text>
-      <text x="862" y="250" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="485" y1="262" x2="865" y2="262" stroke="#D6DEE8"/><text x="489" y="283" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="283" font-size="13" font-weight="500" fill="#0F172A">title</text>
-      <text x="862" y="283" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(120)</text><rect x="477" y="295" width="396" height="33" fill="#EDF2F7"/><line x1="485" y1="295" x2="865" y2="295" stroke="#D6DEE8"/><text x="489" y="316" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="316" font-size="13" font-weight="500" fill="#0F172A">departure_mode</text>
-      <text x="862" y="316" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(30)</text><line x1="485" y1="328" x2="865" y2="328" stroke="#D6DEE8"/><text x="489" y="349" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="349" font-size="13" font-weight="500" fill="#0F172A">departure_at</text>
-      <text x="862" y="349" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><rect x="477" y="361" width="396" height="33" fill="#EDF2F7"/><line x1="485" y1="361" x2="865" y2="361" stroke="#D6DEE8"/><text x="489" y="382" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="382" font-size="13" font-weight="500" fill="#0F172A">meeting_at</text>
-      <text x="862" y="382" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><line x1="485" y1="394" x2="865" y2="394" stroke="#D6DEE8"/><text x="489" y="415" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="415" font-size="13" font-weight="500" fill="#0F172A">meeting_location</text>
-      <text x="862" y="415" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(1000)</text><rect x="477" y="427" width="396" height="33" fill="#EDF2F7"/><line x1="485" y1="427" x2="865" y2="427" stroke="#D6DEE8"/><text x="489" y="448" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="448" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="862" y="448" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(30)</text><line x1="485" y1="460" x2="865" y2="460" stroke="#D6DEE8"/><text x="489" y="481" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="541" y="481" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="862" y="481" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
-    <rect x="55" y="520" width="415" height="353" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2"/>
-    <path d="M69,520 H456 Q470,520 470,534 V566 H55 V534 Q55,520 69,520 Z" fill="#1E3A8A"/>
-    <text x="71" y="550" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_MEMBERS · 여행 멤버</text><text x="69" y="587" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="121" y="587" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="457" y="587" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="57" y="599" width="411" height="33" fill="#EDF2F7"/><line x1="65" y1="599" x2="460" y2="599" stroke="#D6DEE8"/><text x="69" y="620" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="121" y="620" font-size="13" font-weight="500" fill="#0F172A">trip_id</text>
-      <text x="457" y="620" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="65" y1="632" x2="460" y2="632" stroke="#D6DEE8"/><text x="69" y="653" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="121" y="653" font-size="13" font-weight="500" fill="#0F172A">user_id</text>
-      <text x="457" y="653" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="57" y="665" width="411" height="33" fill="#EDF2F7"/><line x1="65" y1="665" x2="460" y2="665" stroke="#D6DEE8"/><text x="69" y="686" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="686" font-size="13" font-weight="500" fill="#0F172A">role</text>
-      <text x="457" y="686" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><line x1="65" y1="698" x2="460" y2="698" stroke="#D6DEE8"/><text x="69" y="719" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="719" font-size="13" font-weight="500" fill="#0F172A">participation_status</text>
-      <text x="457" y="719" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><rect x="57" y="731" width="411" height="33" fill="#EDF2F7"/><line x1="65" y1="731" x2="460" y2="731" stroke="#D6DEE8"/><text x="69" y="752" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="752" font-size="13" font-weight="500" fill="#0F172A">departure_location</text>
-      <text x="457" y="752" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(1000)</text><line x1="65" y1="764" x2="460" y2="764" stroke="#D6DEE8"/><text x="69" y="785" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="785" font-size="13" font-weight="500" fill="#0F172A">return_destination</text>
-      <text x="457" y="785" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(1000)</text><rect x="57" y="797" width="411" height="33" fill="#EDF2F7"/><line x1="65" y1="797" x2="460" y2="797" stroke="#D6DEE8"/><text x="69" y="818" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="818" font-size="13" font-weight="500" fill="#0F172A">route_preferences</text>
-      <text x="457" y="818" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(1000)</text><line x1="65" y1="830" x2="460" y2="830" stroke="#D6DEE8"/><text x="69" y="851" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="851" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="457" y="851" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
-    <rect x="985" y="150" width="355" height="221" rx="14" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
-    <path d="M999,150 H1326 Q1340,150 1340,164 V196 H985 V164 Q985,150 999,150 Z" fill="#7C3AED"/>
-    <text x="1001" y="180" font-size="19" font-weight="700" fill="#FFFFFF">SURVEYS · 설문</text><text x="999" y="217" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="1051" y="217" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="1327" y="217" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="987" y="229" width="351" height="33" fill="#EDF2F7"/><line x1="995" y1="229" x2="1330" y2="229" stroke="#D6DEE8"/><text x="999" y="250" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="250" font-size="13" font-weight="500" fill="#0F172A">survey_type</text>
-      <text x="1327" y="250" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(40)</text><line x1="995" y1="262" x2="1330" y2="262" stroke="#D6DEE8"/><text x="999" y="283" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="283" font-size="13" font-weight="500" fill="#0F172A">version</text>
-      <text x="1327" y="283" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><rect x="987" y="295" width="351" height="33" fill="#EDF2F7"/><line x1="995" y1="295" x2="1330" y2="295" stroke="#D6DEE8"/><text x="999" y="316" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="316" font-size="13" font-weight="500" fill="#0F172A">questions</text>
-      <text x="1327" y="316" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(4000)</text><line x1="995" y1="328" x2="1330" y2="328" stroke="#D6DEE8"/><text x="999" y="349" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="349" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="1327" y="349" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text></g><g filter="url(#shadow)">
-    <rect x="985" y="455" width="390" height="320" rx="14" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2"/>
-    <path d="M999,455 H1361 Q1375,455 1375,469 V501 H985 V469 Q985,455 999,455 Z" fill="#7C3AED"/>
-    <text x="1001" y="485" font-size="19" font-weight="700" fill="#FFFFFF">SURVEY_RESPONSES · 설문 응답</text><text x="999" y="522" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="1051" y="522" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="1362" y="522" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="987" y="534" width="386" height="33" fill="#EDF2F7"/><line x1="995" y1="534" x2="1365" y2="534" stroke="#D6DEE8"/><text x="999" y="555" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1051" y="555" font-size="13" font-weight="500" fill="#0F172A">survey_id</text>
-      <text x="1362" y="555" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="995" y1="567" x2="1365" y2="567" stroke="#D6DEE8"/><text x="999" y="588" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1051" y="588" font-size="13" font-weight="500" fill="#0F172A">user_id</text>
-      <text x="1362" y="588" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="987" y="600" width="386" height="33" fill="#EDF2F7"/><line x1="995" y1="600" x2="1365" y2="600" stroke="#D6DEE8"/><text x="999" y="621" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1051" y="621" font-size="13" font-weight="500" fill="#0F172A">trip_id</text>
-      <text x="1362" y="621" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="995" y1="633" x2="1365" y2="633" stroke="#D6DEE8"/><text x="999" y="654" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="654" font-size="13" font-weight="500" fill="#0F172A">answers</text>
-      <text x="1362" y="654" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(4000)</text><rect x="987" y="666" width="386" height="33" fill="#EDF2F7"/><line x1="995" y1="666" x2="1365" y2="666" stroke="#D6DEE8"/><text x="999" y="687" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="687" font-size="13" font-weight="500" fill="#0F172A">result_code</text>
-      <text x="1362" y="687" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(40)</text><line x1="995" y1="699" x2="1365" y2="699" stroke="#D6DEE8"/><text x="999" y="720" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="720" font-size="13" font-weight="500" fill="#0F172A">result_data</text>
-      <text x="1362" y="720" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(2000)</text><rect x="987" y="732" width="386" height="33" fill="#EDF2F7"/><line x1="995" y1="732" x2="1365" y2="732" stroke="#D6DEE8"/><text x="999" y="753" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1051" y="753" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="1362" y="753" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
-    <rect x="545" y="600" width="405" height="320" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2"/>
-    <path d="M559,600 H936 Q950,600 950,614 V646 H545 V614 Q545,600 559,600 Z" fill="#1E3A8A"/>
-    <text x="561" y="630" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_PLANS · 현재 일정</text><text x="559" y="667" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="611" y="667" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="937" y="667" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="547" y="679" width="401" height="33" fill="#EDF2F7"/><line x1="555" y1="679" x2="940" y2="679" stroke="#D6DEE8"/><text x="559" y="700" font-size="9.5" font-weight="700" fill="#175CD3">FK·UQ</text>
-      <text x="611" y="700" font-size="13" font-weight="500" fill="#0F172A">trip_id</text>
-      <text x="937" y="700" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="555" y1="712" x2="940" y2="712" stroke="#D6DEE8"/><text x="559" y="733" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="611" y="733" font-size="13" font-weight="500" fill="#0F172A">survey_response_id</text>
-      <text x="937" y="733" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="547" y="745" width="401" height="33" fill="#EDF2F7"/><line x1="555" y1="745" x2="940" y2="745" stroke="#D6DEE8"/><text x="559" y="766" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="611" y="766" font-size="13" font-weight="500" fill="#0F172A">revision_no</text>
-      <text x="937" y="766" text-anchor="end" font-size="11.5" fill="#475569">INTEGER</text><line x1="555" y1="778" x2="940" y2="778" stroke="#D6DEE8"/><text x="559" y="799" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="611" y="799" font-size="13" font-weight="500" fill="#0F172A">preference_snapshot</text>
-      <text x="937" y="799" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(2000)</text><rect x="547" y="811" width="401" height="33" fill="#EDF2F7"/><line x1="555" y1="811" x2="940" y2="811" stroke="#D6DEE8"/><text x="559" y="832" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="611" y="832" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="937" y="832" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><line x1="555" y1="844" x2="940" y2="844" stroke="#D6DEE8"/><text x="559" y="865" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="611" y="865" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="937" y="865" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><rect x="547" y="877" width="401" height="33" fill="#EDF2F7"/><line x1="555" y1="877" x2="940" y2="877" stroke="#D6DEE8"/><text x="559" y="898" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="611" y="898" font-size="13" font-weight="500" fill="#0F172A">updated_at</text>
-      <text x="937" y="898" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
-    <rect x="1040" y="875" width="430" height="287" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2"/>
-    <path d="M1054,875 H1456 Q1470,875 1470,889 V921 H1040 V889 Q1040,875 1054,875 Z" fill="#1E3A8A"/>
-    <text x="1056" y="905" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_PLAN_ITEMS · 일정 항목</text><text x="1054" y="942" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="1106" y="942" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="1457" y="942" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="1042" y="954" width="426" height="33" fill="#EDF2F7"/><line x1="1050" y1="954" x2="1460" y2="954" stroke="#D6DEE8"/><text x="1054" y="975" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1106" y="975" font-size="13" font-weight="500" fill="#0F172A">plan_id</text>
-      <text x="1457" y="975" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="1050" y1="987" x2="1460" y2="987" stroke="#D6DEE8"/><text x="1054" y="1008" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1106" y="1008" font-size="13" font-weight="500" fill="#0F172A">place_id</text>
-      <text x="1457" y="1008" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="1042" y="1020" width="426" height="33" fill="#EDF2F7"/><line x1="1050" y1="1020" x2="1460" y2="1020" stroke="#D6DEE8"/><text x="1054" y="1041" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1106" y="1041" font-size="13" font-weight="500" fill="#0F172A">sequence_no</text>
-      <text x="1457" y="1041" text-anchor="end" font-size="11.5" fill="#475569">INTEGER</text><line x1="1050" y1="1053" x2="1460" y2="1053" stroke="#D6DEE8"/><text x="1054" y="1074" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1106" y="1074" font-size="13" font-weight="500" fill="#0F172A">planned_start</text>
-      <text x="1457" y="1074" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><rect x="1042" y="1086" width="426" height="33" fill="#EDF2F7"/><line x1="1050" y1="1086" x2="1460" y2="1086" stroke="#D6DEE8"/><text x="1054" y="1107" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1106" y="1107" font-size="13" font-weight="500" fill="#0F172A">planned_end</text>
-      <text x="1457" y="1107" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><line x1="1050" y1="1119" x2="1460" y2="1119" stroke="#D6DEE8"/><text x="1054" y="1140" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1106" y="1140" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="1457" y="1140" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text></g><g filter="url(#shadow)">
-    <rect x="55" y="900" width="455" height="518" rx="14" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
-    <path d="M69,900 H496 Q510,900 510,914 V946 H55 V914 Q55,900 69,900 Z" fill="#2563EB"/>
-    <text x="71" y="930" font-size="19" font-weight="700" fill="#FFFFFF">TRIP_ROUTES · 선택 경로</text><text x="69" y="967" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="121" y="967" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="497" y="967" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="57" y="979" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="979" x2="500" y2="979" stroke="#D6DEE8"/><text x="69" y="1000" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="121" y="1000" font-size="13" font-weight="500" fill="#0F172A">trip_id</text>
-      <text x="497" y="1000" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="65" y1="1012" x2="500" y2="1012" stroke="#D6DEE8"/><text x="69" y="1033" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="121" y="1033" font-size="13" font-weight="500" fill="#0F172A">member_id</text>
-      <text x="497" y="1033" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="57" y="1045" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="1045" x2="500" y2="1045" stroke="#D6DEE8"/><text x="69" y="1066" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1066" font-size="13" font-weight="500" fill="#0F172A">scope</text>
-      <text x="497" y="1066" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(30)</text><line x1="65" y1="1078" x2="500" y2="1078" stroke="#D6DEE8"/><text x="69" y="1099" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1099" font-size="13" font-weight="500" fill="#0F172A">phase</text>
-      <text x="497" y="1099" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(30)</text><rect x="57" y="1111" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="1111" x2="500" y2="1111" stroke="#D6DEE8"/><text x="69" y="1132" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1132" font-size="13" font-weight="500" fill="#0F172A">origin</text>
-      <text x="497" y="1132" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(1000)</text><line x1="65" y1="1144" x2="500" y2="1144" stroke="#D6DEE8"/><text x="69" y="1165" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1165" font-size="13" font-weight="500" fill="#0F172A">destination</text>
-      <text x="497" y="1165" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(1000)</text><rect x="57" y="1177" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="1177" x2="500" y2="1177" stroke="#D6DEE8"/><text x="69" y="1198" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1198" font-size="13" font-weight="500" fill="#0F172A">duration_minutes</text>
-      <text x="497" y="1198" text-anchor="end" font-size="11.5" fill="#475569">INTEGER</text><line x1="65" y1="1210" x2="500" y2="1210" stroke="#D6DEE8"/><text x="69" y="1231" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1231" font-size="13" font-weight="500" fill="#0F172A">transfer_count</text>
-      <text x="497" y="1231" text-anchor="end" font-size="11.5" fill="#475569">INTEGER</text><rect x="57" y="1243" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="1243" x2="500" y2="1243" stroke="#D6DEE8"/><text x="69" y="1264" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1264" font-size="13" font-weight="500" fill="#0F172A">fare</text>
-      <text x="497" y="1264" text-anchor="end" font-size="11.5" fill="#475569">INTEGER</text><line x1="65" y1="1276" x2="500" y2="1276" stroke="#D6DEE8"/><text x="69" y="1297" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1297" font-size="13" font-weight="500" fill="#0F172A">route_data</text>
-      <text x="497" y="1297" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(4000)</text><rect x="57" y="1309" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="1309" x2="500" y2="1309" stroke="#D6DEE8"/><text x="69" y="1330" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1330" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="497" y="1330" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><line x1="65" y1="1342" x2="500" y2="1342" stroke="#D6DEE8"/><text x="69" y="1363" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1363" font-size="13" font-weight="500" fill="#0F172A">valid_until</text>
-      <text x="497" y="1363" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><rect x="57" y="1375" width="451" height="33" fill="#EDF2F7"/><line x1="65" y1="1375" x2="500" y2="1375" stroke="#D6DEE8"/><text x="69" y="1396" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="121" y="1396" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="497" y="1396" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
-    <rect x="1745" y="150" width="430" height="353" rx="14" fill="#FFFFFF" stroke="#059669" stroke-width="2"/>
-    <path d="M1759,150 H2161 Q2175,150 2175,164 V196 H1745 V164 Q1745,150 1759,150 Z" fill="#059669"/>
-    <text x="1761" y="180" font-size="19" font-weight="700" fill="#FFFFFF">PLACES · 장소</text><text x="1759" y="217" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="1811" y="217" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="2162" y="217" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="1747" y="229" width="426" height="33" fill="#EDF2F7"/><line x1="1755" y1="229" x2="2165" y2="229" stroke="#D6DEE8"/><text x="1759" y="250" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="250" font-size="13" font-weight="500" fill="#0F172A">name</text>
-      <text x="2162" y="250" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(160)</text><line x1="1755" y1="262" x2="2165" y2="262" stroke="#D6DEE8"/><text x="1759" y="283" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="283" font-size="13" font-weight="500" fill="#0F172A">category</text>
-      <text x="2162" y="283" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(60)</text><rect x="1747" y="295" width="426" height="33" fill="#EDF2F7"/><line x1="1755" y1="295" x2="2165" y2="295" stroke="#D6DEE8"/><text x="1759" y="316" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="316" font-size="13" font-weight="500" fill="#0F172A">address</text>
-      <text x="2162" y="316" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(300)</text><line x1="1755" y1="328" x2="2165" y2="328" stroke="#D6DEE8"/><text x="1759" y="349" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="349" font-size="13" font-weight="500" fill="#0F172A">latitude</text>
-      <text x="2162" y="349" text-anchor="end" font-size="11.5" fill="#475569">DECIMAL(10,7)</text><rect x="1747" y="361" width="426" height="33" fill="#EDF2F7"/><line x1="1755" y1="361" x2="2165" y2="361" stroke="#D6DEE8"/><text x="1759" y="382" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="382" font-size="13" font-weight="500" fill="#0F172A">longitude</text>
-      <text x="2162" y="382" text-anchor="end" font-size="11.5" fill="#475569">DECIMAL(10,7)</text><line x1="1755" y1="394" x2="2165" y2="394" stroke="#D6DEE8"/><text x="1759" y="415" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="415" font-size="13" font-weight="500" fill="#0F172A">source</text>
-      <text x="2162" y="415" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(30)</text><rect x="1747" y="427" width="426" height="33" fill="#EDF2F7"/><line x1="1755" y1="427" x2="2165" y2="427" stroke="#D6DEE8"/><text x="1759" y="448" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="448" font-size="13" font-weight="500" fill="#0F172A">source_place_id</text>
-      <text x="2162" y="448" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(120)</text><line x1="1755" y1="460" x2="2165" y2="460" stroke="#D6DEE8"/><text x="1759" y="481" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="481" font-size="13" font-weight="500" fill="#0F172A">basic_info</text>
-      <text x="2162" y="481" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(2000)</text></g><g filter="url(#shadow)">
-    <rect x="1745" y="535" width="455" height="320" rx="14" fill="#FFFFFF" stroke="#EA580C" stroke-width="2"/>
-    <path d="M1759,535 H2186 Q2200,535 2200,549 V581 H1745 V549 Q1745,535 1759,535 Z" fill="#EA580C"/>
-    <text x="1761" y="565" font-size="19" font-weight="700" fill="#FFFFFF">EVENT_OBSERVATIONS · 이벤트 관측</text><text x="1759" y="602" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="1811" y="602" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="2187" y="602" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="1747" y="614" width="451" height="33" fill="#EDF2F7"/><line x1="1755" y1="614" x2="2190" y2="614" stroke="#D6DEE8"/><text x="1759" y="635" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1811" y="635" font-size="13" font-weight="500" fill="#0F172A">place_id</text>
-      <text x="2187" y="635" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="1755" y1="647" x2="2190" y2="647" stroke="#D6DEE8"/><text x="1759" y="668" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="668" font-size="13" font-weight="500" fill="#0F172A">event_type</text>
-      <text x="2187" y="668" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(40)</text><rect x="1747" y="680" width="451" height="33" fill="#EDF2F7"/><line x1="1755" y1="680" x2="2190" y2="680" stroke="#D6DEE8"/><text x="1759" y="701" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="701" font-size="13" font-weight="500" fill="#0F172A">source</text>
-      <text x="2187" y="701" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(40)</text><line x1="1755" y1="713" x2="2190" y2="713" stroke="#D6DEE8"/><text x="1759" y="734" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="734" font-size="13" font-weight="500" fill="#0F172A">observed_at</text>
-      <text x="2187" y="734" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><rect x="1747" y="746" width="451" height="33" fill="#EDF2F7"/><line x1="1755" y1="746" x2="2190" y2="746" stroke="#D6DEE8"/><text x="1759" y="767" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="767" font-size="13" font-weight="500" fill="#0F172A">valid_to</text>
-      <text x="2187" y="767" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><line x1="1755" y1="779" x2="2190" y2="779" stroke="#D6DEE8"/><text x="1759" y="800" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="800" font-size="13" font-weight="500" fill="#0F172A">severity</text>
-      <text x="2187" y="800" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><rect x="1747" y="812" width="451" height="33" fill="#EDF2F7"/><line x1="1755" y1="812" x2="2190" y2="812" stroke="#D6DEE8"/><text x="1759" y="833" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1811" y="833" font-size="13" font-weight="500" fill="#0F172A">normalized_value</text>
-      <text x="2187" y="833" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(2000)</text></g><g filter="url(#shadow)">
-    <rect x="1600" y="885" width="610" height="518" rx="14" fill="#FFFFFF" stroke="#DB2777" stroke-width="2"/>
-    <path d="M1614,885 H2196 Q2210,885 2210,899 V931 H1600 V899 Q1600,885 1614,885 Z" fill="#DB2777"/>
-    <text x="1616" y="915" font-size="19" font-weight="700" fill="#FFFFFF">CHANGE_PROPOSALS · 변경 제안</text><text x="1614" y="952" font-size="11.5" font-weight="700" fill="#B42318">PK</text>
-      <text x="1666" y="952" font-size="13" font-weight="500" fill="#0F172A">id</text>
-      <text x="2197" y="952" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="1602" y="964" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="964" x2="2200" y2="964" stroke="#D6DEE8"/><text x="1614" y="985" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1666" y="985" font-size="13" font-weight="500" fill="#0F172A">trip_id</text>
-      <text x="2197" y="985" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="1610" y1="997" x2="2200" y2="997" stroke="#D6DEE8"/><text x="1614" y="1018" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1666" y="1018" font-size="13" font-weight="500" fill="#0F172A">plan_id</text>
-      <text x="2197" y="1018" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><rect x="1602" y="1030" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="1030" x2="2200" y2="1030" stroke="#D6DEE8"/><text x="1614" y="1051" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1666" y="1051" font-size="13" font-weight="500" fill="#0F172A">event_id</text>
-      <text x="2197" y="1051" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="1610" y1="1063" x2="2200" y2="1063" stroke="#D6DEE8"/><text x="1614" y="1084" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1084" font-size="13" font-weight="500" fill="#0F172A">base_revision_no</text>
-      <text x="2197" y="1084" text-anchor="end" font-size="11.5" fill="#475569">INTEGER</text><rect x="1602" y="1096" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="1096" x2="2200" y2="1096" stroke="#D6DEE8"/><text x="1614" y="1117" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1117" font-size="13" font-weight="500" fill="#0F172A">status</text>
-      <text x="2197" y="1117" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(20)</text><line x1="1610" y1="1129" x2="2200" y2="1129" stroke="#D6DEE8"/><text x="1614" y="1150" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1150" font-size="13" font-weight="500" fill="#0F172A">reason</text>
-      <text x="2197" y="1150" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(500)</text><rect x="1602" y="1162" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="1162" x2="2200" y2="1162" stroke="#D6DEE8"/><text x="1614" y="1183" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1183" font-size="13" font-weight="500" fill="#0F172A">options</text>
-      <text x="2197" y="1183" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(4000)</text><line x1="1610" y1="1195" x2="2200" y2="1195" stroke="#D6DEE8"/><text x="1614" y="1216" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1216" font-size="13" font-weight="500" fill="#0F172A">selected_option</text>
-      <text x="2197" y="1216" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(2000)</text><rect x="1602" y="1228" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="1228" x2="2200" y2="1228" stroke="#D6DEE8"/><text x="1614" y="1249" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1249" font-size="13" font-weight="500" fill="#0F172A">before_snapshot</text>
-      <text x="2197" y="1249" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(4000)</text><line x1="1610" y1="1261" x2="2200" y2="1261" stroke="#D6DEE8"/><text x="1614" y="1282" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1282" font-size="13" font-weight="500" fill="#0F172A">after_snapshot</text>
-      <text x="2197" y="1282" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(4000)</text><rect x="1602" y="1294" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="1294" x2="2200" y2="1294" stroke="#D6DEE8"/><text x="1614" y="1315" font-size="11.5" font-weight="700" fill="#175CD3">FK</text>
-      <text x="1666" y="1315" font-size="13" font-weight="500" fill="#0F172A">decided_by</text>
-      <text x="2197" y="1315" text-anchor="end" font-size="11.5" fill="#475569">VARCHAR(36)</text><line x1="1610" y1="1327" x2="2200" y2="1327" stroke="#D6DEE8"/><text x="1614" y="1348" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1348" font-size="13" font-weight="500" fill="#0F172A">decided_at</text>
-      <text x="2197" y="1348" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text><rect x="1602" y="1360" width="606" height="33" fill="#EDF2F7"/><line x1="1610" y1="1360" x2="2200" y2="1360" stroke="#D6DEE8"/><text x="1614" y="1381" font-size="11.5" font-weight="700" fill="#475569"></text>
-      <text x="1666" y="1381" font-size="13" font-weight="500" fill="#0F172A">created_at</text>
-      <text x="2197" y="1381" text-anchor="end" font-size="11.5" fill="#475569">TIMESTAMP</text></g></g></g>
+  <rect width="2560" height="1400" fill="#F8FAFC"/>
+  <rect width="2560" height="1400" fill="url(#grid)" opacity="0.22"/>
+  <g font-family="Malgun Gothic, Noto Sans KR, Arial, sans-serif"><g filter="url(#shadow)">
+    <rect x="64" y="28" width="2432" height="80" rx="12" fill="#0F172A"/>
+    <text x="96" y="81" font-size="40" font-weight="700" fill="#FFFFFF">GAYADI 데이터 모델 · ERD</text>
+  </g><polyline points="390,230 480,230" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="390,230 480,230" fill="none" stroke="#1E3A8A" stroke-width="2.5" stroke-linejoin="round"/><polyline points="225,446 225,590" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="225,446 225,590" fill="none" stroke="#1E3A8A" stroke-width="2.5" stroke-linejoin="round"/><polyline points="480,340 450,340 450,680 460,680" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="480,340 450,340 450,680 460,680" fill="none" stroke="#1E3A8A" stroke-width="2.5" stroke-linejoin="round"/><polyline points="1145,408 1145,590" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="1145,408 1145,590" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linejoin="round"/><polyline points="390,310 940,310 940,690 970,690" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="390,310 940,310 940,690 970,690" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linejoin="round"/><polyline points="880,310 930,310 930,730 970,730" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="880,310 930,310 930,730 970,730" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linejoin="round"/><polyline points="680,560 680,590" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="680,560 680,590" fill="none" stroke="#1E3A8A" stroke-width="2.5" stroke-linejoin="round"/><polyline points="970,780 920,780" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="970,780 920,780" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linejoin="round"/><polyline points="920,720 1420,720" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="920,720 1420,720" fill="none" stroke="#1E3A8A" stroke-width="2.5" stroke-linejoin="round"/><polyline points="1700,560 1700,575 1620,575 1620,590" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="1700,560 1700,575 1620,575 1620,590" fill="none" stroke="#059669" stroke-width="2.5" stroke-linejoin="round"/><polyline points="1900,260 2070,260" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="1900,260 2070,260" fill="none" stroke="#0F766E" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="9 7"/><polyline points="1700,560 1940,560 1940,690 1970,690" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="1700,560 1940,560 1940,690 1970,690" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linejoin="round"/><polyline points="260,1000 260,1050" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="260,1000 260,1050" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linejoin="round"/><polyline points="680,560 900,560 900,1020 510,1020 510,1050" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="680,560 900,560 900,1020 510,1020 510,1050" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linejoin="round"/><polyline points="2200,962 2200,1050" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="2200,962 2200,1050" fill="none" stroke="#DB2777" stroke-width="2.5" stroke-linejoin="round"/><polyline points="920,850 1480,850 1480,1125 1530,1125" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="920,850 1480,850 1480,1125 1530,1125" fill="none" stroke="#DB2777" stroke-width="2.5" stroke-linejoin="round"/><g filter="url(#shadow)">
+    <rect x="60" y="150" width="330" height="296" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2.2"/>
+    <path d="M74,150 H376 Q390,150 390,164 V206 H60 V164 Q60,150 74,150 Z" fill="#1E3A8A"/>
+    <text x="76" y="188" font-size="24" font-weight="700" fill="#FFFFFF">USERS · 사용자</text><text x="72" y="232" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="126" y="232" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="378" y="232" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="62" y="244" width="326" height="38" fill="#F1F5F9"/><text x="72" y="270" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="270" font-size="17" font-weight="500" fill="#0F172A">nickname</text>
+      <text x="378" y="270" text-anchor="end" font-size="14" fill="#475569">VARCHAR(80)</text><text x="72" y="308" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="308" font-size="17" font-weight="500" fill="#0F172A">oauth_provider</text>
+      <text x="378" y="308" text-anchor="end" font-size="14" fill="#475569">VARCHAR(30)</text><rect x="62" y="320" width="326" height="38" fill="#F1F5F9"/><text x="72" y="346" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="346" font-size="17" font-weight="500" fill="#0F172A">oauth_subject</text>
+      <text x="378" y="346" text-anchor="end" font-size="14" fill="#475569">VARCHAR(120)</text><text x="72" y="384" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="384" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="378" y="384" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><rect x="62" y="396" width="326" height="38" fill="#F1F5F9"/><text x="72" y="422" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="422" font-size="17" font-weight="500" fill="#0F172A">created_at</text>
+      <text x="378" y="422" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
+    <rect x="480" y="150" width="400" height="410" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2.2"/>
+    <path d="M494,150 H866 Q880,150 880,164 V206 H480 V164 Q480,150 494,150 Z" fill="#1E3A8A"/>
+    <text x="496" y="188" font-size="24" font-weight="700" fill="#FFFFFF">TRIPS · 여행</text><text x="492" y="232" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="546" y="232" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="868" y="232" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="482" y="244" width="396" height="38" fill="#F1F5F9"/><text x="492" y="270" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="546" y="270" font-size="17" font-weight="500" fill="#0F172A">owner_id</text>
+      <text x="868" y="270" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="492" y="308" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="308" font-size="17" font-weight="500" fill="#0F172A">title</text>
+      <text x="868" y="308" text-anchor="end" font-size="14" fill="#475569">VARCHAR(120)</text><rect x="482" y="320" width="396" height="38" fill="#F1F5F9"/><text x="492" y="346" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="346" font-size="17" font-weight="500" fill="#0F172A">departure_mode</text>
+      <text x="868" y="346" text-anchor="end" font-size="14" fill="#475569">VARCHAR(30)</text><text x="492" y="384" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="384" font-size="17" font-weight="500" fill="#0F172A">departure_at</text>
+      <text x="868" y="384" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><rect x="482" y="396" width="396" height="38" fill="#F1F5F9"/><text x="492" y="422" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="422" font-size="17" font-weight="500" fill="#0F172A">meeting_at</text>
+      <text x="868" y="422" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><text x="492" y="460" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="460" font-size="17" font-weight="500" fill="#0F172A">meeting_location</text>
+      <text x="868" y="460" text-anchor="end" font-size="14" fill="#475569">VARCHAR(1000)</text><rect x="482" y="472" width="396" height="38" fill="#F1F5F9"/><text x="492" y="498" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="498" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="868" y="498" text-anchor="end" font-size="14" fill="#475569">VARCHAR(30)</text><text x="492" y="536" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="546" y="536" font-size="17" font-weight="500" fill="#0F172A">created_at</text>
+      <text x="868" y="536" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
+    <rect x="970" y="150" width="350" height="258" rx="14" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2.2"/>
+    <path d="M984,150 H1306 Q1320,150 1320,164 V206 H970 V164 Q970,150 984,150 Z" fill="#7C3AED"/>
+    <text x="986" y="188" font-size="24" font-weight="700" fill="#FFFFFF">SURVEYS · 설문</text><text x="982" y="232" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="1036" y="232" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="1308" y="232" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="972" y="244" width="346" height="38" fill="#F1F5F9"/><text x="982" y="270" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="270" font-size="17" font-weight="500" fill="#0F172A">survey_type</text>
+      <text x="1308" y="270" text-anchor="end" font-size="14" fill="#475569">VARCHAR(40)</text><text x="982" y="308" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="308" font-size="17" font-weight="500" fill="#0F172A">version</text>
+      <text x="1308" y="308" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><rect x="972" y="320" width="346" height="38" fill="#F1F5F9"/><text x="982" y="346" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="346" font-size="17" font-weight="500" fill="#0F172A">questions</text>
+      <text x="1308" y="346" text-anchor="end" font-size="14" fill="#475569">JSON</text><text x="982" y="384" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="384" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="1308" y="384" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text></g><g filter="url(#shadow)">
+    <rect x="1500" y="150" width="400" height="410" rx="14" fill="#FFFFFF" stroke="#059669" stroke-width="2.2"/>
+    <path d="M1514,150 H1886 Q1900,150 1900,164 V206 H1500 V164 Q1500,150 1514,150 Z" fill="#059669"/>
+    <text x="1516" y="188" font-size="24" font-weight="700" fill="#FFFFFF">PLACES · 장소</text><text x="1512" y="232" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="1566" y="232" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="1888" y="232" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1502" y="244" width="396" height="38" fill="#F1F5F9"/><text x="1512" y="270" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="270" font-size="17" font-weight="500" fill="#0F172A">name</text>
+      <text x="1888" y="270" text-anchor="end" font-size="14" fill="#475569">VARCHAR(160)</text><text x="1512" y="308" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="308" font-size="17" font-weight="500" fill="#0F172A">category</text>
+      <text x="1888" y="308" text-anchor="end" font-size="14" fill="#475569">VARCHAR(60)</text><rect x="1502" y="320" width="396" height="38" fill="#F1F5F9"/><text x="1512" y="346" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="346" font-size="17" font-weight="500" fill="#0F172A">address</text>
+      <text x="1888" y="346" text-anchor="end" font-size="14" fill="#475569">VARCHAR(300)</text><text x="1512" y="384" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="384" font-size="17" font-weight="500" fill="#0F172A">latitude</text>
+      <text x="1888" y="384" text-anchor="end" font-size="14" fill="#475569">DECIMAL</text><rect x="1502" y="396" width="396" height="38" fill="#F1F5F9"/><text x="1512" y="422" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="422" font-size="17" font-weight="500" fill="#0F172A">longitude</text>
+      <text x="1888" y="422" text-anchor="end" font-size="14" fill="#475569">DECIMAL</text><text x="1512" y="460" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="460" font-size="17" font-weight="500" fill="#0F172A">source</text>
+      <text x="1888" y="460" text-anchor="end" font-size="14" fill="#475569">VARCHAR(30)</text><rect x="1502" y="472" width="396" height="38" fill="#F1F5F9"/><text x="1512" y="498" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="498" font-size="17" font-weight="500" fill="#0F172A">source_place_id</text>
+      <text x="1888" y="498" text-anchor="end" font-size="14" fill="#475569">VARCHAR(120)</text><text x="1512" y="536" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1566" y="536" font-size="17" font-weight="500" fill="#0F172A">basic_info</text>
+      <text x="1888" y="536" text-anchor="end" font-size="14" fill="#475569">JSON</text></g><g filter="url(#shadow)">
+    <rect x="2070" y="150" width="430" height="334" rx="14" fill="#FFFFFF" stroke="#0F766E" stroke-width="2.2" stroke-dasharray="10 7"/>
+    <path d="M2084,150 H2486 Q2500,150 2500,164 V206 H2070 V164 Q2070,150 2084,150 Z" fill="#0F766E"/>
+    <text x="2086" y="188" font-size="24" font-weight="700" fill="#FFFFFF">PLACE_VECTORS · Milvus</text><text x="2082" y="232" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="2136" y="232" font-size="17" font-weight="500" fill="#0F172A">place_id</text>
+      <text x="2488" y="232" text-anchor="end" font-size="14" fill="#475569">VARCHAR</text><rect x="2072" y="244" width="426" height="38" fill="#F1F5F9"/><text x="2082" y="270" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2136" y="270" font-size="17" font-weight="500" fill="#0F172A">embedding</text>
+      <text x="2488" y="270" text-anchor="end" font-size="14" fill="#475569">FLOAT_VECTOR</text><text x="2082" y="308" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2136" y="308" font-size="17" font-weight="500" fill="#0F172A">content</text>
+      <text x="2488" y="308" text-anchor="end" font-size="14" fill="#475569">VARCHAR</text><rect x="2072" y="320" width="426" height="38" fill="#F1F5F9"/><text x="2082" y="346" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2136" y="346" font-size="17" font-weight="500" fill="#0F172A">category</text>
+      <text x="2488" y="346" text-anchor="end" font-size="14" fill="#475569">VARCHAR</text><text x="2082" y="384" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2136" y="384" font-size="17" font-weight="500" fill="#0F172A">indoor</text>
+      <text x="2488" y="384" text-anchor="end" font-size="14" fill="#475569">BOOLEAN</text><rect x="2072" y="396" width="426" height="38" fill="#F1F5F9"/><text x="2082" y="422" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2136" y="422" font-size="17" font-weight="500" fill="#0F172A">region_code</text>
+      <text x="2488" y="422" text-anchor="end" font-size="14" fill="#475569">VARCHAR</text><text x="2082" y="460" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2136" y="460" font-size="17" font-weight="500" fill="#0F172A">updated_at</text>
+      <text x="2488" y="460" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
+    <rect x="60" y="590" width="400" height="410" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2.2"/>
+    <path d="M74,590 H446 Q460,590 460,604 V646 H60 V604 Q60,590 74,590 Z" fill="#1E3A8A"/>
+    <text x="76" y="628" font-size="24" font-weight="700" fill="#FFFFFF">TRIP_MEMBERS · 여행 멤버</text><text x="72" y="672" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="126" y="672" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="448" y="672" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="62" y="684" width="396" height="38" fill="#F1F5F9"/><text x="72" y="710" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="126" y="710" font-size="17" font-weight="500" fill="#0F172A">trip_id</text>
+      <text x="448" y="710" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="72" y="748" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="126" y="748" font-size="17" font-weight="500" fill="#0F172A">user_id</text>
+      <text x="448" y="748" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="62" y="760" width="396" height="38" fill="#F1F5F9"/><text x="72" y="786" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="786" font-size="17" font-weight="500" fill="#0F172A">role</text>
+      <text x="448" y="786" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><text x="72" y="824" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="824" font-size="17" font-weight="500" fill="#0F172A">participation_status</text>
+      <text x="448" y="824" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><rect x="62" y="836" width="396" height="38" fill="#F1F5F9"/><text x="72" y="862" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="862" font-size="17" font-weight="500" fill="#0F172A">departure_location</text>
+      <text x="448" y="862" text-anchor="end" font-size="14" fill="#475569">JSON</text><text x="72" y="900" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="900" font-size="17" font-weight="500" fill="#0F172A">return_destination</text>
+      <text x="448" y="900" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="62" y="912" width="396" height="38" fill="#F1F5F9"/><text x="72" y="938" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="938" font-size="17" font-weight="500" fill="#0F172A">route_preferences</text>
+      <text x="448" y="938" text-anchor="end" font-size="14" fill="#475569">JSON</text><text x="72" y="976" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="976" font-size="17" font-weight="500" fill="#0F172A">created_at</text>
+      <text x="448" y="976" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
+    <rect x="520" y="590" width="400" height="372" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2.2"/>
+    <path d="M534,590 H906 Q920,590 920,604 V646 H520 V604 Q520,590 534,590 Z" fill="#1E3A8A"/>
+    <text x="536" y="628" font-size="24" font-weight="700" fill="#FFFFFF">TRIP_PLANS · 현재 일정</text><text x="532" y="672" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="586" y="672" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="908" y="672" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="522" y="684" width="396" height="38" fill="#F1F5F9"/><text x="532" y="710" font-size="14" font-weight="700" fill="#175CD3">FK·UQ</text>
+      <text x="586" y="710" font-size="17" font-weight="500" fill="#0F172A">trip_id</text>
+      <text x="908" y="710" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="532" y="748" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="586" y="748" font-size="17" font-weight="500" fill="#0F172A">survey_response_id</text>
+      <text x="908" y="748" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="522" y="760" width="396" height="38" fill="#F1F5F9"/><text x="532" y="786" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="586" y="786" font-size="17" font-weight="500" fill="#0F172A">revision_no</text>
+      <text x="908" y="786" text-anchor="end" font-size="14" fill="#475569">INTEGER</text><text x="532" y="824" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="586" y="824" font-size="17" font-weight="500" fill="#0F172A">preference_snapshot</text>
+      <text x="908" y="824" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="522" y="836" width="396" height="38" fill="#F1F5F9"/><text x="532" y="862" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="586" y="862" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="908" y="862" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><text x="532" y="900" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="586" y="900" font-size="17" font-weight="500" fill="#0F172A">created_at</text>
+      <text x="908" y="900" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><rect x="522" y="912" width="396" height="38" fill="#F1F5F9"/><text x="532" y="938" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="586" y="938" font-size="17" font-weight="500" fill="#0F172A">updated_at</text>
+      <text x="908" y="938" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
+    <rect x="970" y="590" width="400" height="372" rx="14" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2.2"/>
+    <path d="M984,590 H1356 Q1370,590 1370,604 V646 H970 V604 Q970,590 984,590 Z" fill="#7C3AED"/>
+    <text x="986" y="628" font-size="24" font-weight="700" fill="#FFFFFF">SURVEY_RESPONSES · 설문 응답</text><text x="982" y="672" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="1036" y="672" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="1358" y="672" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="972" y="684" width="396" height="38" fill="#F1F5F9"/><text x="982" y="710" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1036" y="710" font-size="17" font-weight="500" fill="#0F172A">survey_id</text>
+      <text x="1358" y="710" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="982" y="748" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1036" y="748" font-size="17" font-weight="500" fill="#0F172A">user_id</text>
+      <text x="1358" y="748" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="972" y="760" width="396" height="38" fill="#F1F5F9"/><text x="982" y="786" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1036" y="786" font-size="17" font-weight="500" fill="#0F172A">trip_id</text>
+      <text x="1358" y="786" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="982" y="824" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="824" font-size="17" font-weight="500" fill="#0F172A">answers</text>
+      <text x="1358" y="824" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="972" y="836" width="396" height="38" fill="#F1F5F9"/><text x="982" y="862" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="862" font-size="17" font-weight="500" fill="#0F172A">result_code</text>
+      <text x="1358" y="862" text-anchor="end" font-size="14" fill="#475569">VARCHAR(40)</text><text x="982" y="900" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="900" font-size="17" font-weight="500" fill="#0F172A">result_data</text>
+      <text x="1358" y="900" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="972" y="912" width="396" height="38" fill="#F1F5F9"/><text x="982" y="938" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1036" y="938" font-size="17" font-weight="500" fill="#0F172A">created_at</text>
+      <text x="1358" y="938" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g><g filter="url(#shadow)">
+    <rect x="1420" y="590" width="400" height="334" rx="14" fill="#FFFFFF" stroke="#1E3A8A" stroke-width="2.2"/>
+    <path d="M1434,590 H1806 Q1820,590 1820,604 V646 H1420 V604 Q1420,590 1434,590 Z" fill="#1E3A8A"/>
+    <text x="1436" y="628" font-size="24" font-weight="700" fill="#FFFFFF">TRIP_PLAN_ITEMS · 일정 항목</text><text x="1432" y="672" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="1486" y="672" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="1808" y="672" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1422" y="684" width="396" height="38" fill="#F1F5F9"/><text x="1432" y="710" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1486" y="710" font-size="17" font-weight="500" fill="#0F172A">plan_id</text>
+      <text x="1808" y="710" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="1432" y="748" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1486" y="748" font-size="17" font-weight="500" fill="#0F172A">place_id</text>
+      <text x="1808" y="748" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1422" y="760" width="396" height="38" fill="#F1F5F9"/><text x="1432" y="786" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1486" y="786" font-size="17" font-weight="500" fill="#0F172A">sequence_no</text>
+      <text x="1808" y="786" text-anchor="end" font-size="14" fill="#475569">INTEGER</text><text x="1432" y="824" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1486" y="824" font-size="17" font-weight="500" fill="#0F172A">planned_start</text>
+      <text x="1808" y="824" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><rect x="1422" y="836" width="396" height="38" fill="#F1F5F9"/><text x="1432" y="862" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1486" y="862" font-size="17" font-weight="500" fill="#0F172A">planned_end</text>
+      <text x="1808" y="862" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><text x="1432" y="900" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1486" y="900" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="1808" y="900" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text></g><g filter="url(#shadow)">
+    <rect x="1970" y="590" width="460" height="372" rx="14" fill="#FFFFFF" stroke="#EA580C" stroke-width="2.2"/>
+    <path d="M1984,590 H2416 Q2430,590 2430,604 V646 H1970 V604 Q1970,590 1984,590 Z" fill="#EA580C"/>
+    <text x="1986" y="628" font-size="24" font-weight="700" fill="#FFFFFF">EVENT_OBSERVATIONS · 이벤트 관측</text><text x="1982" y="672" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="2036" y="672" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="2418" y="672" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1972" y="684" width="456" height="38" fill="#F1F5F9"/><text x="1982" y="710" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="2036" y="710" font-size="17" font-weight="500" fill="#0F172A">place_id</text>
+      <text x="2418" y="710" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="1982" y="748" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2036" y="748" font-size="17" font-weight="500" fill="#0F172A">event_type</text>
+      <text x="2418" y="748" text-anchor="end" font-size="14" fill="#475569">VARCHAR(40)</text><rect x="1972" y="760" width="456" height="38" fill="#F1F5F9"/><text x="1982" y="786" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2036" y="786" font-size="17" font-weight="500" fill="#0F172A">source</text>
+      <text x="2418" y="786" text-anchor="end" font-size="14" fill="#475569">VARCHAR(40)</text><text x="1982" y="824" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2036" y="824" font-size="17" font-weight="500" fill="#0F172A">observed_at</text>
+      <text x="2418" y="824" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><rect x="1972" y="836" width="456" height="38" fill="#F1F5F9"/><text x="1982" y="862" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2036" y="862" font-size="17" font-weight="500" fill="#0F172A">valid_to</text>
+      <text x="2418" y="862" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><text x="1982" y="900" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2036" y="900" font-size="17" font-weight="500" fill="#0F172A">severity</text>
+      <text x="2418" y="900" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><rect x="1972" y="912" width="456" height="38" fill="#F1F5F9"/><text x="1982" y="938" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2036" y="938" font-size="17" font-weight="500" fill="#0F172A">normalized_value</text>
+      <text x="2418" y="938" text-anchor="end" font-size="14" fill="#475569">JSON</text></g><g filter="url(#shadow)">
+    <rect x="60" y="1050" width="900" height="296" rx="14" fill="#FFFFFF" stroke="#2563EB" stroke-width="2.2"/>
+    <path d="M74,1050 H946 Q960,1050 960,1064 V1106 H60 V1064 Q60,1050 74,1050 Z" fill="#2563EB"/>
+    <text x="76" y="1088" font-size="24" font-weight="700" fill="#FFFFFF">TRIP_ROUTES · 선택 경로</text><text x="72" y="1132" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="126" y="1132" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="498" y="1132" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="62" y="1144" width="446" height="38" fill="#F1F5F9"/><text x="72" y="1170" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="126" y="1170" font-size="17" font-weight="500" fill="#0F172A">trip_id</text>
+      <text x="498" y="1170" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="72" y="1208" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="126" y="1208" font-size="17" font-weight="500" fill="#0F172A">member_id</text>
+      <text x="498" y="1208" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="62" y="1220" width="446" height="38" fill="#F1F5F9"/><text x="72" y="1246" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="1246" font-size="17" font-weight="500" fill="#0F172A">scope</text>
+      <text x="498" y="1246" text-anchor="end" font-size="14" fill="#475569">VARCHAR(30)</text><text x="72" y="1284" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="1284" font-size="17" font-weight="500" fill="#0F172A">phase</text>
+      <text x="498" y="1284" text-anchor="end" font-size="14" fill="#475569">VARCHAR(30)</text><rect x="62" y="1296" width="446" height="38" fill="#F1F5F9"/><text x="72" y="1322" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="126" y="1322" font-size="17" font-weight="500" fill="#0F172A">origin</text>
+      <text x="498" y="1322" text-anchor="end" font-size="14" fill="#475569">JSON</text><line x1="510" y1="1114" x2="510" y2="1334" stroke="#CBD5E1"/><text x="522" y="1132" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="576" y="1132" font-size="17" font-weight="500" fill="#0F172A">destination</text>
+      <text x="948" y="1132" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="512" y="1144" width="446" height="38" fill="#F1F5F9"/><line x1="510" y1="1114" x2="510" y2="1334" stroke="#CBD5E1"/><text x="522" y="1170" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="576" y="1170" font-size="17" font-weight="500" fill="#0F172A">duration_minutes</text>
+      <text x="948" y="1170" text-anchor="end" font-size="14" fill="#475569">INTEGER</text><line x1="510" y1="1114" x2="510" y2="1334" stroke="#CBD5E1"/><text x="522" y="1208" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="576" y="1208" font-size="17" font-weight="500" fill="#0F172A">transfer_count</text>
+      <text x="948" y="1208" text-anchor="end" font-size="14" fill="#475569">INTEGER</text><rect x="512" y="1220" width="446" height="38" fill="#F1F5F9"/><line x1="510" y1="1114" x2="510" y2="1334" stroke="#CBD5E1"/><text x="522" y="1246" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="576" y="1246" font-size="17" font-weight="500" fill="#0F172A">fare</text>
+      <text x="948" y="1246" text-anchor="end" font-size="14" fill="#475569">INTEGER</text><line x1="510" y1="1114" x2="510" y2="1334" stroke="#CBD5E1"/><text x="522" y="1284" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="576" y="1284" font-size="17" font-weight="500" fill="#0F172A">route_data</text>
+      <text x="948" y="1284" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="512" y="1296" width="446" height="38" fill="#F1F5F9"/><line x1="510" y1="1114" x2="510" y2="1334" stroke="#CBD5E1"/><text x="522" y="1322" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="576" y="1322" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="948" y="1322" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text></g><g filter="url(#shadow)">
+    <rect x="1530" y="1050" width="900" height="334" rx="14" fill="#FFFFFF" stroke="#DB2777" stroke-width="2.2"/>
+    <path d="M1544,1050 H2416 Q2430,1050 2430,1064 V1106 H1530 V1064 Q1530,1050 1544,1050 Z" fill="#DB2777"/>
+    <text x="1546" y="1088" font-size="24" font-weight="700" fill="#FFFFFF">CHANGE_PROPOSALS · 변경 제안</text><text x="1542" y="1132" font-size="14" font-weight="700" fill="#B42318">PK</text>
+      <text x="1596" y="1132" font-size="17" font-weight="500" fill="#0F172A">id</text>
+      <text x="1968" y="1132" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1532" y="1144" width="446" height="38" fill="#F1F5F9"/><text x="1542" y="1170" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1596" y="1170" font-size="17" font-weight="500" fill="#0F172A">trip_id</text>
+      <text x="1968" y="1170" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="1542" y="1208" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1596" y="1208" font-size="17" font-weight="500" fill="#0F172A">plan_id</text>
+      <text x="1968" y="1208" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1532" y="1220" width="446" height="38" fill="#F1F5F9"/><text x="1542" y="1246" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="1596" y="1246" font-size="17" font-weight="500" fill="#0F172A">event_id</text>
+      <text x="1968" y="1246" text-anchor="end" font-size="14" fill="#475569">UUID</text><text x="1542" y="1284" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1596" y="1284" font-size="17" font-weight="500" fill="#0F172A">base_revision_no</text>
+      <text x="1968" y="1284" text-anchor="end" font-size="14" fill="#475569">INTEGER</text><rect x="1532" y="1296" width="446" height="38" fill="#F1F5F9"/><text x="1542" y="1322" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1596" y="1322" font-size="17" font-weight="500" fill="#0F172A">status</text>
+      <text x="1968" y="1322" text-anchor="end" font-size="14" fill="#475569">VARCHAR(20)</text><text x="1542" y="1360" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="1596" y="1360" font-size="17" font-weight="500" fill="#0F172A">reason</text>
+      <text x="1968" y="1360" text-anchor="end" font-size="14" fill="#475569">VARCHAR(500)</text><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1132" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2046" y="1132" font-size="17" font-weight="500" fill="#0F172A">options</text>
+      <text x="2418" y="1132" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="1982" y="1144" width="446" height="38" fill="#F1F5F9"/><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1170" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2046" y="1170" font-size="17" font-weight="500" fill="#0F172A">selected_option</text>
+      <text x="2418" y="1170" text-anchor="end" font-size="14" fill="#475569">JSON</text><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1208" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2046" y="1208" font-size="17" font-weight="500" fill="#0F172A">before_snapshot</text>
+      <text x="2418" y="1208" text-anchor="end" font-size="14" fill="#475569">JSON</text><rect x="1982" y="1220" width="446" height="38" fill="#F1F5F9"/><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1246" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2046" y="1246" font-size="17" font-weight="500" fill="#0F172A">after_snapshot</text>
+      <text x="2418" y="1246" text-anchor="end" font-size="14" fill="#475569">JSON</text><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1284" font-size="14" font-weight="700" fill="#175CD3">FK</text>
+      <text x="2046" y="1284" font-size="17" font-weight="500" fill="#0F172A">decided_by</text>
+      <text x="2418" y="1284" text-anchor="end" font-size="14" fill="#475569">UUID</text><rect x="1982" y="1296" width="446" height="38" fill="#F1F5F9"/><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1322" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2046" y="1322" font-size="17" font-weight="500" fill="#0F172A">decided_at</text>
+      <text x="2418" y="1322" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text><line x1="1980" y1="1114" x2="1980" y2="1372" stroke="#CBD5E1"/><text x="1992" y="1360" font-size="14" font-weight="700" fill="#475569"></text>
+      <text x="2046" y="1360" font-size="17" font-weight="500" fill="#0F172A">created_at</text>
+      <text x="2418" y="1360" text-anchor="end" font-size="14" fill="#475569">TIMESTAMP</text></g></g>
 </svg>

@@ -36,6 +36,7 @@ build/
 application-local.yml
 *.local.yml
 logs/
+.data/
 *.log
 *.pid
 *.h2.db
@@ -49,3 +50,10 @@ logs/
 .DS_Store
 Thumbs.db
 docs/presentation/*.tmp
+
+### Local agent/build state ###
+.gradle/
+nul
+.qwen/
+.agents/
+.codex/

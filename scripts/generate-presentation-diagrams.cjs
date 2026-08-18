@@ -4,590 +4,373 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'docs', 'presentation');
-fs.mkdirSync(OUT, { recursive: true });
-
 const W = 2560;
-const H = 1440;
+const ERD_H = 1400;
+const FLOW_H = 1220;
+
 const C = {
-  bg: '#F8FAFC', ink: '#0F172A', muted: '#475569', border: '#94A3B8', white: '#FFFFFF',
-  navy: '#1E3A8A', violet: '#7C3AED', green: '#059669', orange: '#EA580C',
-  blue: '#2563EB', rose: '#DB2777', success: '#059669', line: '#64748B',
-  cyan: '#0F766E', gold: '#D97706'
+  bg: '#F8FAFC', ink: '#0F172A', muted: '#475569', line: '#64748B', white: '#FFFFFF',
+  navy: '#1E3A8A', blue: '#2563EB', violet: '#7C3AED', green: '#059669',
+  orange: '#EA580C', rose: '#DB2777', teal: '#0F766E', paleBlue: '#EFF6FF',
+  paleViolet: '#F5F3FF', paleGreen: '#ECFDF5', paleOrange: '#FFF7ED', paleRose: '#FDF2F8'
 };
 
-const esc = (value) => String(value)
-  .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+const xmlEsc = (value) => String(value)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;');
 
-function shell(title, description, content) {
+const svgEsc = xmlEsc;
+
+function shell(title, content, height) {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <title>${esc(title)}</title><desc>${esc(description)}</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}" viewBox="0 0 ${W} ${height}">
+  <title>${svgEsc(title)}</title>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#071A33" flood-opacity="0.18"/>
-    </filter>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#071A33" flood-opacity="0.12"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#0F172A" flood-opacity="0.16"/>
     </filter>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#52627A"/>
+      <path d="M0,0 L10,5 L0,10 Z" fill="#64748B"/>
     </marker>
-    <linearGradient id="pageBackground" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#DEE7F2"/><stop offset="0.52" stop-color="#F4F7FB"/><stop offset="1" stop-color="#E8EEF6"/>
-    </linearGradient>
-    <linearGradient id="topHeader" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#071A33"/><stop offset="0.56" stop-color="#123C69"/><stop offset="1" stop-color="#165A77"/>
-    </linearGradient>
-    <linearGradient id="bottomBand" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#071A33"/><stop offset="0.7" stop-color="#102E50"/><stop offset="1" stop-color="#12485C"/>
-    </linearGradient>
     <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
-      <circle cx="1" cy="1" r="1.15" fill="#AAB7C8"/>
+      <circle cx="1" cy="1" r="1" fill="#CBD5E1"/>
     </pattern>
   </defs>
-  <rect width="${W}" height="${H}" fill="#FFFFFF"/>
-  <rect width="${W}" height="${H}" fill="url(#grid)" opacity="0.08"/>
+  <rect width="${W}" height="${height}" fill="${C.bg}"/>
+  <rect width="${W}" height="${height}" fill="url(#grid)" opacity="0.22"/>
   <g font-family="Malgun Gothic, Noto Sans KR, Arial, sans-serif">${content}</g>
 </svg>`;
 }
 
-function header(title, subtitle, rightText = '') {
-  const right = rightText
-    ? `\n    <text x="2464" y="72" text-anchor="end" font-size="14" font-weight="600" fill="#CBD5E1">${esc(rightText)}</text>`
-    : '';
-  const titleY = subtitle ? 62 : 77;
-  const subtitleText = subtitle
-    ? `\n    <text x="94" y="88" font-size="14.5" fill="#CBD5E1">${esc(subtitle)}</text>`
-    : '';
-  return `<g filter="url(#softShadow)">
-    <rect x="64" y="28" width="2432" height="80" rx="10" fill="#0F172A"/>
-    <text x="94" y="${titleY}" font-size="29" font-weight="700" fill="#FFFFFF">${esc(title)}</text>${subtitleText}${right}
+function header(title) {
+  return `<g filter="url(#shadow)">
+    <rect x="64" y="28" width="2432" height="80" rx="12" fill="#0F172A"/>
+    <text x="96" y="81" font-size="40" font-weight="700" fill="#FFFFFF">${svgEsc(title)}</text>
   </g>`;
 }
 
-function table({ id, x, y, w, color, note, rows }) {
-  const head = 46;
-  const rowH = 33;
-  const h = head + rows.length * rowH + 10;
-  let body = `<g filter="url(#shadow)">
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#FFFFFF" stroke="${color}" stroke-width="2"/>
-    <path d="M${x + 14},${y} H${x + w - 14} Q${x + w},${y} ${x + w},${y + 14} V${y + head} H${x} V${y + 14} Q${x},${y} ${x + 14},${y} Z" fill="${color}"/>
-    <text x="${x + 16}" y="${y + 30}" font-size="19" font-weight="700" fill="#FFFFFF">${esc(id)}</text>`;
-  rows.forEach((row, index) => {
-    const top = y + head + index * rowH;
-    if (index % 2 === 1) body += `<rect x="${x + 2}" y="${top}" width="${w - 4}" height="${rowH}" fill="#EDF2F7"/>`;
-    if (index) body += `<line x1="${x + 10}" y1="${top}" x2="${x + w - 10}" y2="${top}" stroke="#D6DEE8"/>`;
-    const keyColor = row[0] === 'PK' ? '#B42318' : row[0].startsWith('FK') ? '#175CD3' : C.muted;
-    const keySize = row[0].length > 2 ? 9.5 : 11.5;
-    body += `<text x="${x + 14}" y="${top + 21}" font-size="${keySize}" font-weight="700" fill="${keyColor}">${esc(row[0])}</text>
-      <text x="${x + 66}" y="${top + 21}" font-size="13" font-weight="500" fill="${C.ink}">${esc(row[1])}</text>
-      <text x="${x + w - 13}" y="${top + 21}" text-anchor="end" font-size="11.5" fill="${C.muted}">${esc(row[2])}</text>`;
-  });
-  return { x, y, w, h, svg: body + '</g>' };
+const erdTables = [
+  { id: 'users', title: 'USERS · 사용자', x: 60, y: 150, w: 330, color: C.navy, rows: [
+    ['PK', 'id', 'UUID'], ['', 'nickname', 'VARCHAR(80)'], ['', 'oauth_provider', 'VARCHAR(30)'],
+    ['', 'oauth_subject', 'VARCHAR(120)'], ['', 'status', 'VARCHAR(20)'], ['', 'created_at', 'TIMESTAMP']
+  ]},
+  { id: 'trips', title: 'TRIPS · 여행', x: 480, y: 150, w: 400, color: C.navy, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'owner_id', 'UUID'], ['', 'title', 'VARCHAR(120)'],
+    ['', 'departure_mode', 'VARCHAR(30)'], ['', 'departure_at', 'TIMESTAMP'], ['', 'meeting_at', 'TIMESTAMP'],
+    ['', 'meeting_location', 'VARCHAR(1000)'], ['', 'status', 'VARCHAR(30)'], ['', 'created_at', 'TIMESTAMP']
+  ]},
+  { id: 'surveys', title: 'SURVEYS · 설문', x: 970, y: 150, w: 350, color: C.violet, rows: [
+    ['PK', 'id', 'UUID'], ['', 'survey_type', 'VARCHAR(40)'], ['', 'version', 'VARCHAR(20)'],
+    ['', 'questions', 'JSON'], ['', 'status', 'VARCHAR(20)']
+  ]},
+  { id: 'places', title: 'PLACES · 장소', x: 1500, y: 150, w: 400, color: C.green, rows: [
+    ['PK', 'id', 'UUID'], ['', 'name', 'VARCHAR(160)'], ['', 'category', 'VARCHAR(60)'],
+    ['', 'address', 'VARCHAR(300)'], ['', 'latitude', 'DECIMAL'], ['', 'longitude', 'DECIMAL'],
+    ['', 'source', 'VARCHAR(30)'], ['', 'source_place_id', 'VARCHAR(120)'], ['', 'basic_info', 'JSON']
+  ]},
+  { id: 'placeVectors', title: 'PLACE_VECTORS · Milvus', x: 2070, y: 150, w: 430, color: C.teal, dashed: true, rows: [
+    ['PK', 'place_id', 'VARCHAR'], ['', 'embedding', 'FLOAT_VECTOR'], ['', 'content', 'VARCHAR'],
+    ['', 'category', 'VARCHAR'], ['', 'indoor', 'BOOLEAN'], ['', 'region_code', 'VARCHAR'], ['', 'updated_at', 'TIMESTAMP']
+  ]},
+  { id: 'members', title: 'TRIP_MEMBERS · 여행 멤버', x: 60, y: 590, w: 400, color: C.navy, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'trip_id', 'UUID'], ['FK', 'user_id', 'UUID'], ['', 'role', 'VARCHAR(20)'],
+    ['', 'participation_status', 'VARCHAR(20)'], ['', 'departure_location', 'JSON'],
+    ['', 'return_destination', 'JSON'], ['', 'route_preferences', 'JSON'], ['', 'created_at', 'TIMESTAMP']
+  ]},
+  { id: 'plans', title: 'TRIP_PLANS · 현재 일정', x: 520, y: 590, w: 400, color: C.navy, rows: [
+    ['PK', 'id', 'UUID'], ['FK·UQ', 'trip_id', 'UUID'], ['FK', 'survey_response_id', 'UUID'],
+    ['', 'revision_no', 'INTEGER'], ['', 'preference_snapshot', 'JSON'], ['', 'status', 'VARCHAR(20)'],
+    ['', 'created_at', 'TIMESTAMP'], ['', 'updated_at', 'TIMESTAMP']
+  ]},
+  { id: 'responses', title: 'SURVEY_RESPONSES · 설문 응답', x: 970, y: 590, w: 400, color: C.violet, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'survey_id', 'UUID'], ['FK', 'user_id', 'UUID'], ['FK', 'trip_id', 'UUID'],
+    ['', 'answers', 'JSON'], ['', 'result_code', 'VARCHAR(40)'], ['', 'result_data', 'JSON'], ['', 'created_at', 'TIMESTAMP']
+  ]},
+  { id: 'items', title: 'TRIP_PLAN_ITEMS · 일정 항목', x: 1420, y: 590, w: 400, color: C.navy, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'plan_id', 'UUID'], ['FK', 'place_id', 'UUID'], ['', 'sequence_no', 'INTEGER'],
+    ['', 'planned_start', 'TIMESTAMP'], ['', 'planned_end', 'TIMESTAMP'], ['', 'status', 'VARCHAR(20)']
+  ]},
+  { id: 'events', title: 'EVENT_OBSERVATIONS · 이벤트 관측', x: 1970, y: 590, w: 460, color: C.orange, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'place_id', 'UUID'], ['', 'event_type', 'VARCHAR(40)'], ['', 'source', 'VARCHAR(40)'],
+    ['', 'observed_at', 'TIMESTAMP'], ['', 'valid_to', 'TIMESTAMP'], ['', 'severity', 'VARCHAR(20)'], ['', 'normalized_value', 'JSON']
+  ]},
+  { id: 'routes', title: 'TRIP_ROUTES · 선택 경로', x: 60, y: 1050, w: 900, color: C.blue, columns: 2, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'trip_id', 'UUID'], ['FK', 'member_id', 'UUID'], ['', 'scope', 'VARCHAR(30)'],
+    ['', 'phase', 'VARCHAR(30)'], ['', 'origin', 'JSON'], ['', 'destination', 'JSON'], ['', 'duration_minutes', 'INTEGER'],
+    ['', 'transfer_count', 'INTEGER'], ['', 'fare', 'INTEGER'], ['', 'route_data', 'JSON'], ['', 'status', 'VARCHAR(20)']
+  ]},
+  { id: 'proposals', title: 'CHANGE_PROPOSALS · 변경 제안', x: 1530, y: 1050, w: 900, color: C.rose, columns: 2, rows: [
+    ['PK', 'id', 'UUID'], ['FK', 'trip_id', 'UUID'], ['FK', 'plan_id', 'UUID'], ['FK', 'event_id', 'UUID'],
+    ['', 'base_revision_no', 'INTEGER'], ['', 'status', 'VARCHAR(20)'], ['', 'reason', 'VARCHAR(500)'], ['', 'options', 'JSON'],
+    ['', 'selected_option', 'JSON'], ['', 'before_snapshot', 'JSON'], ['', 'after_snapshot', 'JSON'],
+    ['FK', 'decided_by', 'UUID'], ['', 'decided_at', 'TIMESTAMP'], ['', 'created_at', 'TIMESTAMP']
+  ]}
+];
+
+function tableHeight(table) {
+  const count = table.columns === 2 ? Math.ceil(table.rows.length / 2) : table.rows.length;
+  return 56 + count * 38 + 12;
 }
 
-function relation(points, options = {}) {
-  const color = options.color || C.line;
+function svgTable(table) {
+  const h = tableHeight(table);
+  const dash = table.dashed ? ' stroke-dasharray="10 7"' : '';
+  let out = `<g filter="url(#shadow)">
+    <rect x="${table.x}" y="${table.y}" width="${table.w}" height="${h}" rx="14" fill="#FFFFFF" stroke="${table.color}" stroke-width="2.2"${dash}/>
+    <path d="M${table.x + 14},${table.y} H${table.x + table.w - 14} Q${table.x + table.w},${table.y} ${table.x + table.w},${table.y + 14} V${table.y + 56} H${table.x} V${table.y + 14} Q${table.x},${table.y} ${table.x + 14},${table.y} Z" fill="${table.color}"/>
+    <text x="${table.x + 16}" y="${table.y + 38}" font-size="24" font-weight="700" fill="#FFFFFF">${svgEsc(table.title)}</text>`;
+  const cols = table.columns === 2 ? 2 : 1;
+  const rowsPerCol = Math.ceil(table.rows.length / cols);
+  const colW = table.w / cols;
+  table.rows.forEach((row, index) => {
+    const col = Math.floor(index / rowsPerCol);
+    const rowIndex = index % rowsPerCol;
+    const x = table.x + col * colW;
+    const y = table.y + 56 + rowIndex * 38;
+    if (rowIndex % 2 === 1) out += `<rect x="${x + 2}" y="${y}" width="${colW - 4}" height="38" fill="#F1F5F9"/>`;
+    if (col === 1) out += `<line x1="${x}" y1="${table.y + 64}" x2="${x}" y2="${table.y + h - 12}" stroke="#CBD5E1"/>`;
+    const keyColor = row[0].startsWith('PK') ? '#B42318' : row[0].startsWith('FK') ? '#175CD3' : C.muted;
+    out += `<text x="${x + 12}" y="${y + 26}" font-size="14" font-weight="700" fill="${keyColor}">${svgEsc(row[0])}</text>
+      <text x="${x + 66}" y="${y + 26}" font-size="17" font-weight="500" fill="${C.ink}">${svgEsc(row[1])}</text>
+      <text x="${x + colW - 12}" y="${y + 26}" text-anchor="end" font-size="14" fill="${C.muted}">${svgEsc(row[2])}</text>`;
+  });
+  return out + '</g>';
+}
+
+function svgRelation(points, color = C.line, dashed = false) {
   const p = points.map(([x, y]) => `${x},${y}`).join(' ');
-  return `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-opacity="0.96" stroke-width="5.2" stroke-linejoin="round"/>
-    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round"/>`;
+  return `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"${dashed ? ' stroke-dasharray="9 7"' : ''}/>`;
 }
 
-function erd() {
-  const boxes = {};
-  const displayNames = {
-    users: 'USERS · 사용자', trips: 'TRIPS · 여행', trip_members: 'TRIP_MEMBERS · 여행 멤버',
-    surveys: 'SURVEYS · 설문', survey_responses: 'SURVEY_RESPONSES · 설문 응답',
-    trip_plans: 'TRIP_PLANS · 현재 일정', trip_plan_items: 'TRIP_PLAN_ITEMS · 일정 항목',
-    trip_routes: 'TRIP_ROUTES · 선택 경로', places: 'PLACES · 장소',
-    event_observations: 'EVENT_OBSERVATIONS · 이벤트 관측',
-    change_proposals: 'CHANGE_PROPOSALS · 변경 제안'
-  };
-  const defs = [
-    ['users', 55, 150, 335, C.navy, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['', 'nickname', 'VARCHAR(80)'], ['', 'oauth_provider', 'VARCHAR(30)'], ['', 'oauth_subject', 'VARCHAR(120)'], ['', 'status', 'VARCHAR(20)'], ['', 'created_at', 'TIMESTAMP']]],
-    ['trips', 475, 150, 400, C.navy, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'owner_id', 'VARCHAR(36)'], ['', 'title', 'VARCHAR(120)'], ['', 'departure_mode', 'VARCHAR(30)'], ['', 'departure_at', 'TIMESTAMP'], ['', 'meeting_at', 'TIMESTAMP'], ['', 'meeting_location', 'VARCHAR(1000)'], ['', 'status', 'VARCHAR(30)'], ['', 'created_at', 'TIMESTAMP']]],
-    ['trip_members', 55, 520, 415, C.navy, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['FK', 'user_id', 'VARCHAR(36)'], ['', 'role', 'VARCHAR(20)'], ['', 'participation_status', 'VARCHAR(20)'], ['', 'departure_location', 'VARCHAR(1000)'], ['', 'return_destination', 'VARCHAR(1000)'], ['', 'route_preferences', 'VARCHAR(1000)'], ['', 'created_at', 'TIMESTAMP']]],
-    ['surveys', 985, 150, 355, C.violet, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['', 'survey_type', 'VARCHAR(40)'], ['', 'version', 'VARCHAR(20)'], ['', 'questions', 'VARCHAR(4000)'], ['', 'status', 'VARCHAR(20)']]],
-    ['survey_responses', 985, 455, 390, C.violet, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'survey_id', 'VARCHAR(36)'], ['FK', 'user_id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['', 'answers', 'VARCHAR(4000)'], ['', 'result_code', 'VARCHAR(40)'], ['', 'result_data', 'VARCHAR(2000)'], ['', 'created_at', 'TIMESTAMP']]],
-    ['trip_plans', 545, 600, 405, C.navy, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK·UQ', 'trip_id', 'VARCHAR(36)'], ['FK', 'survey_response_id', 'VARCHAR(36)'], ['', 'revision_no', 'INTEGER'], ['', 'preference_snapshot', 'VARCHAR(2000)'], ['', 'status', 'VARCHAR(20)'], ['', 'created_at', 'TIMESTAMP'], ['', 'updated_at', 'TIMESTAMP']]],
-    ['trip_plan_items', 1040, 875, 430, C.navy, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'plan_id', 'VARCHAR(36)'], ['FK', 'place_id', 'VARCHAR(36)'], ['', 'sequence_no', 'INTEGER'], ['', 'planned_start', 'TIMESTAMP'], ['', 'planned_end', 'TIMESTAMP'], ['', 'status', 'VARCHAR(20)']]],
-    ['trip_routes', 55, 900, 455, C.blue, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['FK', 'member_id', 'VARCHAR(36)'], ['', 'scope', 'VARCHAR(30)'], ['', 'phase', 'VARCHAR(30)'], ['', 'origin', 'VARCHAR(1000)'], ['', 'destination', 'VARCHAR(1000)'], ['', 'duration_minutes', 'INTEGER'], ['', 'transfer_count', 'INTEGER'], ['', 'fare', 'INTEGER'], ['', 'route_data', 'VARCHAR(4000)'], ['', 'status', 'VARCHAR(20)'], ['', 'valid_until', 'TIMESTAMP'], ['', 'created_at', 'TIMESTAMP']]],
-    ['places', 1745, 150, 430, C.green, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['', 'name', 'VARCHAR(160)'], ['', 'category', 'VARCHAR(60)'], ['', 'address', 'VARCHAR(300)'], ['', 'latitude', 'DECIMAL(10,7)'], ['', 'longitude', 'DECIMAL(10,7)'], ['', 'source', 'VARCHAR(30)'], ['', 'source_place_id', 'VARCHAR(120)'], ['', 'basic_info', 'VARCHAR(2000)']]],
-    ['event_observations', 1745, 535, 455, C.orange, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'place_id', 'VARCHAR(36)'], ['', 'event_type', 'VARCHAR(40)'], ['', 'source', 'VARCHAR(40)'], ['', 'observed_at', 'TIMESTAMP'], ['', 'valid_to', 'TIMESTAMP'], ['', 'severity', 'VARCHAR(20)'], ['', 'normalized_value', 'VARCHAR(2000)']]],
-    ['change_proposals', 1600, 885, 610, C.rose, '', [
-      ['PK', 'id', 'VARCHAR(36)'], ['FK', 'trip_id', 'VARCHAR(36)'], ['FK', 'plan_id', 'VARCHAR(36)'], ['FK', 'event_id', 'VARCHAR(36)'], ['', 'base_revision_no', 'INTEGER'], ['', 'status', 'VARCHAR(20)'], ['', 'reason', 'VARCHAR(500)'], ['', 'options', 'VARCHAR(4000)'], ['', 'selected_option', 'VARCHAR(2000)'], ['', 'before_snapshot', 'VARCHAR(4000)'], ['', 'after_snapshot', 'VARCHAR(4000)'], ['FK', 'decided_by', 'VARCHAR(36)'], ['', 'decided_at', 'TIMESTAMP'], ['', 'created_at', 'TIMESTAMP']]],
-  ];
+function erdSvg() {
+  let relations = '';
+  relations += svgRelation([[390, 230], [480, 230]], C.navy);
+  relations += svgRelation([[225, 446], [225, 590]], C.navy);
+  relations += svgRelation([[480, 340], [450, 340], [450, 680], [460, 680]], C.navy);
+  relations += svgRelation([[1145, 408], [1145, 590]], C.violet);
+  relations += svgRelation([[390, 310], [940, 310], [940, 690], [970, 690]], C.violet);
+  relations += svgRelation([[880, 310], [930, 310], [930, 730], [970, 730]], C.violet);
+  relations += svgRelation([[680, 560], [680, 590]], C.navy);
+  relations += svgRelation([[970, 780], [920, 780]], C.violet);
+  relations += svgRelation([[920, 720], [1420, 720]], C.navy);
+  relations += svgRelation([[1700, 560], [1700, 575], [1620, 575], [1620, 590]], C.green);
+  relations += svgRelation([[1900, 260], [2070, 260]], C.teal, true);
+  relations += svgRelation([[1700, 560], [1940, 560], [1940, 690], [1970, 690]], C.orange);
+  relations += svgRelation([[260, 1000], [260, 1050]], C.blue);
+  relations += svgRelation([[680, 560], [900, 560], [900, 1020], [510, 1020], [510, 1050]], C.blue);
+  relations += svgRelation([[2200, 962], [2200, 1050]], C.rose);
+  relations += svgRelation([[920, 850], [1480, 850], [1480, 1125], [1530, 1125]], C.rose);
+  return shell('GAYADI 데이터 모델 · ERD', header('GAYADI 데이터 모델 · ERD') + relations + erdTables.map(svgTable).join(''), ERD_H);
+}
 
-  let nodes = '';
-  for (const [key, x, y, w, color, note, rows] of defs) {
-    boxes[key] = table({ id: displayNames[key], x, y, w, color, note, rows });
-    nodes += boxes[key].svg;
+const flowNodes = [
+  { id: 'create', x: 190, y: 225, w: 490, h: 82, title: '여행 생성 · 멤버 초대', module: '여행 관리', color: C.blue },
+  { id: 'mode', x: 275, y: 335, w: 320, h: 110, title: '출발 방식 선택', module: '여행 관리', color: C.blue, decision: true },
+  { id: 'meet', x: 60, y: 465, w: 345, h: 86, title: '모여서 출발', module: '집결지 경로', color: C.blue, fill: C.paleBlue },
+  { id: 'individual', x: 465, y: 465, w: 345, h: 86, title: '각자 출발', module: '멤버별 경로', color: C.blue, fill: C.paleBlue },
+  { id: 'survey', x: 190, y: 570, w: 490, h: 82, title: '성향 설문 제출', module: '유저 관리', color: C.violet },
+  { id: 'recommend', x: 145, y: 675, w: 580, h: 90, title: '성향 기반 장소 후보 검색', module: 'AI 서비스 처리 · Milvus', color: C.teal },
+  { id: 'plan', x: 190, y: 790, w: 490, h: 82, title: '추천 일정 생성', module: '여행 관리', color: C.blue },
+  { id: 'departureRoute', x: 145, y: 895, w: 580, h: 90, title: '출발 경로 추천', module: '외부 API 처리', color: C.blue },
+  { id: 'ready', x: 220, y: 1010, w: 430, h: 82, title: '여행 준비 완료', module: '', color: C.green, fill: C.paleGreen },
+
+  { id: 'start', x: 1170, y: 225, w: 480, h: 82, title: '여행 시작', module: '여행 관리', color: C.violet, fill: C.paleViolet },
+  { id: 'observe', x: 1100, y: 330, w: 620, h: 90, title: '날씨 · 혼잡 · 교통 확인', module: '외부 API 처리 · 이벤트 DB', color: C.orange },
+  { id: 'impact', x: 1245, y: 445, w: 330, h: 110, title: '일정 영향 발생', module: '이벤트 처리', color: C.orange, decision: true },
+  { id: 'alternative', x: 1085, y: 580, w: 650, h: 90, title: '대체 장소 · 경로 추천', module: 'AI 서비스 처리 · Milvus · 외부 API 처리', color: C.teal },
+  { id: 'notify', x: 1140, y: 695, w: 540, h: 82, title: '변경 제안 알림', module: 'FCM', color: C.rose },
+  { id: 'approve', x: 1245, y: 800, w: 330, h: 110, title: '사용자 승인', module: '여행 관리', color: C.rose, decision: true },
+  { id: 'apply', x: 1080, y: 1010, w: 660, h: 90, title: '현재 일정 수정 · revision 증가', module: '여행 관리', color: C.green, fill: C.paleGreen },
+
+  { id: 'last', x: 2040, y: 235, w: 430, h: 82, title: '마지막 일정 완료', module: '여행 관리', color: C.green },
+  { id: 'returnRoute', x: 2020, y: 500, w: 470, h: 90, title: '멤버별 귀가 경로 추천', module: '외부 API 처리', color: C.blue },
+  { id: 'selectRoute', x: 2040, y: 765, w: 430, h: 82, title: '귀가 경로 선택', module: '경로 관리', color: C.blue },
+  { id: 'complete', x: 2040, y: 1030, w: 430, h: 82, title: '여행 완료', module: '여행 관리', color: C.green, fill: C.paleGreen }
+];
+
+const flowEdges = [
+  { from: [435, 307], to: [435, 335] },
+  { points: [[355, 410], [232, 465]], label: ['모여서', 270, 440, C.blue] },
+  { points: [[515, 410], [638, 465]], label: ['각자', 600, 440, C.blue] },
+  { points: [[232, 551], [232, 560], [435, 560], [435, 570]] },
+  { points: [[638, 551], [638, 560], [435, 560], [435, 570]] },
+  { from: [435, 652], to: [435, 675] },
+  { from: [435, 765], to: [435, 790] },
+  { from: [435, 872], to: [435, 895] },
+  { from: [435, 985], to: [435, 1010] },
+  { points: [[650, 1051], [845, 1051], [845, 266], [1170, 266]] },
+  { from: [1410, 307], to: [1410, 330] },
+  { from: [1410, 420], to: [1410, 445] },
+  { points: [[1410, 555], [1410, 580]], label: ['영향 있음', 1480, 575, C.orange] },
+  { points: [[1245, 500], [1005, 500], [1005, 375], [1100, 375]], label: ['영향 없음', 1165, 468, C.line] },
+  { from: [1410, 670], to: [1410, 695] },
+  { from: [1410, 777], to: [1410, 800] },
+  { points: [[1410, 910], [1410, 1010]], label: ['승인', 1455, 970, C.green] },
+  { points: [[1245, 855], [1035, 855], [1035, 375], [1100, 375]], label: ['거절', 1070, 835, C.rose] },
+  { points: [[1080, 1055], [970, 1055], [970, 375], [1100, 375]], label: ['여행 진행', 1015, 1035, C.green] },
+  { points: [[1740, 1055], [1940, 1055], [1940, 276], [2040, 276]] },
+  { from: [2255, 317], to: [2255, 500] },
+  { from: [2255, 590], to: [2255, 765] },
+  { from: [2255, 847], to: [2255, 1030] }
+];
+
+function phasePanel(x, y, w, h, number, title, color, fill) {
+  return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="${fill}" stroke="${color}" stroke-width="2.5"/>
+    <path d="M${x + 22},${y} H${x + w - 22} Q${x + w},${y} ${x + w},${y + 22} V${y + 78} H${x} V${y + 22} Q${x},${y} ${x + 22},${y} Z" fill="${color}"/>
+    <circle cx="${x + 42}" cy="${y + 39}" r="22" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.6"/>
+    <text x="${x + 42}" y="${y + 47}" text-anchor="middle" font-size="20" font-weight="700" fill="#FFFFFF">${number}</text>
+    <text x="${x + 78}" y="${y + 52}" font-size="32" font-weight="700" fill="#FFFFFF">${svgEsc(title)}</text></g>`;
+}
+
+function flowNodeSvg(node) {
+  if (node.decision) {
+    const cx = node.x + node.w / 2;
+    const cy = node.y + node.h / 2;
+    const titleY = node.module ? cy + 12 : cy + 9;
+    return `<g filter="url(#shadow)"><polygon points="${cx},${node.y} ${node.x + node.w},${cy} ${cx},${node.y + node.h} ${node.x},${cy}" fill="#FFFFFF" stroke="${node.color}" stroke-width="3"/>
+      ${node.module ? `<text x="${cx}" y="${cy - 22}" text-anchor="middle" font-size="16" font-weight="700" fill="${node.color}">${svgEsc(node.module)}</text>` : ''}
+      <text x="${cx}" y="${titleY}" text-anchor="middle" font-size="24" font-weight="700" fill="${C.ink}">${svgEsc(node.title)}</text></g>`;
   }
-
-  let lines = '';
-  lines += relation([[390, 230], [475, 230]]);
-  lines += relation([[225, 404], [225, 520]]);
-  lines += relation([[475, 330], [445, 330], [445, 600], [470, 600]]);
-  lines += relation([[1160, 371], [1160, 455]], { color: C.violet });
-  lines += relation([[390, 300], [420, 300], [420, 435], [955, 435], [955, 555], [985, 555]], { color: C.violet });
-  lines += relation([[875, 395], [925, 395], [925, 585], [985, 585]], { color: C.violet });
-  lines += relation([[675, 503], [675, 600]]);
-  lines += relation([[985, 650], [950, 650]], { color: C.violet });
-  lines += relation([[950, 800], [1010, 800], [1010, 955], [1040, 955]]);
-  lines += relation([[1745, 345], [1570, 345], [1570, 980], [1470, 980]], { color: C.green });
-  lines += relation([[265, 873], [265, 900]], { color: C.blue });
-  lines += relation([[475, 455], [500, 455], [500, 1000], [510, 1000]], { color: C.blue });
-  lines += relation([[1960, 503], [1960, 535]], { color: C.orange });
-  lines += relation([[1970, 855], [1970, 885]], { color: C.orange });
-  lines += relation([[950, 835], [1530, 835], [1530, 1060], [1600, 1060]], { color: C.rose });
-  lines += relation([[875, 430], [1510, 430], [1510, 955], [1600, 955]], { color: C.rose });
-  lines += relation([[55, 335], [20, 335], [20, 1375], [1560, 1375], [1560, 1285], [1600, 1285]], { color: C.rose });
-
-  return shell('GAYADI 데이터 모델 ERD', '여행 서비스의 핵심 데이터 관계',
-    header('GAYADI 데이터 모델 · ERD', '')
-      + `<g transform="translate(145 0)">${lines}${nodes}</g>`);
+  const fill = node.fill || '#FFFFFF';
+  const titleY = node.module ? node.y + 65 : node.y + node.h / 2 + 9;
+  return `<g filter="url(#shadow)"><rect x="${node.x}" y="${node.y}" width="${node.w}" height="${node.h}" rx="14" fill="${fill}" stroke="${node.color}" stroke-width="2.2"/>
+    ${node.module ? `<text x="${node.x + node.w / 2}" y="${node.y + 29}" text-anchor="middle" font-size="16" font-weight="700" fill="${node.color}">${svgEsc(node.module)}</text>` : ''}
+    <text x="${node.x + node.w / 2}" y="${titleY}" text-anchor="middle" font-size="24" font-weight="700" fill="${C.ink}">${svgEsc(node.title)}</text></g>`;
 }
 
-function panel(x, y, w, h, color, number, title, subtitle) {
-  const titleY = subtitle ? y + 31 : y + 48;
-  const subtitleText = subtitle
-    ? `<text x="${x + 80}" y="${y + 57}" font-size="12.5" fill="#FFFFFF" opacity="0.94">${esc(subtitle)}</text>`
-    : '';
-  return `<g filter="url(#softShadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="22" fill="#FFFFFF" stroke="${color}" stroke-width="2.4"/>
-    <rect x="${x + 2}" y="${y + 78}" width="${w - 4}" height="${h - 80}" rx="20" fill="${color}" fill-opacity="0.045"/>
-    <path d="M${x + 18},${y} H${x + w - 18} Q${x + w},${y} ${x + w},${y + 18} V${y + 78} H${x} V${y + 18} Q${x},${y} ${x + 18},${y} Z" fill="${color}"/>
-    <circle cx="${x + 42}" cy="${y + 39}" r="23" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.62"/>
-    <text x="${x + 42}" y="${y + 45}" text-anchor="middle" font-size="16" font-weight="700" fill="#FFFFFF">${number}</text>
-    <text x="${x + 80}" y="${titleY}" font-size="23" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
-    ${subtitleText}</g>`;
-}
-
-function step(x, y, w, h, text, options = {}) {
-  const fill = options.fill || '#FFFFFF';
-  const stroke = options.stroke || C.border;
-  const color = options.color || C.ink;
-  const lines = String(text).split('\n');
-  const gap = 25;
-  const first = y + h / 2 - ((lines.length - 1) * gap / 2) + 5;
-  let texts = '';
-  lines.forEach((line, index) => {
-    texts += `<text x="${x + w / 2}" y="${first + index * gap}" text-anchor="middle" font-size="${options.size || 16}" font-weight="${options.weight || 600}" fill="${color}">${esc(line)}</text>`;
-  });
-  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.2"/>${texts}</g>`;
-}
-
-function decision(cx, cy, w, h, text, color) {
-  return `<g filter="url(#shadow)"><polygon points="${cx},${cy - h / 2} ${cx + w / 2},${cy} ${cx},${cy + h / 2} ${cx - w / 2},${cy}" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="3"/>
-    <polygon points="${cx},${cy - h / 2 + 10} ${cx + w / 2 - 18},${cy} ${cx},${cy + h / 2 - 10} ${cx - w / 2 + 18},${cy}" fill="#FFFFFF" fill-opacity="0.75"/>
-    <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="16" font-weight="700" fill="${C.ink}">${esc(text)}</text></g>`;
-}
-
-function flowArrow(points, options = {}) {
-  const color = options.color || '#748197';
+function flowEdgeSvg(edge) {
+  const points = edge.points || [edge.from, edge.to];
   const p = points.map(([x, y]) => `${x},${y}`).join(' ');
-  let out = `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="${p}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"${options.dashed ? ' stroke-dasharray="9 7"' : ''}/>`;
-  if (options.label && options.at) {
-    const [x, y] = options.at;
-    const width = Math.max(62, options.label.length * 12 + 18);
-    out += `<rect x="${x - width / 2}" y="${y - 14}" width="${width}" height="26" rx="13" fill="#FFFFFF" stroke="${color}" stroke-width="1.4"/>
-      <text x="${x}" y="${y + 3}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${color}">${esc(options.label)}</text>`;
-  }
-  return out;
+  return `<polyline points="${p}" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+    <polyline points="${p}" fill="none" stroke="${C.line}" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>`;
 }
 
-function serviceFlow() {
-  let s = header('GAYADI 서비스 흐름도', '');
-  s += panel(50, 145, 780, 1125, C.blue, '01', '여행 전', '');
-  s += panel(870, 145, 1060, 1125, C.violet, '02', '여행 중', '');
-  s += panel(1970, 145, 540, 1125, C.green, '03', '여행 후', '');
-
-  // 여행 전
-  s += step(250, 245, 380, 64, '여행 생성 · 멤버 초대', { stroke: C.blue });
-  s += decision(440, 405, 310, 100, '출발 방식?', C.blue);
-  s += step(85, 515, 310, 88, '모여서 출발', { fill: '#EFF6FF', stroke: C.blue, size: 15 });
-  s += step(475, 515, 310, 88, '각자 출발', { fill: '#EFF6FF', stroke: C.blue, size: 15 });
-  s += step(250, 690, 380, 70, '성향 설문 제출', { stroke: C.violet });
-  s += step(220, 825, 440, 82, '장소 후보 조회 · 맞춤 일정 생성', { stroke: C.green });
-  s += step(175, 970, 530, 88, '출발 경로 추천', { stroke: C.blue, size: 15 });
-  s += step(250, 1120, 380, 70, '여행 준비 완료', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
-  s += flowArrow([[440, 309], [440, 355]]);
-  s += flowArrow([[350, 440], [240, 515]], { label: '모여서', at: [270, 473], color: C.blue });
-  s += flowArrow([[530, 440], [630, 515]], { label: '각자', at: [610, 473], color: C.blue });
-  s += flowArrow([[240, 603], [240, 642], [440, 642], [440, 690]]);
-  s += flowArrow([[630, 603], [630, 642], [440, 642], [440, 690]]);
-  s += flowArrow([[440, 760], [440, 825]]);
-  s += flowArrow([[440, 907], [440, 970]]);
-  s += flowArrow([[440, 1058], [440, 1120]]);
-
-  // 여행 중
-  s += step(1190, 235, 420, 68, '여행 시작 · 진행 중', { fill: '#F5F3FF', stroke: C.violet });
-  s += step(1145, 350, 510, 88, '날씨 · 혼잡 · 교통 확인', { stroke: C.orange, size: 15 });
-  s += decision(1400, 535, 330, 108, '일정 영향 있음?', C.orange);
-  s += step(1180, 655, 440, 78, '대체 장소 · 경로 계산', { stroke: C.blue });
-  s += step(1150, 785, 500, 82, '변경 이유 · 시간 차이 알림', { stroke: C.rose });
-  s += decision(1400, 965, 340, 108, '사용자 승인?', C.rose);
-  s += step(1110, 1090, 580, 92, '변경 일정 반영', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E', size: 15 });
-  s += flowArrow([[1400, 303], [1400, 350]]);
-  s += flowArrow([[1400, 438], [1400, 481]]);
-  s += flowArrow([[1400, 589], [1400, 655]], { label: '예', at: [1436, 620], color: C.orange });
-  s += flowArrow([[1235, 535], [1025, 535], [1025, 394], [1145, 394]], { label: '아니오', at: [1067, 510] });
-  s += flowArrow([[1400, 733], [1400, 785]]);
-  s += flowArrow([[1400, 867], [1400, 911]]);
-  s += flowArrow([[1400, 1019], [1400, 1090]], { label: '승인', at: [1444, 1054], color: C.success });
-  s += flowArrow([[1230, 965], [995, 965], [995, 394], [1145, 394]], { label: '거절', at: [1034, 940], color: C.rose });
-  s += flowArrow([[1110, 1136], [965, 1136], [965, 394], [1145, 394]], { label: '여행 계속', at: [1013, 1110], color: C.success });
-
-  // 단계 연결
-  s += flowArrow([[630, 1155], [850, 1155], [850, 269], [1190, 269]], { label: '출발', at: [850, 228], color: C.blue });
-
-  // 여행 후
-  s += step(2045, 300, 390, 76, '마지막 일정 완료', { stroke: C.green });
-  s += step(2035, 465, 410, 94, '멤버별 귀가 경로 추천', { stroke: C.blue, size: 15 });
-  s += step(2045, 650, 390, 76, '귀가 경로 선택', { stroke: C.blue });
-  s += step(2045, 830, 390, 80, '여행 완료', { fill: '#DDF3E9', stroke: C.success, color: '#075A3E' });
-  s += flowArrow([[1930, 1136], [1950, 1136], [1950, 338], [2045, 338]], { label: '마지막 일정', at: [1994, 294], color: C.green });
-  s += flowArrow([[2240, 376], [2240, 465]]);
-  s += flowArrow([[2240, 559], [2240, 650]]);
-  s += flowArrow([[2240, 726], [2240, 830]]);
-
-  return shell('GAYADI 서비스 흐름도', '여행 전, 여행 중, 여행 후의 전체 사용자 및 시스템 흐름', s);
+function flowLabelSvg(edge) {
+  if (!edge.label) return '';
+  const [label, x, y, color] = edge.label;
+  const labelWidth = Math.max(72, label.length * 18 + 26);
+  return `<g><rect x="${x - labelWidth / 2}" y="${y - 24}" width="${labelWidth}" height="32" rx="8" fill="#FFFFFF" fill-opacity="0.98"/>
+    <text x="${x}" y="${y}" text-anchor="middle" font-size="16" font-weight="700" fill="${color}">${svgEsc(label)}</text></g>`;
 }
 
-function architectureBox(x, y, w, h, title, lines, options = {}) {
-  const stroke = options.stroke || C.border;
-  const fill = options.fill || '#FFFFFF';
-  const dash = options.dashed ? ' stroke-dasharray="9 7"' : '';
-  let text = `<rect x="${x + 10}" y="${y + 13}" width="7" height="${Math.max(22, h - 26)}" rx="3.5" fill="${stroke}"/>
-    <text x="${x + 29}" y="${y + 31}" font-size="17" font-weight="700" fill="${C.ink}">${esc(title)}</text>`;
-  lines.forEach((line, index) => {
-    text += `<text x="${x + 29}" y="${y + 59 + index * 23}" font-size="13.5" font-weight="500" fill="${C.muted}">${esc(line)}</text>`;
-  });
-  if (options.badge) {
-    const badgeWidth = options.badge.length * 13 + 24;
-    text += `<rect x="${x + w - badgeWidth - 14}" y="${y + 13}" width="${badgeWidth}" height="26" rx="13" fill="${options.badgeFill || stroke}"/>
-      <text x="${x + w - badgeWidth / 2 - 14}" y="${y + 31}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${options.badgeColor || '#FFFFFF'}">${esc(options.badge)}</text>`;
-  }
-  return `<g filter="url(#shadow)"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2.1"${dash}/>${text}</g>`;
+function flowSvg() {
+  let content = header('GAYADI 서비스 흐름도');
+  content += phasePanel(50, 140, 780, 1040, '01', '여행 전', C.blue, '#F4F7FF');
+  content += phasePanel(860, 140, 1100, 1040, '02', '여행 중', C.violet, '#F8F6FF');
+  content += phasePanel(1990, 140, 520, 1040, '03', '여행 후', C.green, '#F3FBF8');
+  content += flowEdges.map(flowEdgeSvg).join('');
+  content += flowNodes.map(flowNodeSvg).join('');
+  content += flowEdges.map(flowLabelSvg).join('');
+  return shell('GAYADI 서비스 흐름도', content, FLOW_H);
 }
 
-function legacyServiceArchitecture() {
-  let s = header('GAYADI 서비스 아키텍처', '현재 실행되는 Spring MVP와 운영 연동 지점을 한눈에 구분');
-  s += `<g transform="translate(1990,35)">
-    <line x1="0" y1="12" x2="38" y2="12" stroke="${C.cyan}" stroke-width="3"/>
-    <text x="48" y="17" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text>
-    <line x1="0" y1="38" x2="38" y2="38" stroke="#FF935C" stroke-width="3" stroke-dasharray="8 6"/>
-    <text x="48" y="43" font-size="11.5" font-weight="700" fill="#FFFFFF">운영 연동 예정</text></g>`;
-
-  // 사용자 영역
-  s += `<g filter="url(#softShadow)"><rect x="50" y="160" width="330" height="1090" rx="22" fill="#FFFFFF" stroke="${C.navy}" stroke-width="2.4"/>
-    <rect x="52" y="238" width="326" height="1010" rx="20" fill="${C.navy}" fill-opacity="0.045"/>
-    <rect x="50" y="160" width="330" height="78" rx="22" fill="${C.navy}"/>
-    <rect x="50" y="218" width="330" height="20" fill="${C.navy}"/>
-    <text x="78" y="193" font-size="23" font-weight="700" fill="#FFFFFF">사용자 채널</text>
-    <text x="78" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">Android 앱 · HTTPS JSON API</text></g>`;
-  s += architectureBox(90, 290, 250, 128, 'Android 앱', ['여행 생성과 멤버 초대', '일정·경로 확인과 승인'], { stroke: C.navy, fill: '#DCEAF7', badge: '사용자' });
-  s += architectureBox(90, 500, 250, 110, '여행 전', ['성향 설문', '맞춤 일정·출발 경로'], { stroke: C.violet });
-  s += architectureBox(90, 665, 250, 110, '여행 중', ['상황 알림', '변경안 승인·거절'], { stroke: C.orange });
-  s += architectureBox(90, 830, 250, 110, '여행 후', ['멤버별 귀가 경로', '여행 완료'], { stroke: C.green });
-
-  // Spring Boot 애플리케이션
-  s += `<g filter="url(#softShadow)"><rect x="430" y="160" width="1370" height="1090" rx="22" fill="#FFFFFF" stroke="${C.navy}" stroke-width="2.4"/>
-    <rect x="432" y="238" width="1366" height="1010" rx="20" fill="${C.navy}" fill-opacity="0.035"/>
-    <rect x="430" y="160" width="1370" height="78" rx="22" fill="${C.navy}"/>
-    <rect x="430" y="218" width="1370" height="20" fill="${C.navy}"/>
-    <text x="462" y="193" font-size="23" font-weight="700" fill="#FFFFFF">Spring Boot 모듈러 모놀리스</text>
-    <text x="462" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">하나의 서버 안에서 업무 책임만 모듈로 분리</text></g>`;
-  s += architectureBox(500, 275, 1230, 88, 'API 계층', ['Controller · 입력값 검증 · 공통 오류 응답 · Actuator 상태 확인'], { stroke: C.navy, fill: '#E3ECF6', badge: '현재 구현' });
-
-  s += architectureBox(500, 420, 370, 112, '여행 준비 유스케이스', ['여행·멤버 → 그룹 성향', '일정 생성 → 출발 경로'], { stroke: C.violet, fill: '#EEE7FF' });
-  s += architectureBox(930, 420, 370, 112, '여행 중 대응 유스케이스', ['이벤트 영향 판단', '대안 생성 → 승인 반영'], { stroke: C.orange, fill: '#FFE9DA' });
-  s += architectureBox(1360, 420, 370, 112, '귀가 유스케이스', ['마지막 장소 확인', '멤버별 귀가 경로'], { stroke: C.green, fill: '#DFF3EA' });
-
-  const moduleY1 = 625;
-  const moduleY2 = 770;
-  s += architectureBox(500, moduleY1, 280, 100, '인증 · 사용자', ['개발 사용자', 'OAuth 교체 경계'], { stroke: C.navy });
-  s += architectureBox(810, moduleY1, 280, 100, '여행 · 멤버', ['출발 방식', '출발지·귀가지'], { stroke: C.navy });
-  s += architectureBox(1120, moduleY1, 280, 100, '설문 · 성향', ['범용 설문', '그룹 성향 집계'], { stroke: C.violet });
-  s += architectureBox(1430, moduleY1, 280, 100, '일정 · 변경', ['현재 일정', 'revision·승인 이력'], { stroke: C.rose });
-  s += architectureBox(500, moduleY2, 280, 100, '장소', ['장소 원장', '성향별 후보 조회'], { stroke: C.green });
-  s += architectureBox(810, moduleY2, 280, 100, '이벤트', ['날씨·혼잡·교통', '영향 판단'], { stroke: C.orange });
-  s += architectureBox(1120, moduleY2, 280, 100, '경로', ['출발·이동·귀가', 'RouteProvider'], { stroke: C.blue });
-  s += architectureBox(1430, moduleY2, 280, 100, '공통', ['오류 형식·JSON', '트랜잭션·검증'], { stroke: C.border });
-
-  s += architectureBox(500, 955, 370, 125, '로컬 어댑터', ['H2 기준 장소 데이터', '결정적 대중교통 경로 스텁'], { stroke: C.success, fill: '#DFF3E9', badge: '바로 실행' });
-  s += architectureBox(930, 955, 370, 125, '외부 API 포트', ['장소 · 이벤트 · 경로 공급자를', '구현 교체만으로 연결'], { stroke: C.blue, fill: '#DFEDFA', badge: '교체 가능' });
-  s += architectureBox(1360, 955, 370, 125, '알림 포트', ['변경 제안 전달', '로그 → FCM / SSE 전환'], { stroke: C.orange, dashed: true, badge: '연동 예정' });
-
-  // 외부 연동
-  s += `<g filter="url(#softShadow)"><rect x="1850" y="160" width="660" height="650" rx="22" fill="#FFFFFF" stroke="${C.orange}" stroke-width="2.4"/>
-    <rect x="1852" y="238" width="656" height="570" rx="20" fill="${C.orange}" fill-opacity="0.05"/>
-    <rect x="1850" y="160" width="660" height="78" rx="22" fill="${C.orange}"/>
-    <rect x="1850" y="218" width="660" height="20" fill="${C.orange}"/>
-    <text x="1882" y="193" font-size="23" font-weight="700" fill="#FFFFFF">외부 서비스 연동</text>
-    <text x="1882" y="219" font-size="12.5" fill="#FFFFFF" opacity="0.94">운영 환경에서 공급자별 어댑터로 연결</text></g>`;
-  s += architectureBox(1900, 285, 560, 82, 'OAuth / OIDC', ['로그인과 토큰 검증'], { stroke: C.orange, dashed: true, badge: '예정' });
-  s += architectureBox(1900, 395, 560, 82, '관광 · 지도 API', ['장소 검색과 상세 정보 동기화'], { stroke: C.orange, dashed: true, badge: '예정' });
-  s += architectureBox(1900, 505, 560, 82, '날씨 · 혼잡 · 교통 API', ['실시간 관측값 수집과 정규화'], { stroke: C.orange, dashed: true, badge: '예정' });
-  s += architectureBox(1900, 615, 560, 82, '대중교통 경로 API · FCM/SSE', ['실제 경로 후보와 변경 알림'], { stroke: C.orange, dashed: true, badge: '예정' });
-
-  // 데이터·운영
-  s += `<g filter="url(#softShadow)"><rect x="1850" y="850" width="660" height="400" rx="22" fill="#FFFFFF" stroke="${C.green}" stroke-width="2.4"/>
-    <rect x="1852" y="922" width="656" height="326" rx="20" fill="${C.green}" fill-opacity="0.05"/>
-    <rect x="1850" y="850" width="660" height="72" rx="22" fill="${C.green}"/>
-    <rect x="1850" y="902" width="660" height="20" fill="${C.green}"/>
-    <text x="1882" y="893" font-size="23" font-weight="700" fill="#FFFFFF">데이터 · 운영</text></g>`;
-  s += architectureBox(1900, 965, 255, 112, 'H2 / PostgreSQL', ['로컬 / 운영 DB', 'Flyway 11개 테이블'], { stroke: C.green, fill: '#DFF3E9', badge: '구현' });
-  s += architectureBox(2190, 965, 270, 112, 'Redis', ['경로 후보 TTL', '외부 API 짧은 캐시'], { stroke: C.orange, dashed: true, badge: '예정' });
-  s += architectureBox(1900, 1110, 560, 92, '운영 확인', ['Actuator Health · 로그/지표 · GitHub Actions 빌드/테스트'], { stroke: C.navy, fill: '#E3ECF6', badge: '구현' });
-
-  // 주요 연결선
-  s += flowArrow([[340, 354], [420, 354], [420, 319], [500, 319]], { label: 'HTTPS', at: [420, 330], color: C.navy });
-  s += flowArrow([[1115, 363], [1115, 410]], { color: C.navy });
-  s += `<line x1="685" y1="565" x2="1545" y2="565" stroke="${C.line}" stroke-width="2"/>
-    <line x1="685" y1="532" x2="685" y2="565" stroke="${C.line}" stroke-width="2"/>
-    <line x1="1115" y1="532" x2="1115" y2="565" stroke="${C.line}" stroke-width="2"/>
-    <line x1="1545" y1="532" x2="1545" y2="565" stroke="${C.line}" stroke-width="2"/>
-    <line x1="1115" y1="565" x2="1115" y2="610" stroke="${C.line}" stroke-width="2" marker-end="url(#arrow)"/>`;
-  s += flowArrow([[1115, 870], [1115, 930]], { label: '어댑터', at: [1160, 910], color: C.blue });
-  s += flowArrow([[1730, 1018], [1815, 1018], [1815, 655], [1900, 655]], { label: '운영 연동', at: [1815, 830], color: C.orange, dashed: true });
-  s += flowArrow([[1710, 820], [1785, 820], [1785, 1020], [1900, 1020]], { label: '저장', at: [1785, 940], color: C.green });
-
-  return shell('GAYADI 서비스 아키텍처', '현재 구현된 Spring 모듈과 향후 외부 연동 경계', s);
+function mxFile(name, pageId, cells, pageHeight) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="app.diagrams.net" agent="Codex draw.io plugin" version="26.0.9"><diagram id="${pageId}" name="${xmlEsc(name)}"><mxGraphModel adaptiveColors="auto" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2560" pageHeight="${pageHeight}" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
 }
 
-function diagramContainer(x, y, w, h, title, subtitle, color) {
-  return `<g filter="url(#softShadow)">
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#FFFFFF" stroke="${color}" stroke-width="2.4"/>
-    <path d="M${x + 6},${y} H${x + w - 6} Q${x + w},${y} ${x + w},${y + 6} V${y + 62} H${x} V${y + 6} Q${x},${y} ${x + 6},${y} Z" fill="${color}"/>
-    <text x="${x + 24}" y="${y + 29}" font-size="21" font-weight="700" fill="#FFFFFF">${esc(title)}</text>
-    <text x="${x + 24}" y="${y + 50}" font-size="12.5" fill="#FFFFFF" opacity="0.92">${esc(subtitle)}</text>
-  </g>`;
+function mxVertex(id, value, x, y, w, h, style, parent = '1') {
+  return `<mxCell id="${id}" value="${xmlEsc(value)}" style="${style}" vertex="1" parent="${parent}"><mxGeometry x="${x}" y="${y}" width="${w}" height="${h}" as="geometry"/></mxCell>`;
 }
 
-function diagramLane(x, y, w, h, title, subtitle, color) {
-  return `<g>
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#F8FAFC" stroke="#93A4B8" stroke-width="1.8"/>
-    <rect x="${x}" y="${y}" width="170" height="${h}" rx="4" fill="${color}" fill-opacity="0.13"/>
-    <line x1="${x + 170}" y1="${y}" x2="${x + 170}" y2="${y + h}" stroke="${color}" stroke-width="2"/>
-    <rect x="${x + 18}" y="${y + 19}" width="8" height="${h - 38}" rx="4" fill="${color}"/>
-    <text x="${x + 42}" y="${y + h / 2 - 5}" font-size="17" font-weight="700" fill="${C.ink}">${esc(title)}</text>
-    <text x="${x + 42}" y="${y + h / 2 + 19}" font-size="11.5" fill="${C.muted}">${esc(subtitle)}</text>
-  </g>`;
+function mxEdge(id, source, target, color = C.line, dashed = false) {
+  return `<mxCell id="${id}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2.5;strokeColor=${color};endArrow=none;${dashed ? 'dashed=1;dashPattern=8 6;' : ''}" edge="1" parent="1" source="${source}" target="${target}"><mxGeometry relative="1" as="geometry"/></mxCell>`;
 }
 
-function diagramNode(x, y, w, h, title, subtitle, color, options = {}) {
-  const dash = options.dashed ? ' stroke-dasharray="9 6"' : '';
-  const fill = options.fill || '#FFFFFF';
-  const titleY = subtitle ? y + h / 2 - 2 : y + h / 2 + 6;
-  return `<g>
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${fill}" stroke="${color}" stroke-width="2"${dash}/>
-    <rect x="${x}" y="${y}" width="${w}" height="9" rx="4.5" fill="${color}"/>
-    <text x="${x + w / 2}" y="${titleY}" text-anchor="middle" font-size="${options.titleSize || 15}" font-weight="700" fill="${C.ink}">${esc(title)}</text>
-    ${subtitle ? `<text x="${x + w / 2}" y="${titleY + 24}" text-anchor="middle" font-size="${options.subtitleSize || 11.5}" fill="${C.muted}">${esc(subtitle)}</text>` : ''}
-  </g>`;
+function tableHtml(table) {
+  const rowsPerCol = table.columns === 2 ? Math.ceil(table.rows.length / 2) : table.rows.length;
+  const chunks = table.columns === 2 ? [table.rows.slice(0, rowsPerCol), table.rows.slice(rowsPerCol)] : [table.rows];
+  const body = chunks.map((chunk) => `<table style="width:${100 / chunks.length}%;border-collapse:collapse;display:inline-table;vertical-align:top;font-size:17px;">${chunk.map((row, index) => {
+    const keyColor = row[0].startsWith('PK') ? '#B42318' : row[0].startsWith('FK') ? '#175CD3' : C.muted;
+    const bg = index % 2 ? '#F1F5F9' : '#FFFFFF';
+    return `<tr style="background:${bg};height:38px"><td style="width:56px;padding-left:12px;color:${keyColor};font-size:14px;font-weight:700">${row[0]}</td><td style="color:${C.ink};font-weight:500">${row[1]}</td><td style="padding-right:12px;text-align:right;color:${C.muted};font-size:14px">${row[2]}</td></tr>`;
+  }).join('')}</table>`).join('');
+  return `<div style="background:${table.color};color:#FFFFFF;font-size:24px;font-weight:700;padding:14px 16px;text-align:left">${table.title}</div><div style="background:#FFFFFF">${body}</div>`;
 }
 
-function diagramCylinder(x, y, w, h, title, subtitle, color, options = {}) {
-  const dash = options.dashed ? ' stroke-dasharray="9 6"' : '';
-  return `<g>
-    <path d="M${x},${y + 18} V${y + h - 18} C${x},${y + h + 4} ${x + w},${y + h + 4} ${x + w},${y + h - 18} V${y + 18}" fill="#FFFFFF" stroke="${color}" stroke-width="2"${dash}/>
-    <ellipse cx="${x + w / 2}" cy="${y + 18}" rx="${w / 2}" ry="18" fill="${color}" fill-opacity="0.17" stroke="${color}" stroke-width="2"${dash}/>
-    <path d="M${x},${y + h - 18} C${x},${y + h + 4} ${x + w},${y + h + 4} ${x + w},${y + h - 18}" fill="none" stroke="${color}" stroke-width="2"${dash}/>
-    <text x="${x + w / 2}" y="${y + 62}" text-anchor="middle" font-size="16" font-weight="700" fill="${C.ink}">${esc(title)}</text>
-    <text x="${x + w / 2}" y="${y + 88}" text-anchor="middle" font-size="11.5" fill="${C.muted}">${esc(subtitle)}</text>
-  </g>`;
-}
-
-function diagramEdge(points, options = {}) {
-  const color = options.color || '#53657A';
-  const p = points.map(([x, y]) => `${x},${y}`).join(' ');
-  const dash = options.dashed ? ' stroke-dasharray="10 7"' : '';
-  let out = `<polyline points="${p}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"${dash}/>`;
-  if (options.label && options.at) {
-    const [x, y] = options.at;
-    const width = Math.max(72, options.label.length * 13 + 20);
-    out += `<rect x="${x - width / 2}" y="${y - 15}" width="${width}" height="28" rx="4" fill="#FFFFFF" stroke="${color}" stroke-width="1.3"/>
-      <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${color}">${esc(options.label)}</text>`;
-  }
-  return out;
-}
-
-function serviceArchitecture() {
-  let s = header('GAYADI 서비스 아키텍처', 'draw.io 표준 형태 · 계층형 모듈 구조 · 직교 연결선');
-  s += `<g transform="translate(1965,37)">
-    <line x1="0" y1="12" x2="42" y2="12" stroke="${C.cyan}" stroke-width="3"/>
-    <text x="53" y="17" font-size="11.5" font-weight="700" fill="#FFFFFF">현재 구현</text>
-    <line x1="0" y1="39" x2="42" y2="39" stroke="#FF935C" stroke-width="3" stroke-dasharray="9 6"/>
-    <text x="53" y="44" font-size="11.5" font-weight="700" fill="#FFFFFF">운영 연동 예정</text></g>`;
-
-  s += diagramContainer(50, 165, 300, 810, '클라이언트', '사용자와 모바일 앱', C.cyan);
-  s += diagramNode(90, 300, 220, 150, 'Android 앱', 'REST API 호출 · 알림 수신', C.cyan, { fill: '#E8F7F8', titleSize: 18 });
-  s += diagramNode(90, 545, 220, 62, '여행 전', '설문 · 일정 · 출발 경로', C.violet);
-  s += diagramNode(90, 650, 220, 62, '여행 중', '상황 감지 · 변경 승인', C.orange);
-  s += diagramNode(90, 755, 220, 62, '여행 후', '귀가 경로 · 여행 완료', C.green);
-
-  s += diagramContainer(390, 165, 1540, 810, 'GAYADI Server · Spring Boot', '하나의 애플리케이션 안에서 계층과 업무 책임을 분리', C.navy);
-  s += diagramLane(430, 250, 1460, 110, 'API 계층', '요청 진입점', C.navy);
-  s += diagramNode(630, 275, 330, 60, 'REST Controller', '여행 전 · 중 · 후 API', C.navy, { fill: '#E5EEF8' });
-  s += diagramNode(1040, 275, 330, 60, '사용자 · 멤버 확인', '업무 요청 기준 검증', C.navy, { fill: '#E5EEF8' });
-  s += diagramNode(1450, 275, 330, 60, '검증 · 오류 응답', '입력 검증과 공통 응답 형식', C.navy, { fill: '#E5EEF8' });
-
-  s += diagramLane(430, 390, 1460, 160, '애플리케이션', '유스케이스 조합', C.violet);
-  s += diagramNode(630, 430, 350, 80, '여행 준비', '멤버 → 설문 → 일정 → 출발 경로', C.violet, { fill: '#EEE7FF' });
-  s += diagramNode(1050, 430, 350, 80, '여행 중 대응', '이벤트 판단 → 대안 → 승인 반영', C.orange, { fill: '#FFE9DA' });
-  s += diagramNode(1470, 430, 350, 80, '귀가', '마지막 장소 → 멤버별 귀가 경로', C.green, { fill: '#DFF3EA' });
-
-  s += diagramLane(430, 580, 1460, 180, '도메인 모듈', '업무 규칙과 데이터', C.blue);
-  const modules = [
-    ['인증·사용자', '사용자 식별', C.navy], ['여행·멤버', '출발 방식', C.navy],
-    ['설문·성향', '그룹 성향', C.violet], ['일정·변경', 'revision', C.rose],
-    ['장소', '장소 원장', C.green], ['이벤트', '상황 판단', C.orange],
-    ['경로', '출발·귀가', C.blue], ['공통', '예외·검증', '#667085']
-  ];
-  modules.forEach(([title, subtitle, color], index) => {
-    s += diagramNode(630 + index * 155, 625, 135, 88, title, subtitle, color, { titleSize: 13.5, subtitleSize: 10.5 });
-  });
-
-  s += diagramLane(430, 790, 1460, 150, '인프라 계층', '외부 기술 교체 경계', C.green);
-  s += diagramNode(650, 830, 340, 72, '로컬 어댑터', 'H2 장소 데이터 · 경로 스텁', C.green, { fill: '#E3F4EC' });
-  s += diagramNode(1050, 830, 340, 72, '알림 어댑터', '로그 → FCM / SSE 교체', C.orange, { dashed: true });
-  s += diagramNode(1450, 830, 360, 72, '외부 API 어댑터', '관광 · 날씨 · 혼잡 · 대중교통', C.orange, { dashed: true, fill: '#FFF4EC' });
-
-  s += diagramContainer(1970, 165, 540, 810, '외부 서비스', '운영 환경에서 연결', C.orange);
-  s += diagramNode(2010, 275, 460, 74, 'OAuth / OIDC', '로그인과 토큰 검증', C.orange, { dashed: true });
-  s += diagramNode(2010, 390, 460, 74, '관광 · 지도 API', '장소 검색과 상세 정보', C.orange, { dashed: true });
-  s += diagramNode(2010, 505, 460, 74, '날씨 · 혼잡 API', '실시간 관측값 수집', C.orange, { dashed: true });
-  s += diagramNode(2010, 620, 460, 74, '대중교통 경로 API', '실제 경로 후보 계산', C.orange, { dashed: true });
-  s += diagramNode(2010, 735, 460, 74, 'FCM · SSE', '변경 제안과 알림 전달', C.orange, { dashed: true });
-
-  s += diagramContainer(390, 1020, 2120, 350, '데이터 저장소 · 현재 단일 DB', '업무 영역을 나누고 필요할 때 물리 분리', C.green);
-  s += diagramCylinder(500, 1135, 240, 125, 'Core 영역', '사용자 · 여행 · 일정', C.navy);
-  s += diagramCylinder(820, 1135, 240, 125, 'Place 영역', '장소 기본 정보', C.green);
-  s += diagramCylinder(1140, 1135, 240, 125, 'Event 영역', '판단에 사용한 이벤트', C.orange);
-  s += diagramCylinder(1460, 1135, 240, 125, 'Redis', '짧은 TTL 캐시 · 선택', C.orange, { dashed: true });
-  s += diagramNode(1790, 1135, 600, 125, '운영 확인', 'Actuator · 로그/지표 · GitHub Actions', C.navy, { fill: '#E5EEF8', titleSize: 17 });
-
-  s += diagramEdge([[310, 375], [370, 375], [370, 305], [630, 305]], { label: 'HTTPS · JSON', at: [450, 305], color: C.navy });
-  s += diagramEdge([[1205, 335], [1205, 430]], { color: C.navy });
-  s += diagramEdge([[1205, 510], [1205, 625]], { color: C.violet });
-  s += diagramEdge([[1205, 713], [1205, 830]], { color: C.blue });
-  s += diagramEdge([[1810, 866], [1950, 866], [1950, 657], [2010, 657]], { label: '운영 연동', at: [1950, 710], color: C.orange, dashed: true });
-  s += diagramEdge([[820, 902], [820, 995], [620, 995], [620, 1135]], { label: 'JDBC · Flyway', at: [720, 995], color: C.green });
-
-  return shell('GAYADI 서비스 아키텍처', 'draw.io 표준 형태의 계층형 서비스 아키텍처', s);
-}
-
-function drawioValue(title, subtitle = '') {
-  const html = subtitle
-    ? `<b>${title}</b><br><font color="#475569" style="font-size:11px">${subtitle}</font>`
-    : `<b>${title}</b>`;
-  return esc(html);
-}
-
-function serviceArchitectureDrawio() {
+function erdDrawio() {
   const cells = [];
-  const vertex = (id, parent, title, subtitle, style, x, y, w, h) => {
-    cells.push(`<mxCell id="${id}" value="${drawioValue(title, subtitle)}" style="${style}" vertex="1" parent="${parent}"><mxGeometry x="${x}" y="${y}" width="${w}" height="${h}" as="geometry"/></mxCell>`);
-  };
-  const edge = (id, source, target) => {
-    const style = 'edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;endArrow=classic;strokeColor=#53657A;';
-    cells.push(`<mxCell id="${id}" value="" style="${style}" edge="1" source="${source}" target="${target}" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>`);
-  };
-  const swimlane = 'swimlane;startSize=32;rounded=1;html=1;fontStyle=1;fontSize=16;container=1;collapsible=0;pointerEvents=0;';
-  const node = 'rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;';
-  const externalNode = `${node}fillColor=#FFF4EC;strokeColor=#D85C22;`;
-
-  vertex('client', '1', '클라이언트', '사용자와 모바일 앱', `${swimlane}fillColor=#E8F7F8;strokeColor=#0D9FA5;`, 20, 40, 220, 760);
-  vertex('app', 'client', 'Android 앱', '여행 전·중·후 화면', `${node}fillColor=#E8F7F8;strokeColor=#0D9FA5;`, 30, 80, 160, 80);
-  vertex('before', 'client', '여행 전', '설문·일정·출발 경로', `${node}fillColor=#EEE7FF;strokeColor=#6637D9;`, 30, 230, 160, 65);
-  vertex('during', 'client', '여행 중', '상황 감지·변경 승인', `${node}fillColor=#FFE9DA;strokeColor=#D85C22;`, 30, 340, 160, 65);
-  vertex('after', 'client', '여행 후', '귀가 경로·완료', `${node}fillColor=#DFF3EA;strokeColor=#087E62;`, 30, 450, 160, 65);
-
-  vertex('server', '1', 'GAYADI Server · Spring Boot', '모듈러 모놀리스', `${swimlane}fillColor=#E5EEF8;strokeColor=#123C69;`, 270, 40, 1200, 760);
-  vertex('apiLane', 'server', 'API 계층', '요청 진입점', `${swimlane}fillColor=#E5EEF8;strokeColor=#123C69;startSize=26;fontSize=14;`, 20, 50, 1160, 105);
-  vertex('rest', 'apiLane', 'REST Controller', '여행 전·중·후 API', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 160, 34, 250, 52);
-  vertex('authFilter', 'apiLane', '사용자·멤버 확인', '업무 요청 기준 검증', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 455, 34, 250, 52);
-  vertex('validation', 'apiLane', '검증·오류 응답', '공통 응답 형식', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 750, 34, 250, 52);
-
-  vertex('appLane', 'server', '애플리케이션 계층', '유스케이스 조합', `${swimlane}fillColor=#EEE7FF;strokeColor=#6637D9;startSize=26;fontSize=14;`, 20, 175, 1160, 130);
-  vertex('prepareUsecase', 'appLane', '여행 준비', '멤버→설문→일정→출발 경로', `${node}fillColor=#EEE7FF;strokeColor=#6637D9;`, 150, 38, 270, 68);
-  vertex('duringUsecase', 'appLane', '여행 중 대응', '이벤트→대안→승인 반영', `${node}fillColor=#FFE9DA;strokeColor=#D85C22;`, 445, 38, 270, 68);
-  vertex('returnUsecase', 'appLane', '귀가', '멤버별 귀가 경로', `${node}fillColor=#DFF3EA;strokeColor=#087E62;`, 740, 38, 270, 68);
-
-  vertex('domainLane', 'server', '도메인 모듈', '업무 규칙과 데이터', `${swimlane}fillColor=#EAF3FC;strokeColor=#0568C2;startSize=26;fontSize=14;`, 20, 325, 1160, 160);
-  const drawioModules = [
-    ['auth', '인증·사용자', '#123C69'], ['trip', '여행·멤버', '#123C69'], ['survey', '설문·성향', '#6637D9'], ['plan', '일정·변경', '#C52B5A'],
-    ['place', '장소', '#087E62'], ['event', '이벤트', '#D85C22'], ['route', '경로', '#0568C2'], ['common', '공통', '#667085']
+  const rels = [
+    ['r1', 'users', 'trips', C.navy], ['r2', 'users', 'members', C.navy], ['r3', 'trips', 'members', C.navy],
+    ['r4', 'surveys', 'responses', C.violet], ['r5', 'users', 'responses', C.violet], ['r6', 'trips', 'responses', C.violet],
+    ['r7', 'trips', 'plans', C.navy], ['r8', 'responses', 'plans', C.violet], ['r9', 'plans', 'items', C.navy],
+    ['r10', 'places', 'items', C.green], ['r11', 'places', 'placeVectors', C.teal, true], ['r12', 'places', 'events', C.orange],
+    ['r13', 'members', 'routes', C.blue], ['r14', 'trips', 'routes', C.blue], ['r15', 'events', 'proposals', C.rose],
+    ['r16', 'plans', 'proposals', C.rose]
   ];
-  drawioModules.forEach(([id, title, color], index) => vertex(id, 'domainLane', title, '', `${node}fillColor=#FFFFFF;strokeColor=${color};fontSize=12;`, 115 + index * 128, 55, 110, 62));
-
-  vertex('infraLane', 'server', '인프라 계층', '외부 기술 교체 경계', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;startSize=26;fontSize=14;`, 20, 505, 1160, 145);
-  vertex('localAdapter', 'infraLane', '로컬 어댑터', 'H2 데이터·경로 스텁', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 170, 45, 250, 70);
-  vertex('notifyAdapter', 'infraLane', '알림 어댑터', 'FCM·SSE', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 455, 45, 250, 70);
-  vertex('externalAdapter', 'infraLane', '외부 API 어댑터', '장소·이벤트·경로', `${node}fillColor=#E5F4EC;strokeColor=#087E62;`, 740, 45, 250, 70);
-
-  vertex('external', '1', '외부 서비스', '', `${swimlane}fillColor=#FFF4EC;strokeColor=#D85C22;`, 1500, 40, 420, 760);
-  vertex('oauth', 'external', 'OAuth / OIDC', '', externalNode, 35, 70, 350, 70);
-  vertex('placeApi', 'external', '관광 · 지도 API', '', externalNode, 35, 180, 350, 70);
-  vertex('eventApi', 'external', '날씨 · 혼잡 API', '', externalNode, 35, 290, 350, 70);
-  vertex('routeApi', 'external', '대중교통 경로 API', '', externalNode, 35, 400, 350, 70);
-  vertex('pushApi', 'external', 'FCM · SSE', '', externalNode, 35, 510, 350, 70);
-
-  vertex('data', '1', '데이터 저장소 · 현재 단일 DB', '업무 영역별 분리', `${swimlane}fillColor=#E5F4EC;strokeColor=#087E62;`, 270, 840, 1650, 230);
-  vertex('coreDb', 'data', 'Core 영역', '사용자·여행·일정', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5EEF8;strokeColor=#123C69;', 120, 80, 180, 95);
-  vertex('placeDb', 'data', 'Place 영역', '장소 기본 정보', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 380, 80, 180, 95);
-  vertex('eventDb', 'data', 'Event 영역', '사용한 이벤트', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#FFF1E8;strokeColor=#D85C22;', 640, 80, 180, 95);
-  vertex('redis', 'data', 'Redis', '짧은 TTL 캐시', 'shape=cylinder3;whiteSpace=wrap;html=1;strokeWidth=2;fillColor=#E5F4EC;strokeColor=#087E62;', 900, 80, 180, 95);
-  vertex('ops', 'data', '운영 확인', 'Actuator·로그·GitHub Actions', `${node}fillColor=#E5EEF8;strokeColor=#123C69;`, 1160, 80, 360, 95);
-
-  edge('e1', 'app', 'rest');
-  edge('e2', 'rest', 'prepareUsecase');
-  edge('e3', 'prepareUsecase', 'trip');
-  edge('e4', 'prepareUsecase', 'survey');
-  edge('e5', 'duringUsecase', 'event');
-  edge('e6', 'duringUsecase', 'plan');
-  edge('e7', 'returnUsecase', 'route');
-  edge('e8', 'externalAdapter', 'placeApi');
-  edge('e9', 'externalAdapter', 'eventApi');
-  edge('e10', 'externalAdapter', 'routeApi');
-  edge('e11', 'notifyAdapter', 'pushApi');
-  edge('e12', 'localAdapter', 'coreDb');
-  edge('e13', 'place', 'placeDb');
-  edge('e14', 'event', 'eventDb');
-
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile host="app.diagrams.net" agent="Codex draw.io plugin" version="26.0.9"><diagram id="gayadi-architecture" name="서비스 아키텍처"><mxGraphModel adaptiveColors="auto" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join('')}</root></mxGraphModel></diagram></mxfile>`;
+  rels.forEach((rel) => cells.push(mxEdge(...rel)));
+  erdTables.forEach((table) => {
+    const style = `rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=${table.color};strokeWidth=2;align=left;verticalAlign=top;spacing=0;shadow=1;${table.dashed ? 'dashed=1;dashPattern=8 6;' : ''}`;
+    cells.push(mxVertex(table.id, tableHtml(table), table.x, table.y, table.w, tableHeight(table), style));
+  });
+  cells.push(mxVertex('title', 'GAYADI 데이터 모델 · ERD', 64, 28, 2432, 80, 'rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;strokeColor=#0F172A;fontColor=#FFFFFF;fontSize=40;fontStyle=1;align=left;spacingLeft=30;shadow=1;'));
+  return mxFile('ERD', 'gayadi-erd', cells, ERD_H);
 }
 
-async function render(name, svg) {
+function flowNodeHtml(node) {
+  if (!node.module) return `<div style="font-size:24px;font-weight:700;color:${C.ink}">${node.title}</div>`;
+  return `<div style="font-size:16px;font-weight:700;color:${node.color};margin-bottom:8px">${node.module}</div><div style="font-size:24px;font-weight:700;color:${C.ink}">${node.title}</div>`;
+}
+
+function flowDrawio() {
+  const cells = [];
+  const panelStyle = (color, fill) => `swimlane;horizontal=1;startSize=78;rounded=1;whiteSpace=wrap;html=1;fillColor=${color};swimlaneFillColor=${fill};strokeColor=${color};strokeWidth=2.5;fontColor=#FFFFFF;fontSize=32;fontStyle=1;align=left;spacingLeft=28;`;
+  cells.push(mxVertex('beforePanel', '01   여행 전', 50, 140, 780, 1040, panelStyle(C.blue, '#F4F7FF')));
+  cells.push(mxVertex('duringPanel', '02   여행 중', 860, 140, 1100, 1040, panelStyle(C.violet, '#F8F6FF')));
+  cells.push(mxVertex('afterPanel', '03   여행 후', 1990, 140, 520, 1040, panelStyle(C.green, '#F3FBF8')));
+  const edges = [
+    ['e1', 'create', 'mode'], ['e2', 'mode', 'meet'], ['e3', 'mode', 'individual'], ['e4', 'meet', 'survey'],
+    ['e5', 'individual', 'survey'], ['e6', 'survey', 'recommend'], ['e7', 'recommend', 'plan'],
+    ['e8', 'plan', 'departureRoute'], ['e9', 'departureRoute', 'ready'], ['e10', 'ready', 'start'],
+    ['e11', 'start', 'observe'], ['e12', 'observe', 'impact'], ['e13', 'impact', 'alternative'],
+    ['e14', 'impact', 'observe'], ['e15', 'alternative', 'notify'], ['e16', 'notify', 'approve'],
+    ['e17', 'approve', 'apply'], ['e18', 'approve', 'observe'], ['e19', 'apply', 'observe'],
+    ['e20', 'apply', 'last'], ['e21', 'last', 'returnRoute'], ['e22', 'returnRoute', 'selectRoute'], ['e23', 'selectRoute', 'complete']
+  ];
+  edges.forEach((edge) => cells.push(mxEdge(edge[0], edge[1], edge[2])));
+  flowNodes.forEach((node) => {
+    const shape = node.decision ? 'rhombus;' : 'rounded=1;arcSize=18;';
+    const style = `${shape}whiteSpace=wrap;html=1;fillColor=${node.fill || '#FFFFFF'};strokeColor=${node.color};strokeWidth=2.2;fontColor=${C.ink};fontSize=24;fontStyle=1;shadow=1;align=center;verticalAlign=middle;spacing=8;`;
+    cells.push(mxVertex(node.id, flowNodeHtml(node), node.x, node.y, node.w, node.h, style));
+  });
+  const labels = [
+    ['l1', '모여서', 210, 422, C.blue], ['l2', '각자', 540, 422, C.blue],
+    ['l3', '영향 없음', 1105, 442, C.line], ['l4', '영향 있음', 1420, 557, C.orange],
+    ['l5', '거절', 1010, 817, C.rose], ['l6', '승인', 1395, 952, C.green],
+    ['l7', '여행 진행', 955, 1017, C.green]
+  ];
+  labels.forEach(([id, value, x, y, color]) => cells.push(mxVertex(id, value, x, y, 120, 30, `rounded=1;html=1;strokeColor=none;fillColor=#FFFFFF;opacity=90;fontColor=${color};fontSize=16;fontStyle=1;align=center;verticalAlign=middle;`)));
+  cells.push(mxVertex('title', 'GAYADI 서비스 흐름도', 64, 28, 2432, 80, 'rounded=1;whiteSpace=wrap;html=1;fillColor=#0F172A;strokeColor=#0F172A;fontColor=#FFFFFF;fontSize=40;fontStyle=1;align=left;spacingLeft=30;shadow=1;'));
+  return mxFile('서비스 흐름도', 'gayadi-service-flow', cells, FLOW_H);
+}
+
+function renderSvg(name, svg, height) {
   const svgPath = path.join(OUT, `${name}.svg`);
   const pngPath = path.join(OUT, `${name}.png`);
-  fs.writeFileSync(svgPath, svg, 'utf8');
+  const cleanSvg = svg.replace(/[ \t]+\r?\n/g, '\n');
+  fs.writeFileSync(svgPath, cleanSvg, 'utf8');
   const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
   const target = `file:///${svgPath.replaceAll('\\', '/')}`;
   execFileSync(chrome, [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
-    `--window-size=${W},${H}`, `--screenshot=${pngPath}`, target
+    `--window-size=${W},${height}`, `--screenshot=${pngPath}`, target
   ], { stdio: 'ignore' });
-  return { svgPath, pngPath };
+  return [svgPath, pngPath];
 }
 
-(async () => {
-  const output = [];
-  output.push(await render('gayadi-erd-presentation', erd()));
-  output.push(await render('gayadi-service-flow-presentation', serviceFlow()));
-  output.flatMap((item) => [item.svgPath, item.pngPath]).forEach((file) => console.log(file));
-})().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+function writeDrawio(name, xml) {
+  const file = path.join(OUT, `${name}.drawio`);
+  fs.writeFileSync(file, xml, 'utf8');
+  return file;
+}
+
+fs.mkdirSync(OUT, { recursive: true });
+const output = [
+  ...renderSvg('gayadi-erd-presentation', erdSvg(), ERD_H),
+  ...renderSvg('gayadi-service-flow-presentation', flowSvg(), FLOW_H),
+  writeDrawio('gayadi-erd-presentation', erdDrawio()),
+  writeDrawio('gayadi-service-flow-presentation', flowDrawio())
+];
+output.forEach((file) => console.log(file));

@@ -12,7 +12,7 @@ public final class RowSupport {
         if (v != null) return v;
         v = row.get(key.toUpperCase());
         if (v != null) return v;
-        throw new IllegalArgumentException("Missing key: " + key);
+        throw new IllegalArgumentException("조회 결과에 필요한 열이 없습니다: " + key);
     }
 
     public static long longValue(Map<String, Object> row, String key) {

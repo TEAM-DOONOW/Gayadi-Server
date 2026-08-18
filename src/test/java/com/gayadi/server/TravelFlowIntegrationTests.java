@@ -59,17 +59,17 @@ class TravelFlowIntegrationTests {
                 3L,
                 3L
         ));
-        long memberId = id(member);
+        long memberId = RowSupport.longValue(member, "participantId");
 
         surveys.respond(tripId, ownerId, List.of(
-                item(1L, 1L),
-                item(2L, 3L),
-                item(3L, 5L)
+                item("q01", "a"), item("q02", "a"), item("q03", "a"),
+                item("q04", "a"), item("q05", "a"), item("q06", "a"),
+                item("q07", "a"), item("q08", "a"), item("q09", "a")
         ));
         surveys.respond(tripId, memberUserId, List.of(
-                item(1L, 1L),
-                item(2L, 3L),
-                item(3L, 5L)
+                item("q01", "a"), item("q02", "a"), item("q03", "a"),
+                item("q04", "a"), item("q05", "a"), item("q06", "a"),
+                item("q07", "a"), item("q08", "a"), item("q09", "a")
         ));
 
         Map<String, Object> plan = plans.generate(tripId);
@@ -80,6 +80,10 @@ class TravelFlowIntegrationTests {
         Map<String, Object> groupRoute = routes.recommend(tripId, RoutePhase.DEPARTURE, null);
         Assertions.assertThat(memberRoute.get("scope")).isEqualTo("MEMBER");
         Assertions.assertThat(groupRoute.get("scope")).isEqualTo("GROUP");
+
+        Map<String, Object> itineraryRoute = routes.recommend(tripId, RoutePhase.IN_TRIP, null);
+        Assertions.assertThat(itineraryRoute.get("type")).isEqualTo("ITINERARY");
+        Assertions.assertThat(itineraryRoute.get("scope")).isEqualTo("GROUP");
 
         trips.start(tripId);
 
@@ -105,7 +109,7 @@ class TravelFlowIntegrationTests {
         return RowSupport.longValue(row, "id");
     }
 
-    private SurveyController.ResponseItem item(long questionId, long optionId) {
+    private SurveyController.ResponseItem item(String questionId, String optionId) {
         SurveyController.ResponseItem item = new SurveyController.ResponseItem();
         item.setQuestionId(questionId);
         item.setOptionId(optionId);

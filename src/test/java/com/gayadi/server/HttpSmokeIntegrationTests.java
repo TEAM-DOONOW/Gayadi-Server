@@ -21,15 +21,33 @@ class HttpSmokeIntegrationTests {
     @Test
     void servesHealthSurveyAndPlacesOverHttp() throws Exception {
         HttpResponse<String> health = get("/actuator/health");
-        HttpResponse<String> survey = get("/api/v1/surveys/personality");
+        HttpResponse<String> survey = get("/api/v1/surveys/travel-personality-v1");
         HttpResponse<String> places = get("/api/v1/places");
+        HttpResponse<String> protectedTrips = get("/api/v1/trips");
 
         Assertions.assertThat(health.statusCode()).isEqualTo(200);
         Assertions.assertThat(health.body()).contains("\"status\":\"UP\"");
         Assertions.assertThat(survey.statusCode()).isEqualTo(200);
-        Assertions.assertThat(survey.body()).contains("여행 성향 검사");
+        Assertions.assertThat(survey.body()).contains("여행 성향 판단 설문조사");
         Assertions.assertThat(places.statusCode()).isEqualTo(200);
         Assertions.assertThat(places.body()).contains("서울숲", "국립중앙박물관");
+        Assertions.assertThat(protectedTrips.statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void rejectsUnsupportedRequestBodyWithoutReturningServerError() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(
+                        URI.create("http://127.0.0.1:" + port + "/api/v1/auth/registrations"))
+                .header("Content-Type", "text/plain")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
+
+        HttpResponse<String> response = client.send(
+                request, HttpResponse.BodyHandlers.ofString());
+
+        Assertions.assertThat(response.statusCode()).isEqualTo(415);
+        Assertions.assertThat(response.body())
+                .contains("application/json 형식으로 보내 주세요", "UNSUPPORTED_MEDIA_TYPE");
     }
 
     private HttpResponse<String> get(String path) throws Exception {
