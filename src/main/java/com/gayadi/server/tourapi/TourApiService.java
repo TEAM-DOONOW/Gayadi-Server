@@ -27,7 +27,11 @@ public class TourApiService {
 
     private static final Logger log = LoggerFactory.getLogger(TourApiService.class);
 
-    private static final String OPERATION_AREA_BASED_LIST = "areaBasedList2";
+    private static final String OP_AREA_BASED_LIST = "areaBasedList2";
+    private static final String OP_LOCATION_BASED_LIST = "locationBasedList2";
+    private static final String OP_SEARCH_KEYWORD = "searchKeyword2";
+    private static final String OP_SEARCH_FESTIVAL = "searchFestival2";
+    private static final String OP_SEARCH_STAY = "searchStay2";
     private static final String RESULT_CODE_OK = "0000";
 
     private final HttpClient client = HttpClient.newBuilder()
@@ -50,30 +54,84 @@ public class TourApiService {
         this.mobileApp = mobileApp;
     }
 
-    /**
-     * 지역 및 시군구를 기반으로 관광정보 목록을 조회한다. 커서 기반 페이지네이션을 제공하며,
-     * 상향 API는 offset 페이징만 지원하므로 pageNo를 {@link TourCursor}로 감싸 노출한다.
-     */
-    public AreaBasedListResponse areaBasedList(AreaBasedListRequest req) {
+    /** 지역 및 시군구를 기반으로 관광정보 목록을 조회한다. */
+    public TourListResponse areaBasedList(AreaBasedListRequest req) {
         int pageNo = TourCursor.decodePageNo(req.cursor());
-        int pageSize = req.pageSize();
-
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("numOfRows", String.valueOf(pageSize));
-        params.put("pageNo", String.valueOf(pageNo));
-        params.put("MobileOS", "ETC");
-        params.put("MobileApp", mobileApp);
-        params.put("_type", "json");
-        params.put("serviceKey", ensureServiceKey());
-        putIfPresent(params, "arrange", req.arrange());
+        Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
         putIfPresent(params, "contentTypeId", req.contentTypeId());
         putIfPresent(params, "lDongRegnCd", req.lDongRegnCd());
         putIfPresent(params, "lDongSignguCd", req.lDongSignguCd());
         putIfPresent(params, "lclsSystm1", req.lclsSystm1());
         putIfPresent(params, "lclsSystm2", req.lclsSystm2());
         putIfPresent(params, "lclsSystm3", req.lclsSystm3());
+        return listResponse(OP_AREA_BASED_LIST, params, req.pageSize(), pageNo);
+    }
 
-        JsonNode response = call(OPERATION_AREA_BASED_LIST, params);
+    /** 좌표(mapX/mapY)와 반경(radius) 기반으로 주변 관광정보 목록을 조회한다. */
+    public TourListResponse locationBasedList(LocationBasedListRequest req) {
+        int pageNo = TourCursor.decodePageNo(req.cursor());
+        Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
+        requireParam("mapX", req.mapX());
+        requireParam("mapY", req.mapY());
+        requireParam("radius", req.radius());
+        params.put("mapX", req.mapX());
+        params.put("mapY", req.mapY());
+        params.put("radius", req.radius());
+        putIfPresent(params, "contentTypeId", req.contentTypeId());
+        putIfPresent(params, "modifiedtime", req.modifiedtime());
+        putIfPresent(params, "lDongRegnCd", req.lDongRegnCd());
+        putIfPresent(params, "lDongSignguCd", req.lDongSignguCd());
+        putIfPresent(params, "lclsSystm1", req.lclsSystm1());
+        putIfPresent(params, "lclsSystm2", req.lclsSystm2());
+        putIfPresent(params, "lclsSystm3", req.lclsSystm3());
+        return listResponse(OP_LOCATION_BASED_LIST, params, req.pageSize(), pageNo);
+    }
+
+    /** 키워드로 관광정보를 검색한다. */
+    public TourListResponse searchKeyword(SearchKeywordRequest req) {
+        int pageNo = TourCursor.decodePageNo(req.cursor());
+        Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
+        requireParam("keyword", req.keyword());
+        params.put("keyword", req.keyword());
+        putIfPresent(params, "lDongRegnCd", req.lDongRegnCd());
+        putIfPresent(params, "lDongSignguCd", req.lDongSignguCd());
+        putIfPresent(params, "lclsSystm1", req.lclsSystm1());
+        putIfPresent(params, "lclsSystm2", req.lclsSystm2());
+        putIfPresent(params, "lclsSystm3", req.lclsSystm3());
+        return listResponse(OP_SEARCH_KEYWORD, params, req.pageSize(), pageNo);
+    }
+
+    /** 행사/공연/축제 정보를 날짜로 조회한다. */
+    public TourListResponse searchFestival(SearchFestivalRequest req) {
+        int pageNo = TourCursor.decodePageNo(req.cursor());
+        Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
+        requireParam("eventStartDate", req.eventStartDate());
+        params.put("eventStartDate", req.eventStartDate());
+        putIfPresent(params, "eventEndDate", req.eventEndDate());
+        putIfPresent(params, "modifiedtime", req.modifiedtime());
+        putIfPresent(params, "lDongRegnCd", req.lDongRegnCd());
+        putIfPresent(params, "lDongSignguCd", req.lDongSignguCd());
+        putIfPresent(params, "lclsSystm1", req.lclsSystm1());
+        putIfPresent(params, "lclsSystm2", req.lclsSystm2());
+        putIfPresent(params, "lclsSystm3", req.lclsSystm3());
+        return listResponse(OP_SEARCH_FESTIVAL, params, req.pageSize(), pageNo);
+    }
+
+    /** 숙박 정보 목록을 조회한다. */
+    public TourListResponse searchStay(SearchStayRequest req) {
+        int pageNo = TourCursor.decodePageNo(req.cursor());
+        Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
+        putIfPresent(params, "modifiedtime", req.modifiedtime());
+        putIfPresent(params, "lDongRegnCd", req.lDongRegnCd());
+        putIfPresent(params, "lDongSignguCd", req.lDongSignguCd());
+        putIfPresent(params, "lclsSystm1", req.lclsSystm1());
+        putIfPresent(params, "lclsSystm2", req.lclsSystm2());
+        putIfPresent(params, "lclsSystm3", req.lclsSystm3());
+        return listResponse(OP_SEARCH_STAY, params, req.pageSize(), pageNo);
+    }
+
+    private TourListResponse listResponse(String operation, Map<String, String> params, int pageSize, int pageNo) {
+        JsonNode response = call(operation, params);
         JsonNode body = response.path("body");
         JsonNode itemNode = body.path("items").path("item");
 
@@ -90,7 +148,19 @@ public class TourApiService {
         String nextCursor = (pageNo * (long) pageSize < totalCount)
                 ? TourCursor.encode(pageNo + 1)
                 : null;
-        return new AreaBasedListResponse(items, totalCount, pageSize, nextCursor);
+        return new TourListResponse(items, totalCount, pageSize, nextCursor);
+    }
+
+    private Map<String, String> baseParams(int pageSize, int pageNo, String arrange) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("numOfRows", String.valueOf(pageSize));
+        params.put("pageNo", String.valueOf(pageNo));
+        params.put("MobileOS", "ETC");
+        params.put("MobileApp", mobileApp);
+        params.put("_type", "json");
+        params.put("serviceKey", ensureServiceKey());
+        putIfPresent(params, "arrange", arrange);
+        return params;
     }
 
     private JsonNode call(String operation, Map<String, String> params) {
@@ -168,6 +238,12 @@ public class TourApiService {
         return serviceKey;
     }
 
+    private void requireParam(String name, String value) {
+        if (value == null || value.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "필수 파라미터 " + name + "이(가) 없습니다.");
+        }
+    }
+
     private TourPlace toTourPlace(JsonNode node) {
         return new TourPlace(
                 text(node, "contentid"),
@@ -189,7 +265,12 @@ public class TourApiService {
                 text(node, "lDongSignguCd"),
                 text(node, "lclsSystm1"),
                 text(node, "lclsSystm2"),
-                text(node, "lclsSystm3")
+                text(node, "lclsSystm3"),
+                text(node, "dist"),
+                text(node, "eventstartdate"),
+                text(node, "eventenddate"),
+                text(node, "progresstype"),
+                text(node, "festivaltype")
         );
     }
 
@@ -225,44 +306,48 @@ public class TourApiService {
     }
 
     public record AreaBasedListRequest(
-            int pageSize,
-            String cursor,
-            String arrange,
-            String contentTypeId,
-            String lDongRegnCd,
-            String lDongSignguCd,
-            String lclsSystm1,
-            String lclsSystm2,
-            String lclsSystm3) {
+            int pageSize, String cursor, String arrange, String contentTypeId,
+            String lDongRegnCd, String lDongSignguCd,
+            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
     }
 
-    public record AreaBasedListResponse(
-            List<TourPlace> items,
-            int totalCount,
-            int pageSize,
-            String nextCursor) {
+    public record LocationBasedListRequest(
+            int pageSize, String cursor, String arrange,
+            String mapX, String mapY, String radius, String contentTypeId, String modifiedtime,
+            String lDongRegnCd, String lDongSignguCd,
+            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
+    }
+
+    public record SearchKeywordRequest(
+            int pageSize, String cursor, String arrange, String keyword,
+            String lDongRegnCd, String lDongSignguCd,
+            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
+    }
+
+    public record SearchFestivalRequest(
+            int pageSize, String cursor, String arrange, String eventStartDate, String eventEndDate,
+            String modifiedtime, String lDongRegnCd, String lDongSignguCd,
+            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
+    }
+
+    public record SearchStayRequest(
+            int pageSize, String cursor, String arrange, String modifiedtime,
+            String lDongRegnCd, String lDongSignguCd,
+            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
+    }
+
+    public record TourListResponse(
+            List<TourPlace> items, int totalCount, int pageSize, String nextCursor) {
     }
 
     public record TourPlace(
-            String contentId,
-            String contentTypeId,
-            String title,
-            String address,
-            String addressDetail,
-            String zipcode,
-            String tel,
-            String firstImage,
-            String firstImage2,
-            String mapX,
-            String mapY,
-            String mapLevel,
-            String createdTime,
-            String modifiedTime,
-            String copyrightType,
-            String lDongRegnCd,
-            String lDongSignguCd,
-            String lclsSystm1,
-            String lclsSystm2,
-            String lclsSystm3) {
+            String contentId, String contentTypeId, String title,
+            String address, String addressDetail, String zipcode, String tel,
+            String firstImage, String firstImage2, String mapX, String mapY, String mapLevel,
+            String createdTime, String modifiedTime, String copyrightType,
+            String lDongRegnCd, String lDongSignguCd,
+            String lclsSystm1, String lclsSystm2, String lclsSystm3,
+            String dist, String eventStartDate, String eventEndDate,
+            String progressType, String festivalType) {
     }
 }
