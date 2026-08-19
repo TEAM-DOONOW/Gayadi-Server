@@ -51,12 +51,16 @@ public class TourApiService {
     }
 
     /**
-     * 지역 및 시군구를 기반으로 관광정보 목록을 조회합니다.
+     * 지역 및 시군구를 기반으로 관광정보 목록을 조회한다. 커서 기반 페이지네이션을 제공하며,
+     * 상향 API는 offset 페이징만 지원하므로 pageNo를 {@link TourCursor}로 감싸 노출한다.
      */
     public AreaBasedListResponse areaBasedList(AreaBasedListRequest req) {
+        int pageNo = TourCursor.decodePageNo(req.cursor());
+        int pageSize = req.pageSize();
+
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("numOfRows", String.valueOf(req.numOfRows()));
-        params.put("pageNo", String.valueOf(req.pageNo()));
+        params.put("numOfRows", String.valueOf(pageSize));
+        params.put("pageNo", String.valueOf(pageNo));
         params.put("MobileOS", "ETC");
         params.put("MobileApp", mobileApp);
         params.put("_type", "json");
@@ -82,12 +86,11 @@ public class TourApiService {
             items.add(toTourPlace(itemNode));
         }
 
-        return new AreaBasedListResponse(
-                items,
-                body.path("numOfRows").asInt(0),
-                body.path("pageNo").asInt(req.pageNo()),
-                body.path("totalCount").asInt(0)
-        );
+        int totalCount = body.path("totalCount").asInt(0);
+        String nextCursor = (pageNo * (long) pageSize < totalCount)
+                ? TourCursor.encode(pageNo + 1)
+                : null;
+        return new AreaBasedListResponse(items, totalCount, pageSize, nextCursor);
     }
 
     private JsonNode call(String operation, Map<String, String> params) {
@@ -107,6 +110,11 @@ public class TourApiService {
         } catch (IOException e) {
             log.warn("관광 API 호출 실패: {} - {}", operation, e.getMessage());
             throw new ApiException(HttpStatus.BAD_GATEWAY, "관광 API 호출에 실패했습니다.");
+        }
+
+        if (response.statusCode() == 429) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                    "관광 API 호출 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
         }
 
         String body = response.body();
@@ -217,8 +225,8 @@ public class TourApiService {
     }
 
     public record AreaBasedListRequest(
-            int numOfRows,
-            int pageNo,
+            int pageSize,
+            String cursor,
             String arrange,
             String contentTypeId,
             String lDongRegnCd,
@@ -230,9 +238,9 @@ public class TourApiService {
 
     public record AreaBasedListResponse(
             List<TourPlace> items,
-            int numOfRows,
-            int pageNo,
-            int totalCount) {
+            int totalCount,
+            int pageSize,
+            String nextCursor) {
     }
 
     public record TourPlace(

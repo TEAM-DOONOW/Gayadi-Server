@@ -26,14 +26,16 @@ public class TourApiController {
     @GetMapping("/areas")
     @Operation(summary = "지역기반 관광정보 조회",
             description = "법정동 시도/시군구 코드와 관광 타입으로 지역 기반 관광정보 목록을 조회합니다. "
+                    + "커서 기반 페이지네이션: 최초 호출 시 cursor 없이, 이후 응답의 nextCursor를 그대로 "
+                    + "다음 요청의 cursor로 전달하면 다음 페이지를 조회한다. nextCursor가 null이면 마지막 페이지. "
                     + "관광 타입(contentTypeId): 12 관광지, 14 문화시설, 15 축제공연행사, 25 여행코스, "
                     + "28 레포츠, 32 숙박, 38 쇼핑, 39 음식점. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
     public TourApiService.AreaBasedListResponse areas(
             @Parameter(description = "한 페이지 결과 수")
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int numOfRows,
-            @Parameter(description = "페이지 번호")
-            @RequestParam(defaultValue = "1") @Min(1) int pageNo,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
+            @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
+            @RequestParam(required = false) String cursor,
             @Parameter(description = "정렬 구분", example = "C")
             @RequestParam(defaultValue = "C") String arrange,
             @Parameter(description = "관광 타입 ID", example = "12")
@@ -49,7 +51,7 @@ public class TourApiController {
             @Parameter(description = "분류체계 소분류", example = "NA040500")
             @RequestParam(required = false) String lclsSystm3) {
         return service.areaBasedList(new TourApiService.AreaBasedListRequest(
-                numOfRows, pageNo, arrange, contentTypeId,
+                pageSize, cursor, arrange, contentTypeId,
                 lDongRegnCd, lDongSignguCd,
                 lclsSystm1, lclsSystm2, lclsSystm3));
     }
