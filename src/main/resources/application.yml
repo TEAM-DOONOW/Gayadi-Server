@@ -41,6 +41,10 @@ tour:
     base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
     mobile-app: ${TOUR_API_MOBILE_APP:Gayadi}
 
+weather:
+  api:
+    base-url: ${WEATHER_API_BASE_URL:http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+
 app:
   ai:
     enabled: ${APP_AI_ENABLED:false}
