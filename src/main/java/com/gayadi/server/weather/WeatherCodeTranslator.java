@@ -78,7 +78,7 @@ final class WeatherCodeTranslator {
         if (raw == null || raw.isBlank()) return "";
         try {
             int deg = (int) Double.parseDouble(raw);
-            int idx = (int) ((deg + 22.5 * 0.5) / 22.5) % 16;
+            int idx = ((int) ((deg + 22.5 * 0.5) / 22.5) % 16 + 16) % 16;
             return WIND_DIRECTIONS[idx];
         } catch (NumberFormatException e) {
             return "";
