@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 "/api/v1/surveys/**",
                                 "/api/v1/places/**",
                                 "/api/v1/tour/**",
+                                "/api/v1/weather/**",
                                 "/api/v1/legal-documents/**")
                         .permitAll()
                         .anyRequest().authenticated())

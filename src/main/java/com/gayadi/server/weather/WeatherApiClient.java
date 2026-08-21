@@ -1,0 +1,176 @@
+package com.gayadi.server.weather;
+
+import com.gayadi.server.common.ApiException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 기상청 API HTTP 통신 담당 — URI 빌드, 호출, 응답 검증, XML 오러 추출.
+ */
+class WeatherApiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(WeatherApiClient.class);
+
+    private static final String RESULT_CODE_OK = "00";
+    private static final String RESULT_CODE_NO_DATA = "03";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final int DEFAULT_PAGE_SIZE = 1000;
+
+    private final HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .build();
+
+    private final ObjectMapper objectMapper;
+    private final String baseUrl;
+    private final String serviceKey;
+
+    WeatherApiClient(
+            ObjectMapper objectMapper,
+            String serviceKey,
+            String baseUrl) {
+        this.objectMapper = objectMapper;
+        this.serviceKey = serviceKey;
+        this.baseUrl = baseUrl;
+    }
+
+    /** 지정한 오퍼레이션을 호출해 response JSON 노드를 반환한다. */
+    JsonNode call(String operation, Map<String, String> params) {
+        URI uri = buildUri(operation, params);
+        HttpRequest request = HttpRequest.newBuilder(uri)
+                .timeout(REQUEST_TIMEOUT)
+                .header("Accept", "application/json")
+                .GET()
+                .build();
+
+        HttpResponse<String> response;
+        try {
+            response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 호출이 중단되었습니다.");
+        } catch (IOException e) {
+            log.warn("기상청 API 호출 실패: {} - {}", operation, e.getMessage());
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 호출에 실패했습니다.");
+        }
+
+        if (response.statusCode() == 429) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                    "기상청 API 호출 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        String body = response.body();
+        if (body == null || body.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 응답이 비어 있습니다.");
+        }
+
+        String trimmed = body.stripLeading();
+        if (trimmed.charAt(0) == '<') {
+            throw new ApiException(HttpStatus.BAD_GATEWAY,
+                    "기상청 API 호출이 거부되었습니다: " + extractXmlError(body));
+        }
+
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(body);
+        } catch (Exception e) {
+            log.warn("기상청 API 응답 파싱 실패: {} - {}", operation, e.getMessage());
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 응답을 해석하지 못했습니다.");
+        }
+
+        JsonNode header = root.path("response").path("header");
+        String resultCode = header.path("resultCode").asText("");
+        String resultMsg = header.path("resultMsg").asText("");
+        if (!RESULT_CODE_OK.equals(resultCode)) {
+            if (RESULT_CODE_NO_DATA.equals(resultCode)) {
+                throw new ApiException(HttpStatus.NOT_FOUND,
+                        "해당 시간의 기상 데이터가 없습니다. 발표 시각을 확인하세요.");
+            }
+            throw new ApiException(HttpStatus.BAD_GATEWAY,
+                    "기상청 API 오류(" + resultCode + "): " + resultMsg);
+        }
+        return root.path("response");
+    }
+
+    Map<String, String> baseParams() {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("numOfRows", String.valueOf(DEFAULT_PAGE_SIZE));
+        params.put("pageNo", "1");
+        params.put("dataType", "JSON");
+        params.put("serviceKey", ensureServiceKey());
+        return params;
+    }
+
+    List<JsonNode> itemsOf(JsonNode body) {
+        JsonNode itemNode = body.path("items").path("item");
+        List<JsonNode> items = new ArrayList<>();
+        if (itemNode.isArray()) {
+            for (JsonNode node : itemNode) {
+                items.add(node);
+            }
+        } else if (itemNode.isObject()) {
+            items.add(itemNode);
+        }
+        return items;
+    }
+
+    static String text(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isMissingNode() || value.isNull() ? "" : value.asText("");
+    }
+
+    private URI buildUri(String operation, Map<String, String> params) {
+        StringBuilder query = new StringBuilder();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (!query.isEmpty()) query.append('&');
+            query.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
+            query.append('=');
+            query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+        }
+        return URI.create(baseUrl + "/" + operation + "?" + query);
+    }
+
+    private String ensureServiceKey() {
+        if (serviceKey == null || serviceKey.isBlank()) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "기상청 API 키(TOUR_API_KEY)가 설정되지 않았습니다.");
+        }
+        return serviceKey;
+    }
+
+    private String extractXmlError(String xml) {
+        String code = extractTag(xml, "returnReasonCode");
+        String message = extractTag(xml, "returnAuthMsg");
+        if (code.isBlank() && message.isBlank()) {
+            return "인증키 또는 요청이 올바르지 않습니다.";
+        }
+        return code + " " + message;
+    }
+
+    private String extractTag(String xml, String tag) {
+        String open = "<" + tag + ">";
+        String close = "</" + tag + ">";
+        int start = xml.indexOf(open);
+        int end = xml.indexOf(close);
+        if (start < 0 || end < 0 || end <= start) {
+            return "";
+        }
+        return xml.substring(start + open.length(), end).trim();
+    }
+}
