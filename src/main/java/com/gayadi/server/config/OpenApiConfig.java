@@ -51,7 +51,8 @@ public class OpenApiConfig {
                         tag("찜", "사용자가 저장한 장소 관리"),
                         tag("법률 문서", "이용약관과 개인정보처리방침 조회"),
                         tag("관리", "운영 자료 관리"),
-                        tag("관광 API", "한국관광공사 국문 관광정보 서비스(KorService2) 연동")
+                        tag("관광 API", "한국관광공사 국문 관광정보 서비스(KorService2) 연동"),
+                        tag("날씨 API", "기상청 단기예보 조회서비스(VilageFcstInfoService_2.0) 연동")
                 ));
     }
 
