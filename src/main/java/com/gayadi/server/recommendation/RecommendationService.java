@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "app.ai.embedding.enabled", havingValue = "true")
 public class RecommendationService {
 
     private final ChatClient chatClient;

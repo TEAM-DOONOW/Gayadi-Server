@@ -2,6 +2,7 @@ package com.gayadi.server.route;
 
 import com.gayadi.server.common.Location;
 import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -9,7 +10,13 @@ import java.util.List;
 
 @Component
 @Profile("!external-route")
+@ConditionalOnProperty(name = "route.provider", havingValue = "local", matchIfMissing = true)
 public class LocalRouteProvider implements RouteProvider {
+
+    @Override
+    public String providerName() {
+        return LOCAL_ESTIMATE;
+    }
 
     @Override
     public List<RouteEstimate> estimateSegments(List<Location> stops, String phase) {
@@ -28,6 +35,7 @@ public class LocalRouteProvider implements RouteProvider {
         int transfers = duration > 45 ? 2 : duration > 25 ? 1 : 0;
         int fare = 1500 + transfers * 250;
         return new RouteEstimate(duration, transfers, fare,
-                "직선거리를 바탕으로 계산한 대중교통 예상 경로입니다. 실제 교통 정보와 다를 수 있습니다.");
+                "직선거리를 바탕으로 계산한 대중교통 예상 경로입니다. 실제 교통 정보와 다를 수 있습니다.",
+                providerName());
     }
 }

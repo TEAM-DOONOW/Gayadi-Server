@@ -121,6 +121,8 @@ public final class ApiSuccessSchemas {
             @Schema(description = "연결한 장소 이름") String placeName,
             @Schema(description = "일정 날짜", example = "2026.08.20") String date,
             @Schema(description = "일정 시각", example = "09:30") String time,
+            @Schema(description = "선택 종료 시각", example = "11:00") String endTime,
+            @Schema(description = "사용자 일정 메모") String memo,
             @Schema(description = "일정 종류", allowableValues = {"MAIN", "ALTERNATIVE"}) String type,
             @Schema(description = "여행 전체 일정에서의 순서. 0부터 시작합니다.", example = "0") int order,
             @Schema(description = "방문 완료 여부", example = "false") boolean isVisited

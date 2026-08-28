@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "app.ai.embedding.enabled", havingValue = "true")
 public class PlaceEmbeddingService {
 
     private static final int BATCH_SIZE = 100;

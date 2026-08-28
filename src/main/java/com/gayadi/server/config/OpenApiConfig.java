@@ -44,12 +44,16 @@ public class OpenApiConfig {
                         tag("설문", "여행 성향 문항과 응답 관리"),
                         tag("일정", "여행 일정 생성과 변경"),
                         tag("경로", "출발, 이동과 귀가 경로 안내"),
+                        tag("날짜 조율", "그룹 여행 참여자의 가능한 날짜 조율"),
+                        tag("여행 경비", "여행 지출, 공동 경비와 참여자 정산"),
                         tag("현장 상황", "날씨와 돌발 상황 대응"),
                         tag("장소", "여행 장소 조회"),
                         tag("추천", "여행 장소 추천"),
                         tag("초대", "여행 초대 발급과 참여"),
                         tag("찜", "사용자가 저장한 장소 관리"),
                         tag("법률 문서", "이용약관과 개인정보처리방침 조회"),
+                        tag("공지", "앱 업데이트와 서비스 공지"),
+                        tag("문의", "고객지원 문의 접수"),
                         tag("관리", "운영 자료 관리"),
                         tag("관광 API", "한국관광공사 국문 관광정보 서비스(KorService2) 연동"),
                         tag("날씨 API", "기상청 단기예보 조회서비스(VilageFcstInfoService_2.0) 연동")
@@ -65,6 +69,7 @@ public class OpenApiConfig {
             operation.getResponses().addApiResponse("415", errorResponse("지원하지 않는 본문 형식"));
             operation.getResponses().addApiResponse("429", errorResponse("요청 횟수 초과"));
             operation.getResponses().addApiResponse("500", errorResponse("서버 오류"));
+            operation.getResponses().addApiResponse("502", errorResponse("외부 API 응답 오류"));
             operation.getResponses().addApiResponse("503", errorResponse("선택 기능을 사용할 수 없음"));
             if (operation.getSecurity() != null && !operation.getSecurity().isEmpty()) {
                 operation.getResponses().addApiResponse("401", errorResponse("로그인 필요"));

@@ -1,6 +1,6 @@
 package com.gayadi.server.schedule;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.config.ApiSuccessSchemas;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -19,10 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -31,8 +27,6 @@ import java.util.Map;
 @Tag(name = "일정", description = "앱에서 직접 편집하는 여행 일정을 관리합니다.")
 @SecurityRequirement(name = "bearerAuth")
 public class ScheduleItemController {
-
-    private static final DateTimeFormatter APP_TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final ScheduleItemService service;
 
@@ -102,20 +96,27 @@ public class ScheduleItemController {
         @Size(max = 200)
         private String title;
         @NotBlank
-        @Pattern(regexp = "(?:\\d{4}\\.\\d{2}\\.\\d{2}|\\d{4}-\\d{2}-\\d{2})",
+        @Pattern(regexp = AppDateFormat.DATE_PATTERN,
                 message = "일정 날짜는 yyyy.MM.dd 또는 yyyy-MM-dd 형식이어야 합니다.")
         private String date;
         @NotBlank
-        @Pattern(regexp = "(?:[01]\\d|2[0-3]):[0-5]\\d",
+        @Pattern(regexp = AppDateFormat.TIME_PATTERN,
                 message = "일정 시각은 HH:mm 형식이어야 합니다.")
         private String time;
+        @Pattern(regexp = AppDateFormat.TIME_PATTERN,
+                message = "일정 종료 시각은 HH:mm 형식이어야 합니다.")
+        private String endTime;
+        @Size(max = 500)
+        private String memo;
         @NotNull
         private ScheduleItemService.ScheduleType type;
         private Long placeId;
 
         ScheduleItemService.ScheduleCommand command() {
             return new ScheduleItemService.ScheduleCommand(
-                    title, parseDate(date), LocalTime.parse(time, APP_TIME), type, placeId);
+                    title, AppDateFormat.parseDate(date, "일정 날짜"),
+                    AppDateFormat.parseTime(time, "일정 시각"), type, placeId,
+                    AppDateFormat.parseTime(endTime, "일정 종료 시각"), memo);
         }
 
         public String getTitle() { return title; }
@@ -124,35 +125,36 @@ public class ScheduleItemController {
         public void setDate(String date) { this.date = date; }
         public String getTime() { return time; }
         public void setTime(String time) { this.time = time; }
+        public String getEndTime() { return endTime; }
+        public void setEndTime(String endTime) { this.endTime = endTime; }
+        public String getMemo() { return memo; }
+        public void setMemo(String memo) { this.memo = memo; }
         public ScheduleItemService.ScheduleType getType() { return type; }
         public void setType(ScheduleItemService.ScheduleType type) { this.type = type; }
         public Long getPlaceId() { return placeId; }
         public void setPlaceId(Long placeId) { this.placeId = placeId; }
 
-        private LocalDate parseDate(String value) {
-            if (value == null) return null;
-            try {
-                return LocalDate.parse(value.replace('.', '-'));
-            } catch (DateTimeParseException exception) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "실제로 존재하는 일정 날짜를 입력해 주세요.");
-            }
-        }
     }
 
     /**
      * 일정 수정은 안드로이드에서 방문 여부만 바꾸는 경우도 있어 모든 값을 선택값으로 받는다.
-     * placeId는 빠진 경우와 명시적으로 null을 보낸 경우를 구분해 장소 연결을 해제할 수 있다.
+     * placeId와 endTime은 빠진 경우와 명시적으로 null을 보낸 경우를 구분해 연결·종료 시각을 해제할 수 있다.
      */
     public static class UpdateScheduleRequest {
         @Size(max = 200)
         private String title;
-        @Pattern(regexp = "(?:\\d{4}\\.\\d{2}\\.\\d{2}|\\d{4}-\\d{2}-\\d{2})",
+        @Pattern(regexp = AppDateFormat.DATE_PATTERN,
                 message = "일정 날짜는 yyyy.MM.dd 또는 yyyy-MM-dd 형식이어야 합니다.")
         private String date;
-        @Pattern(regexp = "(?:[01]\\d|2[0-3]):[0-5]\\d",
+        @Pattern(regexp = AppDateFormat.TIME_PATTERN,
                 message = "일정 시각은 HH:mm 형식이어야 합니다.")
         private String time;
+        @Pattern(regexp = AppDateFormat.TIME_PATTERN,
+                message = "일정 종료 시각은 HH:mm 형식이어야 합니다.")
+        private String endTime;
+        private boolean endTimePresent;
+        @Size(max = 500)
+        private String memo;
         private ScheduleItemService.ScheduleType type;
         private Long placeId;
         private boolean placeIdPresent;
@@ -160,7 +162,11 @@ public class ScheduleItemController {
 
         ScheduleItemService.SchedulePatch patch() {
             return new ScheduleItemService.SchedulePatch(
-                    title, parseDate(date), parseTime(time), type, placeId, placeIdPresent, isVisited);
+                    title, AppDateFormat.parseDate(date, "일정 날짜"),
+                    AppDateFormat.parseTime(time, "일정 시각"),
+                    type, placeId, placeIdPresent,
+                    AppDateFormat.parseTime(endTime, "일정 종료 시각"),
+                    endTimePresent, memo, isVisited);
         }
 
         public String getTitle() { return title; }
@@ -169,6 +175,13 @@ public class ScheduleItemController {
         public void setDate(String date) { this.date = date; }
         public String getTime() { return time; }
         public void setTime(String time) { this.time = time; }
+        public String getEndTime() { return endTime; }
+        public void setEndTime(String endTime) {
+            this.endTime = endTime;
+            this.endTimePresent = true;
+        }
+        public String getMemo() { return memo; }
+        public void setMemo(String memo) { this.memo = memo; }
         public ScheduleItemService.ScheduleType getType() { return type; }
         public void setType(ScheduleItemService.ScheduleType type) { this.type = type; }
         public Long getPlaceId() { return placeId; }
@@ -180,19 +193,6 @@ public class ScheduleItemController {
         public void setIsVisited(Boolean isVisited) { this.isVisited = isVisited; }
         public void setVisited(Boolean visited) { this.isVisited = visited; }
 
-        private LocalDate parseDate(String value) {
-            if (value == null) return null;
-            try {
-                return LocalDate.parse(value.replace('.', '-'));
-            } catch (DateTimeParseException exception) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "실제로 존재하는 일정 날짜를 입력해 주세요.");
-            }
-        }
-
-        private LocalTime parseTime(String value) {
-            return value == null ? null : LocalTime.parse(value, APP_TIME);
-        }
     }
 
     public static class ScheduleOrderRequest {

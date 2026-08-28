@@ -13,15 +13,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class EventService {
 
     private static final String PRIMARY_SHELTER_OPTION = "INDOOR_SHELTER";
+    private static final String AI_SITUATION_SOURCE = "AI_SITUATION_AGENT";
+    private static final int MAX_PROPOSAL_REASON_LENGTH = 1000;
+    private static final int MAX_OPTION_DESCRIPTION_LENGTH = 500;
+    private static final int MAX_PROPOSAL_OPTIONS = 5;
+    private static final int SITUATION_VALID_HOURS = 2;
 
     private final JdbcClient jdbc;
     private final TripService trips;
@@ -54,7 +62,7 @@ public class EventService {
                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
                 """,
                 command.placeId(), regionId, command.eventType(), command.source(),
-                LocalDateTime.now().plusHours(2), command.severity().name(),
+                LocalDateTime.now().plusHours(SITUATION_VALID_HOURS), command.severity().name(),
                 json.write(command.values()));
 
         if (command.severity() == Severity.LOW) {
@@ -73,9 +81,63 @@ public class EventService {
                         base_revision_no, options_snapshot)
                 VALUES (?, ?, ?, ?, ?, ?, NULL, 'PENDING', CURRENT_TIMESTAMP, ?, ?)
                 """,
-                tripId, planId, eventId, proposalType(command.eventType()),
+                tripId, planId, eventId,
+                ChangeProposalType.fromEventType(command.eventType()).name(),
                 reason(command), json.write(planSnapshot), baseRevision, json.write(options));
 
+        return proposal(proposalId);
+    }
+
+    /**
+     * 상황 대처 Agent가 고른 내부 장소 후보를 승인 가능한 일정 변경 제안으로 저장합니다.
+     * 같은 일정 버전에서 Agent가 다시 판단하면 이전 Agent 제안은 만료시킵니다.
+     */
+    @Transactional
+    public Map<String, Object> proposeFromAgent(long tripId, AiProposal command) {
+        Map<String, Object> trip = lockInProgressTrip(tripId);
+
+        long regionId = RowSupport.longValue(trip, "region_id");
+        List<Map<String, Object>> options = agentOptions(
+                tripId, regionId, command.options(), command.requireIndoor());
+        if (options.isEmpty()) return Map.of();
+
+        Map<String, Object> planSnapshot = plans.get(tripId);
+        Map<String, Object> targetPlan = currentPlan(tripId);
+        long planId = RowSupport.longValue(targetPlan, "id");
+        int baseRevision = RowSupport.intValue(targetPlan, "version");
+
+        long eventId = keyHelper.insert("""
+                INSERT INTO event_observations (place_id, region_id, event_type, source,
+                                                 observed_at, valid_to, severity, normalized_data)
+                VALUES (NULL, ?, ?, ?, CURRENT_TIMESTAMP, ?, 'HIGH', ?)
+                """,
+                regionId, command.proposalType().eventType(), AI_SITUATION_SOURCE,
+                LocalDateTime.now().plusHours(SITUATION_VALID_HOURS),
+                json.write(command.situationData()));
+
+        jdbc.sql("""
+                UPDATE ai_schedule_change_proposals
+                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
+                WHERE trip_id = ? AND plan_id = ? AND base_revision_no = ?
+                  AND status = 'PENDING'
+                  AND event_id IN (
+                    SELECT id FROM event_observations WHERE source = ?
+                  )
+                """)
+                .params(tripId, planId, baseRevision, AI_SITUATION_SOURCE)
+                .update();
+
+        long proposalId = keyHelper.insert("""
+                INSERT INTO ai_schedule_change_proposals
+                       (trip_id, plan_id, event_id, proposal_type, reason,
+                        before_snapshot, after_snapshot, status, generated_at, expires_at,
+                        base_revision_no, options_snapshot)
+                VALUES (?, ?, ?, ?, ?, ?, NULL, 'PENDING', CURRENT_TIMESTAMP, ?, ?, ?)
+                """,
+                tripId, planId, eventId, command.proposalType().name(),
+                limit(command.reason(), MAX_PROPOSAL_REASON_LENGTH),
+                json.write(planSnapshot), LocalDateTime.now().plusHours(SITUATION_VALID_HOURS),
+                baseRevision, json.write(options));
         return proposal(proposalId);
     }
 
@@ -147,7 +209,7 @@ public class EventService {
         }
 
         SelectedOption selected = selectedOption(proposal, command.selectedOptionKey());
-        ensureActiveShelter(tripId, selected.placeId());
+        ensureActiveAlternative(tripId, selected.placeId(), selected.requireIndoor());
 
         long planId = RowSupport.longValue(proposal, "plan_id");
         Map<String, Object> currentPlan = lockedPlan(tripId, planId);
@@ -184,6 +246,16 @@ public class EventService {
         if (itemUpdated == 0) {
             throw new ApiException(HttpStatus.CONFLICT, "변경할 수 있는 예정 일정이 없습니다.");
         }
+
+        // 하나의 제안을 적용하면 같은 구버전 일정을 기준으로 만든 나머지 제안은 선택할 수 없다.
+        jdbc.sql("""
+                UPDATE ai_schedule_change_proposals
+                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
+                WHERE trip_id = ? AND plan_id = ? AND base_revision_no = ?
+                  AND id <> ? AND status = 'PENDING'
+                """)
+                .params(tripId, planId, proposalRevision, proposalId)
+                .update();
 
         // 장소가 바뀐 뒤에는 이전 동선과 선택 경로를 더 이상 사용할 수 없다.
         jdbc.sql("""
@@ -279,9 +351,47 @@ public class EventService {
             option.put("placeId", placeId);
             option.put("placeName", placeName);
             option.put("description", placeName + "으로 다음 일정을 변경합니다.");
+            option.put("requireIndoor", true);
             options.add(option);
         }
         return options;
+    }
+
+    private List<Map<String, Object>> agentOptions(
+            long tripId,
+            long regionId,
+            List<AiOption> requested,
+            boolean requireIndoor) {
+        if (requested == null || requested.isEmpty()) return List.of();
+        List<Map<String, Object>> result = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
+        for (AiOption option : requested) {
+            if (option == null || !seen.add(option.placeId())) continue;
+            String indoorCondition = requireIndoor
+                    ? " AND (p.category = 'SHELTER' OR p.indoor = TRUE)" : "";
+            List<Map<String, Object>> places = jdbc.sql("""
+                    SELECT p.id, p.name
+                    FROM places p
+                    WHERE p.id = ? AND p.region_id = ? AND p.status = 'ACTIVE'
+                      AND (p.visibility = 'PUBLIC' OR p.trip_id = ?)
+                    """ + indoorCondition)
+                    .params(option.placeId(), regionId, tripId)
+                    .query().listOfRows();
+            if (places.isEmpty()) continue;
+
+            Map<String, Object> place = places.getFirst();
+            long placeId = RowSupport.longValue(place, "id");
+            String placeName = RowSupport.strValue(place, "name");
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("key", "AI_RECOMMENDATION_" + placeId);
+            value.put("placeId", placeId);
+            value.put("placeName", placeName);
+            value.put("description", limit(option.description(), MAX_OPTION_DESCRIPTION_LENGTH));
+            value.put("requireIndoor", requireIndoor);
+            result.add(value);
+            if (result.size() >= MAX_PROPOSAL_OPTIONS) break;
+        }
+        return result;
     }
 
     private Map<String, Object> lockedProposal(long tripId, long proposalId) {
@@ -310,22 +420,25 @@ public class EventService {
                 .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "변경할 일정을 찾을 수 없습니다."));
     }
 
-    private void ensureActiveShelter(long tripId, long placeId) {
+    private void ensureActiveAlternative(long tripId, long placeId, boolean requireIndoor) {
+        String indoorCondition = requireIndoor
+                ? " AND (p.category = 'SHELTER' OR p.indoor = TRUE)" : "";
         long count = jdbc.sql("""
                 SELECT COUNT(*)
                 FROM places p
                 JOIN trips t ON t.region_id = p.region_id
                 WHERE t.id = ? AND t.deleted_at IS NULL
                   AND p.id = ? AND p.status = 'ACTIVE'
-                  AND (p.category = 'SHELTER' OR p.indoor = TRUE)
                   AND (p.visibility = 'PUBLIC' OR p.trip_id = t.id)
-                """)
+                """ + indoorCondition)
                 .params(tripId, placeId)
                 .query(Long.class)
                 .optional()
                 .orElse(0L);
         if (count == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "선택한 실내 대체 장소를 더 이상 이용할 수 없습니다.");
+            String label = requireIndoor ? "실내 대체 장소" : "대체 장소";
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "선택한 " + label + "를 더 이상 이용할 수 없습니다.");
         }
     }
 
@@ -363,7 +476,10 @@ public class EventService {
             if (placeId == null || placeName == null) {
                 throw new ApiException(HttpStatus.CONFLICT, "변경 제안의 대체 장소 정보가 올바르지 않습니다.");
             }
-            return new SelectedOption(selectedKey, number(placeId).longValue(), placeName.toString());
+            Object requireIndoor = option.get("requireIndoor");
+            boolean indoor = requireIndoor == null || Boolean.parseBoolean(requireIndoor.toString());
+            return new SelectedOption(
+                    selectedKey, number(placeId).longValue(), placeName.toString(), indoor);
         }
         throw new ApiException(HttpStatus.BAD_REQUEST, "변경 제안에 포함된 대체 장소만 선택할 수 있습니다.");
     }
@@ -422,22 +538,19 @@ public class EventService {
     }
 
     private void validateObservation(Observation command) {
-        if (!List.of("WEATHER", "CONGESTION", "TRANSPORT", "CLOSURE", "DISASTER")
-                .contains(command.eventType())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "올바르지 않은 현장 상황 종류입니다.");
-        }
+        ChangeProposalType.fromEventType(command.eventType());
         if (command.source().length() > 50) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "현장 상황 출처는 50자까지 입력할 수 있습니다.");
         }
     }
 
-    private String proposalType(String eventType) {
-        return switch (eventType) {
-            case "WEATHER" -> "WEATHER_CHANGE";
-            case "CONGESTION" -> "CONGESTION_CHANGE";
-            case "TRANSPORT" -> "TRANSPORT_CHANGE";
-            default -> "USER_REQUEST";
-        };
+    private String limit(String value, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return "AI가 현재 상황에 맞는 대체 장소를 추천했습니다.";
+        }
+        String normalized = value.trim();
+        return normalized.length() <= maxLength
+                ? normalized : normalized.substring(0, maxLength);
     }
 
     private String eventLabel(String eventType) {
@@ -470,7 +583,25 @@ public class EventService {
         return Long.parseLong(value.toString());
     }
 
-    private record SelectedOption(String key, long placeId, String placeName) {
+    private record SelectedOption(
+            String key, long placeId, String placeName, boolean requireIndoor) {
+    }
+
+    public record AiOption(long placeId, String description) {
+    }
+
+    public record AiProposal(
+            ChangeProposalType proposalType,
+            String reason,
+            Map<String, Object> situationData,
+            List<AiOption> options,
+            boolean requireIndoor
+    ) {
+        public AiProposal {
+            Objects.requireNonNull(proposalType, "proposalType");
+            situationData = situationData == null ? Map.of() : situationData;
+            options = options == null ? List.of() : List.copyOf(options);
+        }
     }
 
     public record Observation(

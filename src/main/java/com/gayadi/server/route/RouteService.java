@@ -108,6 +108,7 @@ public class RouteService {
         int durationMinutes = 0;
         int transferCount = 0;
         int fare = 0;
+        String actualProvider = provider.providerName();
         for (int index = 0; index < context.stops().size() - 1; index++) {
             Location origin = context.stops().get(index);
             Location destination = context.stops().get(index + 1);
@@ -121,9 +122,12 @@ public class RouteService {
             durationMinutes += estimate.durationMinutes();
             transferCount += estimate.transferCount();
             fare += estimate.fare();
+            if (estimate.providerName() != null && !estimate.providerName().isBlank()) {
+                actualProvider = estimate.providerName();
+            }
         }
         return new RouteCalculation(context, List.copyOf(segments),
-                durationMinutes, transferCount, fare);
+                durationMinutes, transferCount, fare, actualProvider);
     }
 
     private Map<String, Object> persistRecommendation(
@@ -182,7 +186,9 @@ public class RouteService {
                 .mapToInt(segment -> ((Number) segment.get("fare")).intValue())
                 .sum();
         Map<String, Object> routeData = new LinkedHashMap<>();
-        routeData.put("provider", "LOCAL_ESTIMATE");
+        routeData.put("provider", calculation.providerName());
+        routeData.put("configuredProvider", provider.providerName());
+        routeData.put("fallback", !calculation.providerName().equals(provider.providerName()));
         routeData.put("optionId", option.id());
         routeData.put("optionName", option.name());
         routeData.put("strategy", option.strategy());
@@ -219,7 +225,9 @@ public class RouteService {
         result.put("fare", fare);
         result.put("transportMode", "PUBLIC_TRANSIT");
         result.put("status", "RECOMMENDED");
-        result.put("provider", "LOCAL_ESTIMATE");
+        result.put("provider", calculation.providerName());
+        result.put("configuredProvider", provider.providerName());
+        result.put("fallback", !calculation.providerName().equals(provider.providerName()));
         result.put("summary", option.summary());
         return result;
     }
@@ -240,7 +248,10 @@ public class RouteService {
                     value.put("durationMinutes", duration);
                     value.put("transferCount", transfers);
                     value.put("fare", segment.estimate().fare());
-                    value.put("summary", option.segmentSummary());
+                    String providerSummary = segment.estimate().summary();
+                    value.put("summary", providerSummary == null || providerSummary.isBlank()
+                            ? option.segmentSummary() : providerSummary);
+                    value.put("strategySummary", option.segmentSummary());
                     return value;
                 })
                 .toList();
@@ -376,6 +387,20 @@ public class RouteService {
                 .query().listOfRows().stream()
                 .map(this::routeView)
                 .toList();
+    }
+
+    /** 교통 중단 등으로 더 이상 유효하지 않은 여행의 활성 경로를 모두 만료시킨다. */
+    @Transactional
+    public int expireActiveForTrip(long tripId) {
+        trips.requireTrip(tripId);
+        return jdbc.sql("""
+                UPDATE travel_routes
+                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
+                WHERE plan_id IN (SELECT id FROM travel_plans WHERE trip_id = ?)
+                  AND status IN ('RECOMMENDED', 'SELECTED')
+                """)
+                .param(tripId)
+                .update();
     }
 
     public RoutePhase routePhase(String type) {
@@ -767,6 +792,9 @@ public class RouteService {
         if (routeData != null) {
             Map<String, Object> data = json.read(routeData.toString(), Map.class);
             result.put("routeData", data);
+            putRouteDataIfPresent(result, data, "provider", "provider");
+            putRouteDataIfPresent(result, data, "configuredProvider", "configuredProvider");
+            putRouteDataIfPresent(result, data, "fallback", "fallback");
             putRouteDataIfPresent(result, data, "optionId", "optionId");
             putRouteDataIfPresent(result, data, "name", "optionName");
             putRouteDataIfPresent(result, data, "summary", "summary");
@@ -890,6 +918,7 @@ public class RouteService {
             List<SegmentEstimate> segments,
             int durationMinutes,
             int transferCount,
-            int fare) {
+            int fare,
+            String providerName) {
     }
 }

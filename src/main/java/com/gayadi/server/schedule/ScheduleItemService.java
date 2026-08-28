@@ -1,6 +1,7 @@
 package com.gayadi.server.schedule;
 
 import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.travel.TripService;
@@ -13,7 +14,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -25,8 +25,6 @@ import java.util.Set;
 @Service
 public class ScheduleItemService {
 
-    private static final DateTimeFormatter APP_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
-    private static final DateTimeFormatter APP_TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final JdbcClient jdbc;
     private final TripService trips;
@@ -42,7 +40,8 @@ public class ScheduleItemService {
         trips.requireMember(tripId, userId);
         return jdbc.sql("""
                 SELECT i.id, tp.trip_id, i.title, i.place_id, tp.plan_date,
-                       i.planned_start, i.schedule_type, i.sequence_no, i.is_visited,
+                       i.planned_start, i.planned_end, i.memo,
+                       i.schedule_type, i.sequence_no, i.is_visited,
                        i.status, p.name AS place_name,
                        ROW_NUMBER() OVER (
                            ORDER BY tp.plan_date, i.sequence_no, i.id) - 1 AS global_order
@@ -72,11 +71,12 @@ public class ScheduleItemService {
         long itemId = keyHelper.insert("""
                 INSERT INTO travel_plan_items
                     (plan_id, place_id, item_type, title, sequence_no, planned_start,
-                     planned_end, status, schedule_type, is_visited)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'PLANNED', ?, FALSE)
+                     planned_end, memo, status, schedule_type, is_visited)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PLANNED', ?, FALSE)
                 """,
                 planId, command.placeId(), command.placeId() == null ? "CUSTOM" : "PLACE",
-                command.title().trim(), sequence, start, start.plusHours(1), command.type().name());
+                command.title().trim(), sequence, start, plannedEnd(command),
+                blankToNull(command.memo()), command.type().name());
         incrementPlanVersion(planId);
         expireTripRoutes(tripId);
         return item(tripId, itemId);
@@ -113,13 +113,14 @@ public class ScheduleItemService {
         jdbc.sql("""
                 UPDATE travel_plan_items
                 SET plan_id = ?, place_id = ?, item_type = ?, title = ?, sequence_no = ?,
-                    planned_start = ?, planned_end = ?, schedule_type = ?, is_visited = ?,
+                    planned_start = ?, planned_end = ?, memo = ?, schedule_type = ?, is_visited = ?,
                     status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """)
                 .params(newPlanId, command.placeId(), command.placeId() == null ? "CUSTOM" : "PLACE",
-                        command.title().trim(), sequence, start, start.plusHours(1), command.type().name(),
-                        visited, visited ? "COMPLETED" : "PLANNED", scheduleId)
+                        command.title().trim(), sequence, start, plannedEnd(command),
+                        blankToNull(command.memo()), command.type().name(), visited,
+                        visited ? "COMPLETED" : "PLANNED", scheduleId)
                 .update();
         incrementPlanVersion(newPlanId);
         if (oldPlanId != newPlanId) {
@@ -140,7 +141,7 @@ public class ScheduleItemService {
             boolean visited) {
         return update(userId, tripId, scheduleId, new SchedulePatch(
                 command.title(), command.date(), command.time(), command.type(),
-                command.placeId(), true, visited));
+                command.placeId(), true, command.endTime(), true, command.memo(), visited));
     }
 
     @Transactional
@@ -262,7 +263,8 @@ public class ScheduleItemService {
         return jdbc.sql("""
                 WITH ranked_items AS (
                     SELECT i.id, tp.trip_id, i.title, i.place_id, tp.plan_date,
-                           i.planned_start, i.schedule_type, i.sequence_no, i.is_visited,
+                           i.planned_start, i.planned_end, i.memo,
+                           i.schedule_type, i.sequence_no, i.is_visited,
                            i.status, p.name AS place_name,
                            ROW_NUMBER() OVER (
                                ORDER BY tp.plan_date, i.sequence_no, i.id) - 1 AS global_order
@@ -283,7 +285,8 @@ public class ScheduleItemService {
     private Map<String, Object> lockedItem(long tripId, long itemId) {
         return jdbc.sql("""
                 SELECT i.id, i.plan_id, i.title, i.place_id, p.plan_date,
-                       i.planned_start, i.schedule_type, i.sequence_no, i.is_visited
+                       i.planned_start, i.planned_end, i.memo,
+                       i.schedule_type, i.sequence_no, i.is_visited
                 FROM travel_plan_items i JOIN travel_plans p ON p.id = i.plan_id
                 WHERE p.trip_id = ? AND i.id = ? FOR UPDATE
                 """)
@@ -371,7 +374,11 @@ public class ScheduleItemService {
         Long placeId = patch.placeIdPresent()
                 ? patch.placeId()
                 : nullableLong(current, "place_id");
-        return new ScheduleCommand(title, date, time, type, placeId);
+        Object rawEnd = nullable(current, "planned_end");
+        LocalTime currentEndTime = rawEnd == null ? null : localDateTime(rawEnd).toLocalTime();
+        LocalTime endTime = patch.endTimePresent() ? patch.endTime() : currentEndTime;
+        String memo = patch.memo() == null ? nullableString(current, "memo") : patch.memo();
+        return new ScheduleCommand(title, date, time, type, placeId, endTime, memo);
     }
 
     private void validateCommand(ScheduleCommand command) {
@@ -381,6 +388,12 @@ public class ScheduleItemService {
         }
         if (command.date() == null || command.time() == null || command.type() == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "일정 날짜, 시각과 종류가 필요합니다.");
+        }
+        if (command.endTime() != null && !command.endTime().isAfter(command.time())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 종료 시각은 시작 시각보다 뒤여야 합니다.");
+        }
+        if (command.memo() != null && command.memo().trim().length() > 500) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 메모는 500자까지 입력할 수 있습니다.");
         }
     }
 
@@ -414,16 +427,16 @@ public class ScheduleItemService {
         result.put("placeId", nullable(row, "place_id"));
         result.put("placeName", nullable(row, "place_name"));
         LocalDate date = localDate(RowSupport.value(row, "plan_date"));
-        result.put("date", date.format(APP_DATE));
+        result.put("date", AppDateFormat.date(date));
         Object rawStart = nullable(row, "planned_start");
         LocalDateTime start = rawStart == null
                 ? date.atStartOfDay()
-                : rawStart instanceof LocalDateTime value
-                ? value
-                : rawStart instanceof java.sql.Timestamp value
-                ? value.toLocalDateTime()
-                : LocalDateTime.parse(rawStart.toString().replace(' ', 'T'));
-        result.put("time", start.toLocalTime().format(APP_TIME));
+                : localDateTime(rawStart);
+        result.put("time", AppDateFormat.time(start.toLocalTime()));
+        Object rawEnd = nullable(row, "planned_end");
+        result.put("endTime", rawEnd == null
+                ? null : AppDateFormat.time(localDateTime(rawEnd).toLocalTime()));
+        result.put("memo", nullableString(row, "memo"));
         result.put("type", RowSupport.strValue(row, "schedule_type"));
         Object rawGlobalOrder = nullable(row, "global_order");
         result.put("order", rawGlobalOrder == null
@@ -445,16 +458,26 @@ public class ScheduleItemService {
         return Long.parseLong(value.toString());
     }
 
+    private String nullableString(Map<String, Object> row, String key) {
+        Object value = nullable(row, key);
+        return value == null ? "" : value.toString();
+    }
+
+    private LocalDateTime plannedEnd(ScheduleCommand command) {
+        return command.endTime() == null
+                ? null : LocalDateTime.of(command.date(), command.endTime());
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private LocalDateTime localDateTime(Object value) {
-        if (value instanceof LocalDateTime dateTime) return dateTime;
-        if (value instanceof java.sql.Timestamp timestamp) return timestamp.toLocalDateTime();
-        return LocalDateTime.parse(value.toString().replace(' ', 'T'));
+        return AppDateFormat.databaseDateTime(value);
     }
 
     private LocalDate localDate(Object value) {
-        if (value instanceof LocalDate date) return date;
-        if (value instanceof java.sql.Date date) return date.toLocalDate();
-        return LocalDate.parse(value.toString().substring(0, 10));
+        return AppDateFormat.databaseDate(value);
     }
 
     public enum ScheduleType {
@@ -467,8 +490,14 @@ public class ScheduleItemService {
             LocalDate date,
             LocalTime time,
             ScheduleType type,
-            Long placeId
+            Long placeId,
+            LocalTime endTime,
+            String memo
     ) {
+        public ScheduleCommand(
+                String title, LocalDate date, LocalTime time, ScheduleType type, Long placeId) {
+            this(title, date, time, type, placeId, null, "");
+        }
     }
 
     public record SchedulePatch(
@@ -478,7 +507,21 @@ public class ScheduleItemService {
             ScheduleType type,
             Long placeId,
             boolean placeIdPresent,
+            LocalTime endTime,
+            boolean endTimePresent,
+            String memo,
             Boolean isVisited
     ) {
+        public SchedulePatch(
+                String title,
+                LocalDate date,
+                LocalTime time,
+                ScheduleType type,
+                Long placeId,
+                boolean placeIdPresent,
+                Boolean isVisited) {
+            this(title, date, time, type, placeId, placeIdPresent,
+                    null, false, null, isVisited);
+        }
     }
 }

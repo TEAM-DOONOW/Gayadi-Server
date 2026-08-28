@@ -2,6 +2,7 @@ package com.gayadi.server.travel;
 
 import com.gayadi.server.auth.UserService;
 import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.survey.SurveyService;
@@ -13,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,7 +26,6 @@ public class TripService {
 
     private static final int DEFAULT_MAX_MEMBERS = 20;
     private static final int MAX_LIST_SIZE = 100;
-    private static final DateTimeFormatter APP_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
     private static final char[] INVITE_CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".toCharArray();
     private static final int INVITE_CODE_ATTEMPTS = 20;
 
@@ -117,6 +116,9 @@ public class TripService {
         if (updated == 0) {
             throw new ApiException(HttpStatus.NOT_FOUND, "참여자를 찾을 수 없습니다.");
         }
+        jdbc.sql("DELETE FROM trip_date_availability_submissions WHERE trip_id = ? AND user_id = ?")
+                .params(tripId, userId)
+                .update();
         jdbc.sql("""
                 UPDATE travel_routes
                 SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
@@ -243,17 +245,7 @@ public class TripService {
         requireOwnerRow(tripId, actorId);
         validateDates(startDate, endDate);
         validateTitle(title);
-        long schedulesOutsideRange = jdbc.sql("""
-                SELECT COUNT(*) FROM travel_plans
-                WHERE trip_id = ? AND (plan_date < ? OR plan_date > ?)
-                """)
-                .params(tripId, startDate, endDate)
-                .query(Long.class)
-                .single();
-        if (schedulesOutsideRange > 0) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "바꿀 여행 기간 밖에 일정이 있습니다. 일정을 먼저 정리해 주세요.");
-        }
+        requirePlansWithinRange(tripId, startDate, endDate);
         List<String> normalizedCities = normalizeCities(cities);
         long regionId = resolveRegion(normalizedCities.getFirst());
         int updated;
@@ -280,6 +272,39 @@ public class TripService {
         replaceCities(tripId, normalizedCities);
         recalculatePlanDays(tripId, startDate);
         return view(tripId);
+    }
+
+    @Transactional
+    public Map<String, Object> finalizeDates(
+            long actorId, long tripId, LocalDate startDate, LocalDate endDate) {
+        lockTrip(tripId);
+        requireOwnerRow(tripId, actorId);
+        validateDates(startDate, endDate);
+        requirePlansWithinRange(tripId, startDate, endDate);
+        jdbc.sql("""
+                UPDATE trips
+                SET start_date = ?, end_date = ?, version = version + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """)
+                .params(startDate, endDate, tripId)
+                .update();
+        recalculatePlanDays(tripId, startDate);
+        return view(tripId);
+    }
+
+    private void requirePlansWithinRange(long tripId, LocalDate startDate, LocalDate endDate) {
+        long schedulesOutsideRange = jdbc.sql("""
+                SELECT COUNT(*) FROM travel_plans
+                WHERE trip_id = ? AND (plan_date < ? OR plan_date > ?)
+                """)
+                .params(tripId, startDate, endDate)
+                .query(Long.class)
+                .single();
+        if (schedulesOutsideRange > 0) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "바꿀 여행 기간 밖에 일정이 있습니다. 일정을 먼저 정리해 주세요.");
+        }
     }
 
     @Transactional
@@ -520,8 +545,8 @@ public class TripService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", RowSupport.longValue(row, "id"));
         result.put("name", RowSupport.strValue(row, "title"));
-        result.put("startDate", localDate(RowSupport.value(row, "start_date")).format(APP_DATE));
-        result.put("endDate", localDate(RowSupport.value(row, "end_date")).format(APP_DATE));
+        result.put("startDate", AppDateFormat.date(localDate(RowSupport.value(row, "start_date"))));
+        result.put("endDate", AppDateFormat.date(localDate(RowSupport.value(row, "end_date"))));
         result.put("cities", cities);
         String status = RowSupport.strValue(row, "status");
         result.put("status", "IN_PROGRESS".equals(status) ? "ONGOING" : status);
@@ -664,9 +689,7 @@ public class TripService {
     }
 
     private LocalDate localDate(Object value) {
-        if (value instanceof LocalDate date) return date;
-        if (value instanceof java.sql.Date date) return date.toLocalDate();
-        return LocalDate.parse(value.toString().substring(0, 10));
+        return AppDateFormat.databaseDate(value);
     }
 
     private void validateDates(LocalDate startDate, LocalDate endDate) {

@@ -23,10 +23,13 @@ spring:
       chat: ${AI_CHAT_MODEL:none}
       embedding: ${AI_EMBEDDING_MODEL:none}
     openai:
-      api-key: ${OPENAI_API_KEY:}
+      api-key: ${GROQ_API_KEY:${OPENAI_API_KEY:}}
+      base-url: ${AI_LLM_BASE_URL:https://api.openai.com}
       chat:
+        model: ${AI_LLM_MODEL:gpt-4o-mini}
         options:
-          model: gpt-4o-mini
+          model: ${AI_LLM_MODEL:gpt-4o-mini}
+          temperature: ${AI_LLM_TEMPERATURE:0.1}
       embedding:
         options:
           model: text-embedding-3-small
@@ -43,16 +46,26 @@ tour:
 
 weather:
   api:
-    base-url: ${WEATHER_API_BASE_URL:http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+    key: ${WEATHER_API_KEY:${TOUR_API_KEY:}}
+    base-url: ${WEATHER_API_BASE_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+
+route:
+  provider: ${ROUTE_PROVIDER:local}
+  tmap:
+    app-key: ${SKT_APPKEY:}
+    base-url: ${TRANSIT_API_BASE_URL:https://apis.openapi.sk.com/transit/routes}
+    fallback-to-local: ${TMAP_FALLBACK_TO_LOCAL:true}
 
 app:
   ai:
     enabled: ${APP_AI_ENABLED:false}
+    embedding:
+      enabled: ${APP_AI_EMBEDDING_ENABLED:false}
     vector-store-file: ${AI_VECTOR_STORE_FILE:.data/place-vectors.json}
   admin:
     user-id: ${ADMIN_USER_ID:0}
   jwt:
-    secret: ${JWT_SECRET:gayadi-dev-jwt-secret-change-me-in-production}
+    secret: ${JWT_SECRET:}
     expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:604800}
 
 springdoc:

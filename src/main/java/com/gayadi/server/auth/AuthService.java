@@ -43,8 +43,18 @@ public class AuthService {
                     nickname.trim(), normalizedEmail, passwordEncoder.encode(password));
             return loginResult(id);
         } catch (DataIntegrityViolationException exception) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+            if (isDuplicateEmail(exception)) {
+                throw new ApiException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+            }
+            throw exception;
         }
+    }
+
+    private boolean isDuplicateEmail(DataIntegrityViolationException exception) {
+        Throwable cause = exception.getMostSpecificCause();
+        String message = cause == null || cause.getMessage() == null
+                ? "" : cause.getMessage().toLowerCase(Locale.ROOT);
+        return message.contains("uk_users_email");
     }
 
     @Transactional(noRollbackFor = ApiException.class)

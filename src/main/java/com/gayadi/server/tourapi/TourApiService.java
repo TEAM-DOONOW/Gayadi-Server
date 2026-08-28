@@ -130,6 +130,30 @@ public class TourApiService {
         return listResponse(OP_SEARCH_STAY, params, req.pageSize(), pageNo);
     }
 
+    /** 콘텐츠의 공통 상세정보(개요, 홈페이지, 주소, 좌표 등)를 조회한다. */
+    public Map<String, String> detailCommon(String contentId) {
+        requireParam("contentId", contentId);
+        Map<String, String> params = baseParams(1, 1, null);
+        params.put("contentId", contentId);
+        return detailFields(call("detailCommon2", params));
+    }
+
+    /** 콘텐츠 타입별 소개 상세정보(이용시간, 휴무일, 주차 등)를 조회한다. */
+    public Map<String, String> detailIntro(String contentId, String contentTypeId) {
+        requireParam("contentId", contentId);
+        requireParam("contentTypeId", contentTypeId);
+        Map<String, String> params = baseParams(1, 1, null);
+        params.put("contentId", contentId);
+        params.put("contentTypeId", contentTypeId);
+        return detailFields(call("detailIntro2", params));
+    }
+
+    /** 콘텐츠 상세정보를 Agent 후보에 사용할 수 있는 형태로 묶는다. */
+    public TourPlaceDetail detail(String contentId, String contentTypeId) {
+        return new TourPlaceDetail(contentId, contentTypeId,
+                detailCommon(contentId), detailIntro(contentId, contentTypeId));
+    }
+
     private TourListResponse listResponse(String operation, Map<String, String> params, int pageSize, int pageNo) {
         JsonNode response = call(operation, params);
         JsonNode body = response.path("body");
@@ -149,6 +173,21 @@ public class TourApiService {
                 ? TourCursor.encode(pageNo + 1)
                 : null;
         return new TourListResponse(items, totalCount, pageSize, nextCursor);
+    }
+
+    private Map<String, String> detailFields(JsonNode response) {
+        JsonNode body = response.path("body");
+        JsonNode itemNode = body.path("items").path("item");
+        JsonNode item = itemNode.isArray()
+                ? (itemNode.isEmpty() ? null : itemNode.get(0))
+                : itemNode.isObject() ? itemNode : null;
+        if (item == null) return Map.of();
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonNode> entry : item.properties()) {
+            if (!entry.getValue().isNull()) fields.put(entry.getKey(), entry.getValue().asText(""));
+        }
+        return Map.copyOf(fields);
     }
 
     private Map<String, String> baseParams(int pageSize, int pageNo, String arrange) {
@@ -338,6 +377,13 @@ public class TourApiService {
 
     public record TourListResponse(
             List<TourPlace> items, int totalCount, int pageSize, String nextCursor) {
+    }
+
+    public record TourPlaceDetail(
+            String contentId,
+            String contentTypeId,
+            Map<String, String> common,
+            Map<String, String> intro) {
     }
 
     public record TourPlace(

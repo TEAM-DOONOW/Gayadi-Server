@@ -1,15 +1,22 @@
 package com.gayadi.server.weather;
 
 import com.gayadi.server.common.ApiException;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 @Service
@@ -19,13 +26,14 @@ public class WeatherApiService {
     private static final String OP_ULTRA_SRT_FCST = "getUltraSrtFcst";
     private static final String OP_VILAGE_FCST = "getVilageFcst";
     private static final String OP_FCST_VERSION = "getFcstVersion";
+    private static final Set<String> VERSION_FILE_TYPES = Set.of("ODAM", "VSRT", "SHRT");
 
     private final WeatherApiClient client;
 
     public WeatherApiService(
             ObjectMapper objectMapper,
-            @Value("${tour.api.key:}") String serviceKey,
-            @Value("${weather.api.base-url:http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}") String baseUrl) {
+            @Value("${weather.api.key:}") String serviceKey,
+            @Value("${weather.api.base-url:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}") String baseUrl) {
         this.client = new WeatherApiClient(objectMapper, serviceKey, baseUrl);
     }
 
@@ -41,13 +49,14 @@ public class WeatherApiService {
         params.put("nx", String.valueOf(grid[0]));
         params.put("ny", String.valueOf(grid[1]));
 
-        JsonNode body = client.call(OP_ULTRA_SRT_NCST, params).path("body");
-        Map<String, String> obs = extractObservations(client.itemsOf(body));
+        Map<String, String> obs = extractObservations(client.allItems(OP_ULTRA_SRT_NCST, params));
+        String rawPrecipitation = obs.getOrDefault(WeatherCategory.RN1.name(), "");
 
         return new UltraSrtNcstResponse(
                 dt.date(), dt.time(), grid[0], grid[1],
                 obs.getOrDefault(WeatherCategory.T1H.name(), ""),
-                WeatherCodeTranslator.rain(obs.getOrDefault(WeatherCategory.RN1.name(), "")),
+                rawPrecipitation,
+                WeatherCodeTranslator.rain(rawPrecipitation),
                 obs.getOrDefault(WeatherCategory.UUU.name(), ""),
                 obs.getOrDefault(WeatherCategory.VVV.name(), ""),
                 obs.getOrDefault(WeatherCategory.REH.name(), ""),
@@ -75,14 +84,15 @@ public class WeatherApiService {
     public FcstVersionResponse fcstVersion(FcstVersionRequest req) {
         requireParam("ftype", req.ftype());
         requireParam("baseDateTime", req.baseDateTime());
+        String fileType = req.ftype().trim().toUpperCase(java.util.Locale.ROOT);
+        validateVersionRequest(fileType, req.baseDateTime().trim());
 
         Map<String, String> params = client.baseParams();
-        params.put("ftype", req.ftype());
-        params.put("basedatetime", req.baseDateTime());
+        params.put("ftype", fileType);
+        params.put("basedatetime", req.baseDateTime().trim());
 
-        JsonNode body = client.call(OP_FCST_VERSION, params).path("body");
         List<FcstVersionResponse.Item> versions = new ArrayList<>();
-        for (JsonNode item : client.itemsOf(body)) {
+        for (JsonNode item : client.allItems(OP_FCST_VERSION, params)) {
             versions.add(new FcstVersionResponse.Item(
                     WeatherApiClient.text(item, "filetype"),
                     WeatherApiClient.text(item, "version")));
@@ -105,8 +115,7 @@ public class WeatherApiService {
         params.put("nx", String.valueOf(grid[0]));
         params.put("ny", String.valueOf(grid[1]));
 
-        JsonNode body = client.call(operation, params).path("body");
-        List<ForecastResponse.Slot> forecast = toSlots(client.itemsOf(body), ultra);
+        List<ForecastResponse.Slot> forecast = toSlots(client.allItems(operation, params), ultra);
         return new ForecastResponse(dt.date(), dt.time(), grid[0], grid[1], forecast);
     }
 
@@ -115,6 +124,10 @@ public class WeatherApiService {
         for (JsonNode item : items) {
             String slot = WeatherApiClient.text(item, "fcstDate")
                     + WeatherApiClient.text(item, "fcstTime");
+            if (!slot.matches("\\d{12}")) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY,
+                        "기상청 API가 올바르지 않은 예보시각을 반환했습니다.");
+            }
             bySlot.computeIfAbsent(slot, k -> new TreeMap<>())
                     .put(WeatherApiClient.text(item, "category"),
                             WeatherApiClient.text(item, "fcstValue"));
@@ -165,11 +178,40 @@ public class WeatherApiService {
     }
 
     private int[] resolveGrid(WeatherRequest req) {
-        if (req.nx() != null && req.ny() != null) {
+        boolean hasAnyGrid = req.nx() != null || req.ny() != null;
+        boolean hasAllGrid = req.nx() != null && req.ny() != null;
+        boolean hasAnyCoordinate = req.lat() != null || req.lon() != null;
+        boolean hasAllCoordinates = req.lat() != null && req.lon() != null;
+
+        if ((hasAnyGrid && !hasAllGrid) || (hasAnyCoordinate && !hasAllCoordinates)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "lat/lon 또는 nx/ny는 각 쌍을 함께 입력해야 합니다.");
+        }
+        if (hasAllGrid && hasAllCoordinates) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "lat/lon과 nx/ny 중 한 가지 위치 형식만 입력해야 합니다.");
+        }
+        if (hasAllGrid) {
+            if (req.nx() < 1 || req.nx() > KmaGridConverter.NX
+                    || req.ny() < 1 || req.ny() > KmaGridConverter.NY) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "기상청 격자는 nx 1~149, ny 1~253 범위여야 합니다.");
+            }
             return new int[]{req.nx(), req.ny()};
         }
-        if (req.lat() != null && req.lon() != null) {
+        if (hasAllCoordinates) {
+            if (!Double.isFinite(req.lat()) || !Double.isFinite(req.lon())
+                    || req.lat() < -90 || req.lat() > 90
+                    || req.lon() < -180 || req.lon() > 180) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "위도는 -90~90, 경도는 -180~180 범위의 유한한 값이어야 합니다.");
+            }
             KmaGridConverter.GridPoint gp = KmaGridConverter.toGrid(req.lon(), req.lat());
+            if (gp.nx() < 1 || gp.nx() > KmaGridConverter.NX
+                    || gp.ny() < 1 || gp.ny() > KmaGridConverter.NY) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "기상청 단기예보가 제공되는 국내 위치를 입력해야 합니다.");
+            }
             return new int[]{gp.nx(), gp.ny()};
         }
         throw new ApiException(HttpStatus.BAD_REQUEST,
@@ -182,6 +224,33 @@ public class WeatherApiService {
         }
     }
 
+    private void validateVersionRequest(String fileType, String baseDateTime) {
+        if (!VERSION_FILE_TYPES.contains(fileType)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "ftype은 ODAM, VSRT, SHRT 중 하나여야 합니다.");
+        }
+        if (!baseDateTime.matches("\\d{12}")) {
+            throw invalidVersionDateTime();
+        }
+        int hour = Integer.parseInt(baseDateTime.substring(8, 10));
+        int minute = Integer.parseInt(baseDateTime.substring(10));
+        if (hour > 23 || minute > 59) throw invalidVersionDateTime();
+        try {
+            LocalDate date = LocalDate.parse(
+                    baseDateTime.substring(0, 8), DateTimeFormatter.BASIC_ISO_DATE);
+            LocalTime time = LocalTime.parse(
+                    baseDateTime.substring(8), DateTimeFormatter.ofPattern("HHmm"));
+            LocalDateTime.of(date, time);
+        } catch (DateTimeParseException exception) {
+            throw invalidVersionDateTime();
+        }
+    }
+
+    private ApiException invalidVersionDateTime() {
+        return new ApiException(HttpStatus.BAD_REQUEST,
+                "baseDateTime은 유효한 YYYYMMDDHHMM 형식이어야 합니다.");
+    }
+
     // --- DTOs ---
 
     public record WeatherRequest(
@@ -190,54 +259,69 @@ public class WeatherApiService {
             String baseDate, String baseTime) {
     }
 
+    @Schema(name = "UltraShortNowcastResponse", description = "기상청 초단기실황 관측값")
     public record UltraSrtNcstResponse(
-            String baseDate, String baseTime, int nx, int ny,
-            String temperature,
-            String hourlyPrecipitation,
-            String eastWestWind,
-            String northSouthWind,
-            String humidity,
-            String precipitationType,
-            String precipitationTypeName,
-            String windDirection,
-            String windDirectionName,
-            String windSpeed,
-            String windSpeedName) {
+            @Schema(description = "발표일자", example = "20260825") String baseDate,
+            @Schema(description = "발표시각", example = "1400") String baseTime,
+            @Schema(description = "기상청 격자 X", example = "60") int nx,
+            @Schema(description = "기상청 격자 Y", example = "127") int ny,
+            @Schema(description = "기온(℃)", example = "27.1") String temperature,
+            @Schema(description = "기상청 원본 1시간 강수량", example = "0") String hourlyPrecipitationRaw,
+            @Schema(description = "1시간 강수량 해석", example = "강수없음") String hourlyPrecipitation,
+            @Schema(description = "동서바람 성분(m/s)") String eastWestWind,
+            @Schema(description = "남북바람 성분(m/s)") String northSouthWind,
+            @Schema(description = "습도(%)", example = "72") String humidity,
+            @Schema(description = "강수형태 코드", example = "0") String precipitationType,
+            @Schema(description = "강수형태 이름", example = "없음") String precipitationTypeName,
+            @Schema(description = "풍향(도)", example = "180") String windDirection,
+            @Schema(description = "16방위 풍향", example = "S") String windDirectionName,
+            @Schema(description = "풍속(m/s)", example = "2.1") String windSpeed,
+            @Schema(description = "풍속 해석", example = "약한 바람") String windSpeedName) {
     }
 
+    @Schema(name = "WeatherForecastResponse", description = "발표시각과 격자별 예보 전체 결과")
     public record ForecastResponse(
-            String baseDate, String baseTime, int nx, int ny,
-            List<Slot> forecast) {
+            @Schema(description = "발표일자", example = "20260825") String baseDate,
+            @Schema(description = "발표시각", example = "1400") String baseTime,
+            @Schema(description = "기상청 격자 X", example = "60") int nx,
+            @Schema(description = "기상청 격자 Y", example = "127") int ny,
+            @Schema(description = "시간순 예보. 모든 API 페이지를 합친 결과") List<Slot> forecast) {
 
+        @Schema(name = "WeatherForecastSlot", description = "한 예보 시각의 카테고리별 값")
         public record Slot(
-                String fcstDate, String fcstTime,
-                String temperature,
-                String hourlyPrecipitation,
-                String sky,
-                String skyName,
-                String eastWestWind,
-                String northSouthWind,
-                String humidity,
-                String precipitationType,
-                String precipitationTypeName,
-                String precipitationProbability,
-                String lightning,
-                String windDirection,
-                String windDirectionName,
-                String windSpeed,
-                String windSpeedName,
-                String snow,
-                String minTemperature,
-                String maxTemperature,
-                String waveHeight) {
+                @Schema(description = "예보일자", example = "20260826") String fcstDate,
+                @Schema(description = "예보시각", example = "1500") String fcstTime,
+                @Schema(description = "기온(℃)") String temperature,
+                @Schema(description = "1시간 강수량 해석") String hourlyPrecipitation,
+                @Schema(description = "하늘상태 코드") String sky,
+                @Schema(description = "하늘상태 이름") String skyName,
+                @Schema(description = "동서바람 성분(m/s)") String eastWestWind,
+                @Schema(description = "남북바람 성분(m/s)") String northSouthWind,
+                @Schema(description = "습도(%)") String humidity,
+                @Schema(description = "강수형태 코드") String precipitationType,
+                @Schema(description = "강수형태 이름") String precipitationTypeName,
+                @Schema(description = "강수확률(%)") String precipitationProbability,
+                @Schema(description = "낙뢰") String lightning,
+                @Schema(description = "풍향(도)") String windDirection,
+                @Schema(description = "16방위 풍향") String windDirectionName,
+                @Schema(description = "풍속(m/s)") String windSpeed,
+                @Schema(description = "풍속 해석") String windSpeedName,
+                @Schema(description = "1시간 신적설 해석") String snow,
+                @Schema(description = "일 최저기온(℃)") String minTemperature,
+                @Schema(description = "일 최고기온(℃)") String maxTemperature,
+                @Schema(description = "파고(m)") String waveHeight) {
         }
     }
 
     public record FcstVersionRequest(String ftype, String baseDateTime) {
     }
 
-    public record FcstVersionResponse(List<Item> items) {
-        public record Item(String fileType, String version) {
+    @Schema(name = "WeatherForecastVersionResponse", description = "기상청 예보 파일 버전 목록")
+    public record FcstVersionResponse(
+            @Schema(description = "예보 파일 버전") List<Item> items) {
+        public record Item(
+                @Schema(description = "파일 종류", example = "SHRT") String fileType,
+                @Schema(description = "버전") String version) {
         }
     }
 }

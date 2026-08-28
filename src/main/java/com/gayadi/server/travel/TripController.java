@@ -1,6 +1,6 @@
 package com.gayadi.server.travel;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.config.ApiSuccessSchemas;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -21,7 +21,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -145,11 +144,11 @@ public class TripController {
         @Size(max = 100)
         private String name;
         @NotBlank
-        @Pattern(regexp = "(?:\\d{4}\\.\\d{2}\\.\\d{2}|\\d{4}-\\d{2}-\\d{2})",
+        @Pattern(regexp = AppDateFormat.DATE_PATTERN,
                 message = "여행 날짜는 yyyy.MM.dd 또는 yyyy-MM-dd 형식이어야 합니다.")
         private String startDate;
         @NotBlank
-        @Pattern(regexp = "(?:\\d{4}\\.\\d{2}\\.\\d{2}|\\d{4}-\\d{2}-\\d{2})",
+        @Pattern(regexp = AppDateFormat.DATE_PATTERN,
                 message = "여행 날짜는 yyyy.MM.dd 또는 yyyy-MM-dd 형식이어야 합니다.")
         private String endDate;
         @NotEmpty
@@ -165,18 +164,8 @@ public class TripController {
         public List<String> getCities() { return cities; }
         public void setCities(List<String> cities) { this.cities = cities; }
 
-        LocalDate parsedStartDate() { return parseDate(startDate); }
-        LocalDate parsedEndDate() { return parseDate(endDate); }
-
-        private LocalDate parseDate(String value) {
-            if (value == null) return null;
-            try {
-                return LocalDate.parse(value.replace('.', '-'));
-            } catch (DateTimeParseException exception) {
-                throw new ApiException(
-                        HttpStatus.BAD_REQUEST, "실제로 존재하는 여행 날짜를 입력해 주세요.");
-            }
-        }
+        LocalDate parsedStartDate() { return AppDateFormat.parseDate(startDate, "여행 날짜"); }
+        LocalDate parsedEndDate() { return AppDateFormat.parseDate(endDate, "여행 날짜"); }
     }
 
     public static class UpdateTripRequest extends CreateTripRequest {

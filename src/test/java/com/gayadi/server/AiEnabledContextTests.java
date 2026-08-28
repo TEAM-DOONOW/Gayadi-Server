@@ -10,6 +10,7 @@ import org.springframework.context.ApplicationContext;
 
 @SpringBootTest(properties = {
         "app.ai.enabled=true",
+        "app.ai.embedding.enabled=true",
         "spring.ai.model.chat=openai",
         "spring.ai.model.embedding=openai",
         "spring.ai.openai.api-key=test-key"

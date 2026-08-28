@@ -11,6 +11,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
@@ -25,9 +26,9 @@ import java.util.Map;
 @Service
 public class JwtService {
 
-    private static final String DEVELOPMENT_SECRET = "gayadi-dev-jwt-secret-change-me-in-production";
     private static final String HEADER_JSON = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
     private static final String HMAC_ALGORITHM = "HmacSHA256";
+    private static final int GENERATED_SECRET_BYTES = 32;
 
     private final JsonSupport json;
     private final byte[] secret;
@@ -38,21 +39,21 @@ public class JwtService {
             Environment environment,
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.expires-in-seconds:604800}") long expiresInSeconds) {
-        if (Arrays.asList(environment.getActiveProfiles()).contains("prod")
-                && (secret.length() < 32
-                || DEVELOPMENT_SECRET.equals(secret)
-                || secret.toLowerCase().contains("change-me"))) {
+        String configuredSecret = secret == null ? "" : secret.trim();
+        boolean weakSecret = configuredSecret.length() < GENERATED_SECRET_BYTES
+                || configuredSecret.toLowerCase(java.util.Locale.ROOT).contains("change-me");
+        if (Arrays.asList(environment.getActiveProfiles()).contains("prod") && weakSecret) {
             throw new IllegalStateException("운영 환경에는 32자 이상의 안전한 JWT 비밀키가 필요합니다.");
         }
         String datasourceUrl = environment.getProperty("spring.datasource.url", "");
         boolean externalDatabase = !datasourceUrl.startsWith("jdbc:h2:");
-        if (externalDatabase && (secret.length() < 32
-                || DEVELOPMENT_SECRET.equals(secret)
-                || secret.toLowerCase().contains("change-me"))) {
+        if (externalDatabase && weakSecret) {
             throw new IllegalStateException("외부 DB 환경에는 32자 이상의 안전한 JWT 비밀키가 필요합니다.");
         }
         this.json = json;
-        this.secret = secret.getBytes(StandardCharsets.UTF_8);
+        this.secret = configuredSecret.isEmpty()
+                ? generatedDevelopmentSecret()
+                : configuredSecret.getBytes(StandardCharsets.UTF_8);
         this.expiresIn = Duration.ofSeconds(expiresInSeconds);
     }
 
@@ -121,9 +122,16 @@ public class JwtService {
         } catch (Exception e) {
             throw unauthorized();
         }
-        long now = Instant.now().getEpochSecond();
-        if (claims.get("exp") == null || toLong(claims.get("exp")) <= now) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+        try {
+            long now = Instant.now().getEpochSecond();
+            if (claims.get("exp") == null || toLong(claims.get("exp")) <= now) {
+                throw new ApiException(HttpStatus.UNAUTHORIZED,
+                        "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+            }
+        } catch (ApiException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw unauthorized();
         }
         return claims;
     }
@@ -151,6 +159,12 @@ public class JwtService {
 
     private static byte[] decode(String value) {
         return Base64.getUrlDecoder().decode(value);
+    }
+
+    private static byte[] generatedDevelopmentSecret() {
+        byte[] value = new byte[GENERATED_SECRET_BYTES];
+        new SecureRandom().nextBytes(value);
+        return value;
     }
 
     private ApiException unauthorized() {

@@ -32,6 +32,7 @@ class WeatherApiClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final int DEFAULT_PAGE_SIZE = 1000;
+    private static final int MAX_PAGES = 20;
 
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
@@ -85,6 +86,14 @@ class WeatherApiClient {
             throw new ApiException(HttpStatus.BAD_GATEWAY,
                     "기상청 API 호출이 거부되었습니다: " + extractXmlError(body));
         }
+        if (response.statusCode() == 401 || response.statusCode() == 403) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "기상청 API 인증에 실패했습니다.");
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY,
+                    "기상청 API가 오류를 반환했습니다.");
+        }
 
         JsonNode root;
         try {
@@ -106,6 +115,35 @@ class WeatherApiClient {
                     "기상청 API 오류(" + resultCode + "): " + resultMsg);
         }
         return root.path("response");
+    }
+
+    /** 전체 건수가 한 페이지보다 많아도 마지막 페이지까지 안전하게 수집합니다. */
+    List<JsonNode> allItems(String operation, Map<String, String> params) {
+        Map<String, String> pageParams = new LinkedHashMap<>(params);
+        List<JsonNode> result = new ArrayList<>();
+        int page = 1;
+        int totalCount = Integer.MAX_VALUE;
+
+        while (result.size() < totalCount && page <= MAX_PAGES) {
+            pageParams.put("pageNo", String.valueOf(page));
+            JsonNode body = call(operation, pageParams).path("body");
+            List<JsonNode> pageItems = itemsOf(body);
+            totalCount = Math.max(0, body.path("totalCount").asInt(pageItems.size()));
+            result.addAll(pageItems);
+
+            if (result.size() >= totalCount) return List.copyOf(result);
+            if (pageItems.isEmpty()) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY,
+                        "기상청 API의 페이지 응답이 완전하지 않습니다.");
+            }
+            page++;
+        }
+
+        if (result.size() < totalCount) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY,
+                    "기상청 API의 전체 예보 데이터를 가져오지 못했습니다.");
+        }
+        return List.copyOf(result);
     }
 
     Map<String, String> baseParams() {
@@ -149,7 +187,7 @@ class WeatherApiClient {
     private String ensureServiceKey() {
         if (serviceKey == null || serviceKey.isBlank()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "기상청 API 키(TOUR_API_KEY)가 설정되지 않았습니다.");
+                    "기상청 API 키(WEATHER_API_KEY)가 설정되지 않았습니다.");
         }
         return serviceKey;
     }

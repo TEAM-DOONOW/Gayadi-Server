@@ -1,5 +1,6 @@
 package com.gayadi.server.dashboard;
 
+import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.event.EventService;
 import com.gayadi.server.schedule.ScheduleItemService;
@@ -10,7 +11,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -20,7 +20,6 @@ import java.util.Map;
 public class DashboardService {
 
     private static final int MAX_VISIBLE_PROPOSALS = 20;
-    private static final DateTimeFormatter APP_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
     private final TripService trips;
     private final ScheduleItemService schedules;
@@ -81,7 +80,7 @@ public class DashboardService {
                 .map(date -> {
                     Map<String, Object> day = new LinkedHashMap<>();
                     day.put("dayNumber", Math.toIntExact(ChronoUnit.DAYS.between(startDate, date)) + 1);
-                    day.put("date", date.format(APP_DATE));
+                    day.put("date", AppDateFormat.date(date));
                     day.put("dateLabel", date.getMonthValue() + "." + date.getDayOfMonth()
                             + "/" + weekday(date.getDayOfWeek()));
                     return day;
@@ -114,9 +113,7 @@ public class DashboardService {
     }
 
     private LocalDate localDate(Object value) {
-        if (value instanceof LocalDate date) return date;
-        if (value instanceof java.sql.Date date) return date.toLocalDate();
-        return LocalDate.parse(value.toString().substring(0, 10).replace('.', '-'));
+        return AppDateFormat.databaseDate(value);
     }
 
     private Object nullable(Map<String, Object> row, String key) {

@@ -1,8 +1,14 @@
 package com.gayadi.server.weather;
 
+import com.gayadi.server.common.ApiException;
+import org.springframework.http.HttpStatus;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
@@ -37,15 +43,24 @@ final class KmaBaseTimeCalculator {
      * 명시적 baseDate/baseTime이 있으면 그대로 반환, 없으면 발표 가능한 최신 시각 계산.
      */
     static BaseDateTime resolve(ForecastType type, String baseDate, String baseTime) {
-        if (baseDate != null && !baseDate.isBlank()
-                && baseTime != null && !baseTime.isBlank()) {
-            return new BaseDateTime(baseDate, baseTime);
+        boolean hasDate = baseDate != null && !baseDate.isBlank();
+        boolean hasTime = baseTime != null && !baseTime.isBlank();
+        if (hasDate != hasTime) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "baseDate와 baseTime은 함께 입력해야 합니다.");
+        }
+        if (hasDate) {
+            validateExplicit(type, baseDate, baseTime);
+            return new BaseDateTime(baseDate.trim(), baseTime.trim());
         }
         return latest(type);
     }
 
     static BaseDateTime latest(ForecastType type) {
-        LocalDateTime now = LocalDateTime.now(KST);
+        return latest(type, LocalDateTime.now(KST));
+    }
+
+    static BaseDateTime latest(ForecastType type, LocalDateTime now) {
         return switch (type) {
             case ULTRA_NCST -> {
                 LocalDateTime base = now.minusMinutes(ULTRA_NCST_DELAY_MIN)
@@ -74,6 +89,38 @@ final class KmaBaseTimeCalculator {
                 yield of(base);
             }
         };
+    }
+
+    private static void validateExplicit(
+            ForecastType type, String rawDate, String rawTime) {
+        String date = rawDate.trim();
+        String time = rawTime.trim();
+        if (!date.matches("\\d{8}") || !time.matches("\\d{4}")) {
+            throw invalidBaseDateTime();
+        }
+        int hour = Integer.parseInt(time.substring(0, 2));
+        int minute = Integer.parseInt(time.substring(2));
+        if (hour > 23 || minute > 59) throw invalidBaseDateTime();
+        try {
+            LocalDate.parse(date, DateTimeFormatter.BASIC_ISO_DATE);
+            LocalTime.parse(time, TIME_FMT);
+        } catch (DateTimeParseException exception) {
+            throw invalidBaseDateTime();
+        }
+        boolean allowed = switch (type) {
+            case ULTRA_NCST -> minute == 0;
+            case ULTRA_FCST -> minute == ULTRA_FCST_BASE_MIN;
+            case VILAGE_FCST -> minute == 0 && VILAGE_BASE_HOURS.contains(hour);
+        };
+        if (!allowed) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "선택한 조회 종류에서 사용할 수 없는 발표시각입니다.");
+        }
+    }
+
+    private static ApiException invalidBaseDateTime() {
+        return new ApiException(HttpStatus.BAD_REQUEST,
+                "baseDate는 YYYYMMDD, baseTime은 HHMM 형식이어야 합니다.");
     }
 
     private static BaseDateTime of(LocalDateTime base) {

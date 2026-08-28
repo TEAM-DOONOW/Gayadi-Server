@@ -51,6 +51,10 @@ logs/
 Thumbs.db
 docs/presentation/*.tmp
 
+# Local copies of upstream weather API manuals (keep distilled/searchable docs only)
+docs/kma-guide/
+docs/기상청*_오픈API활용가이드_*.zip
+
 ### Local agent/build state ###
 .gradle/
 nul
