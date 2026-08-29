@@ -1,4 +1,4 @@
-name: Build, Scan, Push and Deploy
+name: ncp-ci
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
 
       # 2. Registry에 올리기 전에 취약점 검사 (Trivy scan -> 취약점 발견 시 실패 (보안 게이트 역할))
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: '${{ env.IMAGE }}:sha-${{ github.sha }}'
           format: table
