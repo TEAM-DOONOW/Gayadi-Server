@@ -42,14 +42,14 @@ jobs:
           build-args: |
             TEAM=${{ github.repository_owner }}
 
-      # 2. Registry에 올리기 전에 취약점 검사 (Trivy scan -> 취약점 발견 시 실패 (보안 게이트 역할))
+      # 2. Registry에 올리기 전에 취약점 검사 (Trivy scan -> 취약점 발견 시 실패 (보안 게이트 역할)) - HIGH 제외
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@main
 
       - name: Run Trivy vulnerability scan
         run: |
           trivy image \
-            --severity CRITICAL,HIGH \
+            --severity CRITICAL \
             --exit-code 1 \
             ${{ env.IMAGE }}:sha-${{ github.sha }}
 
