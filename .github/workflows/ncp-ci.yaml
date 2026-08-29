@@ -43,13 +43,15 @@ jobs:
             TEAM=${{ github.repository_owner }}
 
       # 2. Registry에 올리기 전에 취약점 검사 (Trivy scan -> 취약점 발견 시 실패 (보안 게이트 역할))
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@main
+
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@v0.30.0
-        with:
-          image-ref: '${{ env.IMAGE }}:sha-${{ github.sha }}'
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: '1'
+        run: |
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
 
       # 3. NCP Container Registry 로그인
       - name: Login to NCP Container Registry
@@ -80,12 +82,11 @@ jobs:
 
       # 5. SBOM 생성(# CycloneDX 포맷)
       - name: Generate SBOM
-        uses: aquasecurity/trivy-action@v0.30.0
-        with:
-          image-ref: '${{ env.IMAGE }}:sha-${{ github.sha }}'
-          scan-type: image
-          format: cyclonedx
-          output: sbom.json
+        run: |
+          trivy image \
+            --format cyclonedx \
+            --output sbom.json \
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
 
       # 6. Cosign 설치
       - name: Install Cosign
@@ -109,8 +110,7 @@ jobs:
             ${{ env.IMAGE }}@${{ steps.digest.outputs.digest }}
 
       # 8. SBOM attestation
-      # sbom.json 파일을 이미지에 증명용으로 첨부
-      # 이미지 내부에 GHCR 메타데이터로 구성요소들이 남아있음
+      # SBOM attestation을 이미지 digest에 연결
       - name: Attest SBOM
         run: |
           cosign attest --yes \
