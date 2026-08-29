@@ -14,8 +14,8 @@ jobs:
 
     env:
       REGISTRY: ${{ secrets.NCP_REGISTRY }}
-      IMAGE_NAME: application
-      IMAGE: ${{ secrets.NCP_REGISTRY }}/application
+      IMAGE_NAME: gayadi-be
+      IMAGE: ${{ secrets.NCP_REGISTRY }}/gayadi-be
 
     steps:
       - name: Checkout
