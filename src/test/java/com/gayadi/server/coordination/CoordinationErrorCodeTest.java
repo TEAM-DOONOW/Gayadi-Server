@@ -18,7 +18,5 @@ class CoordinationErrorCodeTest {
         assertThat(Arrays.stream(values).map(CoordinationErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(CoordinationErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.coordination."));
-        assertThat(Arrays.stream(values).map(CoordinationErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

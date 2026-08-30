@@ -53,8 +53,7 @@ class JwtServiceTest {
         assertThatThrownBy(() -> service.parseAndGetUserId(signedToken(claims)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
-                        .isEqualTo(AuthErrorCode.AUTH_TOKEN_EXPIRED))
-                .hasMessage("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+                        .isEqualTo(AuthErrorCode.AUTH_TOKEN_EXPIRED));
     }
 
     private String signedToken(Map<String, Object> claims) {

@@ -74,8 +74,9 @@ class CongestionForecastServiceTest {
 
         assertThatThrownBy(() -> service.forecast(new CongestionForecastService.Request(
                 "11", "110", "서울", "", "not-a-date")))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("ISO-8601");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(CongestionErrorCode.CONGESTION_TARGET_AT_INVALID));
     }
 
     @Test

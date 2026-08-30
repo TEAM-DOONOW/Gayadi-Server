@@ -19,7 +19,7 @@ class ApiErrorResponseFactoryTest {
 
         ApiErrorResponse response = factory.create(
                 CommonErrorCode.INVALID_REQUEST,
-                CommonErrorCode.INVALID_REQUEST.defaultMessage(),
+                "요청값이 올바르지 않습니다.",
                 "/api/v1/expenses",
                 "trace-123",
                 details);
@@ -37,7 +37,7 @@ class ApiErrorResponseFactoryTest {
     void convertsEmptyDetailsToNullAndCreatesTraceIds() {
         ApiErrorResponse response = factory.create(
                 CommonErrorCode.INTERNAL_SERVER_ERROR,
-                CommonErrorCode.INTERNAL_SERVER_ERROR.defaultMessage(),
+                "서버에서 요청을 처리하지 못했습니다.",
                 "/api/v1/test",
                 factory.newTraceId(),
                 List.of());

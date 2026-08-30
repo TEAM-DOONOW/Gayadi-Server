@@ -3,6 +3,29 @@ spring:
     import: optional:file:.env[.properties]
   application:
     name: gayadi-server
+  messages:
+    basename: >-
+      i18n/common/messages,
+      i18n/auth/messages,
+      i18n/congestion/messages,
+      i18n/coordination/messages,
+      i18n/event/messages,
+      i18n/expense/messages,
+      i18n/favorite/messages,
+      i18n/friendship/messages,
+      i18n/invitation/messages,
+      i18n/legal/messages,
+      i18n/notice/messages,
+      i18n/place/messages,
+      i18n/recommendation/messages,
+      i18n/route/messages,
+      i18n/schedule/messages,
+      i18n/survey/messages,
+      i18n/tour/messages,
+      i18n/travel/messages,
+      i18n/weather/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration

@@ -2,10 +2,14 @@ package com.gayadi.server.common.exception;
 
 import com.gayadi.server.common.response.ApiErrorResponse;
 import com.gayadi.server.common.response.ApiErrorResponseFactory;
+import com.gayadi.server.common.response.ApiMessageResolver;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.context.support.StaticMessageSource;
+
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,8 +17,16 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void convertsBusinessExceptionIntoTheCommonResponse() {
-        GlobalExceptionHandler handler = new GlobalExceptionHandler(new ApiErrorResponseFactory());
+        StaticMessageSource messageSource = new StaticMessageSource();
+        messageSource.addMessage(
+                "error.test.shared-fund-balance-insufficient",
+                Locale.KOREAN,
+                "공동 경비 잔액이 부족합니다. 현재 잔액은 {0}원입니다.");
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(
+                new ApiErrorResponseFactory(),
+                new ApiMessageResolver(messageSource));
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/test");
+        request.addPreferredLocale(Locale.KOREAN);
 
         ResponseEntity<ApiErrorResponse> response = handler.handleBusiness(
                 new BusinessException(TestErrorCode.SHARED_FUND_BALANCE_INSUFFICIENT, 10_000), request);
@@ -45,9 +57,5 @@ class GlobalExceptionHandlerTest {
             return "error.test.shared-fund-balance-insufficient";
         }
 
-        @Override
-        public String defaultMessage() {
-            return "공동 경비 잔액이 부족합니다. 현재 잔액은 {0}원입니다.";
-        }
     }
 }

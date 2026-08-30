@@ -11,7 +11,7 @@ GAYADI API는 모든 실패 응답을 안정적인 오류 코드와 공통 JSON 
 | [예외 매핑](exception-mapping.md) | MVC, Validation, Security 예외 변환 |
 | [도메인 오류 코드](domain-error-codes.md) | 도메인별 ErrorCode 위치와 책임 |
 | [테스트](testing.md) | 오류 계약 검증 범위와 실행 방법 |
-| [다국어 메시지](i18n.md) | 향후 MessageSource 연결 기준 |
+| [다국어 메시지](i18n.md) | 도메인별 한국어·영어 메시지 구성과 사용 기준 |
 
 민감정보 저장과 로그 마스킹 기준은 [민감정보 보호](../security/sensitive-data-protection.md)를 참고한다.
 

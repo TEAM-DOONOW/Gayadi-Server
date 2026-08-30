@@ -18,7 +18,5 @@ class InvitationErrorCodeTest {
         assertThat(Arrays.stream(values).map(InvitationErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(InvitationErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.invitation."));
-        assertThat(Arrays.stream(values).map(InvitationErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

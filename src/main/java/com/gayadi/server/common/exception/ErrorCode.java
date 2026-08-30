@@ -10,6 +10,4 @@ public interface ErrorCode {
     String code();
 
     String messageKey();
-
-    String defaultMessage();
 }

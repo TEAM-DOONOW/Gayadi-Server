@@ -18,7 +18,5 @@ class EventErrorCodeTest {
         assertThat(Arrays.stream(values).map(EventErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(EventErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.event."));
-        assertThat(Arrays.stream(values).map(EventErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

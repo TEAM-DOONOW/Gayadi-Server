@@ -56,18 +56,21 @@ class WeatherApiClientTest {
     @Test
     void convertsXmlAuthenticationAndRateLimitResponses() {
         assertThatThrownBy(() -> client("xml", "test-key").call("", Map.of()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("인증에 실패");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_AUTH_FAILED));
         assertThatThrownBy(() -> client("limited", "test-key").call("", Map.of()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("호출 한도");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_RATE_LIMITED));
     }
 
     @Test
     void rejectsMissingServiceKeyBeforeSendingARequest() {
         assertThatThrownBy(() -> client("pages", "").baseParams())
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("설정되지 않았습니다");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_NOT_CONFIGURED));
     }
 
     private WeatherApiClient client(String context, String key) {

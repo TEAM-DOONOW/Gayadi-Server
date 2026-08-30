@@ -16,7 +16,7 @@ class BusinessExceptionTest {
         returned[0] = 100;
 
         assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST);
-        assertThat(exception.getMessage()).isEqualTo(CommonErrorCode.INVALID_REQUEST.defaultMessage());
+        assertThat(exception.getMessage()).isEqualTo(CommonErrorCode.INVALID_REQUEST.code());
         assertThat(exception.getMessageArguments()).containsExactly(31);
     }
 }

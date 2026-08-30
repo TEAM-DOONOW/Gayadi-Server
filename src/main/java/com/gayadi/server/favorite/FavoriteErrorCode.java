@@ -9,19 +9,16 @@ public enum FavoriteErrorCode implements ErrorCode {
     FAVORITE_PLACE_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "FAVORITE_PLACE_NOT_FOUND",
-            "error.favorite.place-not-found",
-            "찜한 장소를 찾을 수 없습니다.");
+            "error.favorite.place-not-found");
 
     private final HttpStatus status;
     private final String code;
     private final String messageKey;
-    private final String defaultMessage;
 
-    FavoriteErrorCode(HttpStatus status, String code, String messageKey, String defaultMessage) {
+    FavoriteErrorCode(HttpStatus status, String code, String messageKey) {
         this.status = status;
         this.code = code;
         this.messageKey = messageKey;
-        this.defaultMessage = defaultMessage;
     }
 
     @Override
@@ -37,10 +34,5 @@ public enum FavoriteErrorCode implements ErrorCode {
     @Override
     public String messageKey() {
         return messageKey;
-    }
-
-    @Override
-    public String defaultMessage() {
-        return defaultMessage;
     }
 }
