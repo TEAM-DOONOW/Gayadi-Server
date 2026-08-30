@@ -17,11 +17,43 @@ repositories {
     mavenCentral()
 }
 
+configurations.configureEach {
+    resolutionStrategy {
+        force 'org.apache.logging.log4j:log4j-api:2.25.5'
+        force 'tools.jackson.core:jackson-databind:3.1.5'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
+        force 'org.apache.httpcomponents.client5:httpclient5:5.6.3'
+        force 'org.apache.httpcomponents.core5:httpcore5:5.4.3'
+        force 'org.apache.httpcomponents.core5:httpcore5-h2:5.4.3'
+        eachDependency { details ->
+            if (details.requested.group == 'io.netty') {
+                details.useVersion '4.2.17.Final'
+                details.because 'Netty security advisories through 4.2.16.Final'
+            }
+        }
+    }
+}
+
 ext {
     set('springAiVersion', '2.0.0')
 }
 
+dependencyManagement {
+    dependencies {
+        dependency 'org.apache.logging.log4j:log4j-api:2.25.5'
+        dependency 'tools.jackson.core:jackson-databind:3.1.5'
+        dependency 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
+        dependency 'org.apache.httpcomponents.client5:httpclient5:5.6.3'
+        dependency 'org.apache.httpcomponents.core5:httpcore5:5.4.3'
+        dependency 'org.apache.httpcomponents.core5:httpcore5-h2:5.4.3'
+    }
+}
+
 dependencies {
+    implementation enforcedPlatform('io.netty:netty-bom:4.2.17.Final')
+    implementation enforcedPlatform('tools.jackson:jackson-bom:3.1.5')
+    implementation enforcedPlatform('com.fasterxml.jackson:jackson-bom:2.21.5')
+
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
@@ -42,6 +74,13 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
 
+    constraints {
+        implementation 'org.apache.logging.log4j:log4j-api:2.25.5'
+        implementation 'org.apache.httpcomponents.client5:httpclient5:5.6.3'
+        implementation 'org.apache.httpcomponents.core5:httpcore5:5.4.3'
+        implementation 'org.apache.httpcomponents.core5:httpcore5-h2:5.4.3'
+    }
+
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
@@ -50,4 +89,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // 로컬 .env를 자동 로드하더라도 테스트는 실제 외부 서비스에 의존하지 않는다.
+    systemProperty 'app.ai.enabled', 'false'
+    systemProperty 'tour.api.key', ''
+    systemProperty 'weather.api.key', ''
+    systemProperty 'congestion.api.key', ''
 }

@@ -1,11 +1,10 @@
 package com.gayadi.server.friendship;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.survey.SurveyService;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +32,7 @@ public class FriendshipService {
     @Transactional
     public Map<String, Object> create(long requesterId, long targetUserId) {
         if (requesterId == targetUserId) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "자신에게 친구 요청을 보낼 수 없습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_SELF_REQUEST);
         }
         lockActiveUsers(requesterId, targetUserId);
         long firstUserId = Math.min(requesterId, targetUserId);
@@ -43,7 +42,7 @@ public class FriendshipService {
         if (current != null) {
             FriendshipStatus status = FriendshipStatus.valueOf(RowSupport.strValue(current, "status"));
             if (status != FriendshipStatus.REJECTED) {
-                throw new ApiException(HttpStatus.CONFLICT, requestConflictMessage(status));
+                throw new BusinessException(requestConflictCode(status));
             }
             int updated = jdbc.sql("""
                     UPDATE friendships
@@ -67,7 +66,7 @@ public class FriendshipService {
                     """, firstUserId, secondUserId, requesterId);
             return detail(requesterId, id);
         } catch (DataIntegrityViolationException exception) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 친구 관계가 있거나 요청을 처리하고 있습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_REQUEST_CONFLICT);
         }
     }
 
@@ -133,7 +132,7 @@ public class FriendshipService {
             FriendshipStatus targetStatus,
             Integer expectedVersion) {
         if (targetStatus == null || targetStatus == FriendshipStatus.PENDING) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "바꿀 친구 관계 상태가 올바르지 않습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_STATUS_INVALID);
         }
         Map<String, Object> current = lockedAccessible(friendshipId, actorId);
         int currentVersion = RowSupport.intValue(current, "version");
@@ -145,14 +144,14 @@ public class FriendshipService {
 
         if (targetStatus == FriendshipStatus.ACCEPTED || targetStatus == FriendshipStatus.REJECTED) {
             if (currentStatus != FriendshipStatus.PENDING) {
-                throw new ApiException(HttpStatus.CONFLICT, "대기 중인 친구 요청만 수락하거나 거절할 수 있습니다.");
+                throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_DECISION_NOT_PENDING);
             }
             if (actorId == requesterId) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "친구 요청을 받은 사용자만 수락하거나 거절할 수 있습니다.");
+                throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_DECISION_FORBIDDEN);
             }
         } else if (targetStatus == FriendshipStatus.BLOCKED) {
             if (currentStatus == FriendshipStatus.BLOCKED) {
-                throw new ApiException(HttpStatus.CONFLICT, "이미 차단한 사용자입니다.");
+                throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_ALREADY_BLOCKED);
             }
         }
 
@@ -180,10 +179,10 @@ public class FriendshipService {
         Long blockedBy = nullableLong(current, "blocked_by");
 
         if (status == FriendshipStatus.PENDING && requesterId != actorId) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "친구 요청을 보낸 사용자만 요청을 취소할 수 있습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_CANCEL_FORBIDDEN);
         }
         if (status == FriendshipStatus.BLOCKED && !Long.valueOf(actorId).equals(blockedBy)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "친구 관계를 찾을 수 없습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND);
         }
         int deleted = jdbc.sql("DELETE FROM friendships WHERE id = ? AND version = ?")
                 .params(friendshipId, RowSupport.intValue(current, "version"))
@@ -195,12 +194,6 @@ public class FriendshipService {
 
     public List<Map<String, Object>> searchUsers(long userId, String rawQuery, int requestedLimit) {
         String query = rawQuery == null ? "" : rawQuery.trim();
-        if (query.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "검색할 닉네임을 입력해 주세요.");
-        }
-        if (query.length() > 30) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "검색어는 30자까지 입력할 수 있습니다.");
-        }
         int limit = Math.max(1, Math.min(requestedLimit, MAX_SEARCH_SIZE));
         return jdbc.sql("""
                 SELECT u.id, u.nickname, u.introduction, u.profile_image_url,
@@ -247,7 +240,7 @@ public class FriendshipService {
                 .query(Long.class)
                 .list();
         if (activeUsers.size() != 2) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "친구 요청을 보낼 사용자를 찾을 수 없습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_TARGET_USER_NOT_FOUND);
         }
     }
 
@@ -268,16 +261,16 @@ public class FriendshipService {
                 .param(friendshipId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "친구 관계를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND));
         long firstUserId = RowSupport.longValue(row, "first_user_id");
         long secondUserId = RowSupport.longValue(row, "second_user_id");
         if (actorId != firstUserId && actorId != secondUserId) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "친구 관계를 찾을 수 없습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND);
         }
         Long blockedBy = nullableLong(row, "blocked_by");
         if (FriendshipStatus.BLOCKED.name().equals(RowSupport.strValue(row, "status"))
                 && !Long.valueOf(actorId).equals(blockedBy)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "친구 관계를 찾을 수 없습니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND);
         }
         return row;
     }
@@ -307,7 +300,7 @@ public class FriendshipService {
                         friendshipId, actorId, actorId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "친구 관계를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND));
         return toFriendship(row, actorId);
     }
 
@@ -356,21 +349,21 @@ public class FriendshipService {
         try {
             return FriendshipStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "올바르지 않은 친구 관계 상태입니다.");
+            throw new BusinessException(FriendshipErrorCode.FRIENDSHIP_STATUS_INVALID);
         }
     }
 
-    private String requestConflictMessage(FriendshipStatus status) {
+    private FriendshipErrorCode requestConflictCode(FriendshipStatus status) {
         return switch (status) {
-            case PENDING -> "이미 처리되지 않은 친구 요청이 있습니다.";
-            case ACCEPTED -> "이미 친구로 등록된 사용자입니다.";
-            case BLOCKED -> "친구 요청을 보낼 수 없습니다.";
+            case PENDING -> FriendshipErrorCode.FRIENDSHIP_REQUEST_PENDING;
+            case ACCEPTED -> FriendshipErrorCode.FRIENDSHIP_ALREADY_ACCEPTED;
+            case BLOCKED -> FriendshipErrorCode.FRIENDSHIP_REQUEST_BLOCKED;
             case REJECTED -> throw new IllegalStateException("거절된 요청은 다시 보낼 수 있습니다.");
         };
     }
 
-    private ApiException changedConflict() {
-        return new ApiException(HttpStatus.CONFLICT, "친구 관계가 이미 변경되었습니다. 다시 불러와 주세요.");
+    private BusinessException changedConflict() {
+        return new BusinessException(FriendshipErrorCode.FRIENDSHIP_CHANGED);
     }
 
     private Object nullable(Map<String, Object> row, String key) {

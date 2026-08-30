@@ -65,17 +65,18 @@ class AuthFlowIntegrationTests {
     @Test
     void rejectsMissingTokenWith401() throws Exception {
         HttpResponse<String> me = get("/api/v1/users/current", "");
-        Assertions.assertThat(me.statusCode()).isEqualTo(401);
+        assertSecurityError(me, "UNAUTHENTICATED", "/api/v1/users/current");
     }
 
     @Test
     void rejectsInvalidTokenWith401() throws Exception {
         HttpResponse<String> me = get("/api/v1/users/current", "Bearer invalid.token.value");
-        Assertions.assertThat(me.statusCode()).isEqualTo(401);
+        assertSecurityError(me, "UNAUTHENTICATED", "/api/v1/users/current");
+        Assertions.assertThat(me.body()).doesNotContain("invalid.token.value");
     }
 
     @Test
-    void temporarilyLocksAccountAfterRepeatedFailures() throws Exception {
+    void correctPasswordClearsAnAttackerTriggeredTemporaryLock() throws Exception {
         post("/api/v1/auth/registrations",
                 "{\"email\":\"locked@example.com\",\"password\":\"password1\",\"nickname\":\"잠금확인\"}");
         for (int attempt = 0; attempt < 5; attempt++) {
@@ -83,17 +84,34 @@ class AuthFlowIntegrationTests {
                     "{\"email\":\"locked@example.com\",\"password\":\"wrong-password\"}");
             Assertions.assertThat(failed.statusCode()).isEqualTo(401);
         }
+        HttpResponse<String> lockedFailure = post("/api/v1/auth/tokens",
+                "{\"email\":\"locked@example.com\",\"password\":\"wrong-password\"}");
+        Assertions.assertThat(lockedFailure.statusCode()).isEqualTo(429);
 
-        HttpResponse<String> locked = post("/api/v1/auth/tokens",
+        HttpResponse<String> recovered = post("/api/v1/auth/tokens",
                 "{\"email\":\"locked@example.com\",\"password\":\"password1\"}");
-        Assertions.assertThat(locked.statusCode()).isEqualTo(429);
-        Assertions.assertThat(locked.body()).contains("잠시 잠겼습니다");
+        Assertions.assertThat(recovered.statusCode()).isEqualTo(200);
+        Assertions.assertThat(recovered.body()).contains("accessToken");
     }
 
     private String extractToken(String body) {
         int start = body.indexOf("\"accessToken\":\"") + "\"accessToken\":\"".length();
         int end = body.indexOf("\"", start);
         return body.substring(start, end);
+    }
+
+    private void assertSecurityError(HttpResponse<String> response, String code, String path) {
+        Assertions.assertThat(response.statusCode()).isEqualTo(401);
+        Assertions.assertThat(response.headers().firstValue("Content-Type").orElse(""))
+                .startsWith("application/json");
+        Assertions.assertThat(response.body())
+                .contains("\"status\":401")
+                .contains("\"code\":\"" + code + "\"")
+                .contains("\"path\":\"" + path + "\"")
+                .contains("\"traceId\":")
+                .contains("\"details\":null")
+                .doesNotContain("stackTrace")
+                .doesNotContain("exception");
     }
 
     private HttpResponse<String> post(String path, String body) throws Exception {

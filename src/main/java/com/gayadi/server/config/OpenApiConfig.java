@@ -1,6 +1,6 @@
 package com.gayadi.server.config;
 
-import com.gayadi.server.common.ApiErrorResponse;
+import com.gayadi.server.common.response.ApiErrorResponse;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
@@ -65,7 +65,10 @@ public class OpenApiConfig {
         return (operation, handlerMethod) -> {
             operation.getResponses().addApiResponse("400", errorResponse("요청값 오류"));
             operation.getResponses().addApiResponse("404", errorResponse("자료 없음"));
+            operation.getResponses().addApiResponse("405", errorResponse("지원하지 않는 HTTP 메서드"));
+            operation.getResponses().addApiResponse("406", errorResponse("제공할 수 없는 응답 형식"));
             operation.getResponses().addApiResponse("409", errorResponse("현재 상태와 충돌"));
+            operation.getResponses().addApiResponse("413", errorResponse("요청 데이터 크기 초과"));
             operation.getResponses().addApiResponse("415", errorResponse("지원하지 않는 본문 형식"));
             operation.getResponses().addApiResponse("429", errorResponse("요청 횟수 초과"));
             operation.getResponses().addApiResponse("500", errorResponse("서버 오류"));

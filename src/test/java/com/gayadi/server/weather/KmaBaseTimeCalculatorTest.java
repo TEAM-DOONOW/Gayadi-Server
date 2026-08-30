@@ -1,6 +1,6 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -40,19 +40,19 @@ class KmaBaseTimeCalculatorTest {
     void validatesExplicitDateTimeAsAPairAndByForecastType() {
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.VILAGE_FCST, "20260825", null))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("함께 입력");
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.VILAGE_FCST, "20260230", "0200"))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("YYYYMMDD");
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.ULTRA_FCST, "20260825", "1400"))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("사용할 수 없는 발표시각");
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.ULTRA_NCST, "20260825", "2400"))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("HHMM");
     }
 }

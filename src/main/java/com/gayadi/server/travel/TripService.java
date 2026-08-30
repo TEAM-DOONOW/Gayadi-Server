@@ -1,13 +1,12 @@
 package com.gayadi.server.travel;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.survey.SurveyService;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,7 +103,7 @@ public class TripService {
         lockTrip(tripId);
         requireOwnerRow(tripId, actorId);
         if (actorId == userId) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "여행 소유자는 내보낼 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_OWNER_REMOVAL_FORBIDDEN);
         }
         int updated = jdbc.sql("""
                 UPDATE trip_participants
@@ -114,7 +113,7 @@ public class TripService {
                 .params(tripId, userId)
                 .update();
         if (updated == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "참여자를 찾을 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_MEMBER_NOT_FOUND);
         }
         jdbc.sql("DELETE FROM trip_date_availability_submissions WHERE trip_id = ? AND user_id = ?")
                 .params(tripId, userId)
@@ -267,7 +266,7 @@ public class TripService {
                     .update();
         }
         if (updated == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "다른 사용자가 여행 정보를 먼저 바꿨습니다. 다시 불러와 주세요.");
+            throw new BusinessException(TripErrorCode.TRIP_VERSION_CONFLICT);
         }
         replaceCities(tripId, normalizedCities);
         recalculatePlanDays(tripId, startDate);
@@ -302,8 +301,7 @@ public class TripService {
                 .query(Long.class)
                 .single();
         if (schedulesOutsideRange > 0) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "바꿀 여행 기간 밖에 일정이 있습니다. 일정을 먼저 정리해 주세요.");
+            throw new BusinessException(TripErrorCode.TRIP_SCHEDULE_OUTSIDE_DATE_RANGE);
         }
     }
 
@@ -313,8 +311,8 @@ public class TripService {
         requireOwnerRow(tripId, actorId);
         TripStatus current = TripStatus.valueOf(RowSupport.strValue(trip, "status"));
         if (!allowedTransition(current, target)) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    statusLabel(current) + " 상태에서는 " + statusLabel(target) + " 상태로 바꿀 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_STATUS_TRANSITION_INVALID,
+                    statusLabel(current), statusLabel(target));
         }
         String timestamps = switch (target) {
             case IN_PROGRESS -> ", started_at = CURRENT_TIMESTAMP";
@@ -345,7 +343,7 @@ public class TripService {
                 .param(tripId)
                 .update();
         if (updated == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_NOT_FOUND);
         }
     }
 
@@ -381,7 +379,7 @@ public class TripService {
                 .optional()
                 .orElse(0L);
         if (count == 0) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "여행 참여자만 처리할 수 있습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_MEMBER_REQUIRED);
         }
     }
 
@@ -393,7 +391,7 @@ public class TripService {
                 .params(target.name(), tripId, current.name())
                 .update();
         if (updated == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "여행 상태를 바꿀 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_STATUS_CHANGE_CONFLICT);
         }
         return get(tripId);
     }
@@ -417,8 +415,7 @@ public class TripService {
             }
             // 드문 코드 충돌이면 저장점으로 복구된 같은 트랜잭션에서 새 코드를 만든다.
         }
-        throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                "여행 초대 코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new BusinessException(TripErrorCode.TRIP_INVITE_CODE_UNAVAILABLE);
     }
 
     private Map<String, Object> tripRow(long tripId) {
@@ -431,7 +428,7 @@ public class TripService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private Map<String, Object> lockTrip(long tripId) {
@@ -439,7 +436,7 @@ public class TripService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private void requireOwnerRow(long tripId, long userId) {
@@ -452,14 +449,14 @@ public class TripService {
                 .optional()
                 .orElse(0L);
         if (count == 0) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "여행 소유자만 처리할 수 있습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_OWNER_REQUIRED);
         }
     }
 
     private void ensureMemberCanJoin(long tripId) {
         Map<String, Object> trip = tripRow(tripId);
         if (!"PLANNING".equals(RowSupport.strValue(trip, "status"))) {
-            throw new ApiException(HttpStatus.CONFLICT, "준비 중인 여행에만 참여할 수 있습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_NOT_JOINABLE);
         }
         Object maxMembersValue = valueOrNull(trip, "max_members");
         int maxMembers = maxMembersValue == null
@@ -472,7 +469,7 @@ public class TripService {
                 .query(Long.class)
                 .single();
         if (current >= maxMembers) {
-            throw new ApiException(HttpStatus.CONFLICT, "여행 참여 인원이 가득 찼습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_MEMBER_CAPACITY_REACHED);
         }
     }
 
@@ -508,7 +505,7 @@ public class TripService {
                     .params(tripId, userId, role, departurePlaceId, returnPlaceId)
                     .update();
         } catch (DuplicateKeyException exception) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 참여한 여행입니다.");
+            throw new BusinessException(TripErrorCode.TRIP_ALREADY_JOINED);
         }
     }
 
@@ -526,7 +523,7 @@ public class TripService {
                 .query().listOfRows().stream()
                 .findFirst()
                 .map(this::toParticipant)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "참여자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_MEMBER_NOT_FOUND));
     }
 
     private List<String> cities(long tripId) {
@@ -586,7 +583,7 @@ public class TripService {
     }
 
     private List<String> normalizeCities(List<String> cities) {
-        if (cities == null) throw new ApiException(HttpStatus.BAD_REQUEST, "여행 도시를 하나 이상 골라 주세요.");
+        if (cities == null) throw new BusinessException(TripErrorCode.TRIP_CITY_REQUIRED);
         List<String> normalized = cities.stream()
                 .filter(java.util.Objects::nonNull)
                 .map(String::trim)
@@ -595,7 +592,7 @@ public class TripService {
                 .limit(10)
                 .toList();
         if (normalized.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "여행 도시를 하나 이상 골라 주세요.");
+            throw new BusinessException(TripErrorCode.TRIP_CITY_REQUIRED);
         }
         return normalized;
     }
@@ -629,7 +626,7 @@ public class TripService {
                 .param(name)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "여행 지역을 등록하지 못했습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_REGION_CREATION_CONFLICT));
     }
 
     private void replaceCities(long tripId, List<String> cities) {
@@ -684,8 +681,7 @@ public class TripService {
                     .single();
             if (count == 0) return code.toString();
         }
-        throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                "여행 초대 코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new BusinessException(TripErrorCode.TRIP_INVITE_CODE_UNAVAILABLE);
     }
 
     private LocalDate localDate(Object value) {
@@ -694,16 +690,16 @@ public class TripService {
 
     private void validateDates(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "여행 종료일은 시작일과 같거나 뒤여야 합니다.");
+            throw new BusinessException(TripErrorCode.TRIP_DATE_RANGE_INVALID);
         }
         if (startDate.plusDays(30).isBefore(endDate)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "한 여행은 31일까지 만들 수 있습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_DURATION_EXCEEDED);
         }
     }
 
     private void validateTitle(String title) {
         if (title == null || title.isBlank() || title.trim().length() > 100) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "여행 이름은 1자에서 100자 사이여야 합니다.");
+            throw new BusinessException(TripErrorCode.TRIP_TITLE_INVALID);
         }
     }
 
@@ -724,23 +720,22 @@ public class TripService {
                 .query(Long.class)
                 .single();
         if (count == 0) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "출발지나 귀가 장소를 확인할 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_PLACE_INVALID);
         }
     }
 
     private void validateDeparture(DepartureMode mode, LocalDateTime meetingAt, Long meetingPlaceId) {
         if (mode == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "출발 방식을 골라 주세요.");
+            throw new BusinessException(TripErrorCode.TRIP_DEPARTURE_MODE_REQUIRED);
         }
         if (mode == DepartureMode.TOGETHER && (meetingAt == null || meetingPlaceId == null)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "함께 출발할 때는 모이는 시각과 장소가 필요합니다.");
+            throw new BusinessException(TripErrorCode.TRIP_MEETING_REQUIRED);
         }
     }
 
     private void validateMaxMembers(Integer maxMembers) {
         if (maxMembers != null && (maxMembers < 1 || maxMembers > 100)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "참여 인원은 1명에서 100명 사이여야 합니다.");
+            throw new BusinessException(TripErrorCode.TRIP_MAX_MEMBERS_INVALID);
         }
     }
 
@@ -760,7 +755,7 @@ public class TripService {
             }
             return TripStatus.valueOf(normalized);
         } catch (IllegalArgumentException exception) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "올바르지 않은 여행 상태입니다.");
+            throw new BusinessException(TripErrorCode.TRIP_STATUS_INVALID);
         }
     }
 

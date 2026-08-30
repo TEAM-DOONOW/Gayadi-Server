@@ -17,11 +17,11 @@ import java.util.List;
 public class TripSituationRequest {
 
     @Size(max = 10)
-    @Schema(description = "한국관광공사 시도 코드", example = "31")
+    @Schema(description = "법정동 시도 코드", example = "11")
     private String regionCode = "";
 
     @Size(max = 10)
-    @Schema(description = "한국관광공사 시군구 코드")
+    @Schema(description = "법정동 시군구 코드(3자리 또는 시도 포함 5자리)", example = "110")
     private String sigunguCode = "";
 
     @NotNull
@@ -48,7 +48,7 @@ public class TripSituationRequest {
 
     @NotNull
     @Valid
-    @Schema(description = "날씨·혼잡·교통 상황. weather를 생략하면 현재 위치의 기상청 실황을 자동 적용")
+    @Schema(description = "날씨·혼잡·교통 상황. 날씨와 혼잡을 생략하면 공공데이터 또는 명시된 추정값으로 자동 보강")
     private TravelSituation situation = TravelSituation.empty();
 
     @AssertTrue(message = "외부 맞춤 추천 처리에 동의해야 합니다.")

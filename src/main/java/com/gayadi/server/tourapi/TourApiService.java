@@ -1,10 +1,9 @@
 package com.gayadi.server.tourapi;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -32,6 +31,7 @@ public class TourApiService {
     private static final String OP_SEARCH_KEYWORD = "searchKeyword2";
     private static final String OP_SEARCH_FESTIVAL = "searchFestival2";
     private static final String OP_SEARCH_STAY = "searchStay2";
+    private static final String OP_LEGAL_CODE = "ldongCode2";
     private static final String RESULT_CODE_OK = "0000";
 
     private final HttpClient client = HttpClient.newBuilder()
@@ -65,6 +65,21 @@ public class TourApiService {
         putIfPresent(params, "lclsSystm2", req.lclsSystm2());
         putIfPresent(params, "lclsSystm3", req.lclsSystm3());
         return listResponse(OP_AREA_BASED_LIST, params, req.pageSize(), pageNo);
+    }
+
+    /** 법정동 시도 코드에 속한 시군구 코드를 조회한다. */
+    public List<LegalDistrict> legalDistricts(String regionCode) {
+        requireParam("lDongRegnCd", regionCode);
+        Map<String, String> params = baseParams(100, 1, null);
+        params.put("lDongRegnCd", regionCode);
+        JsonNode itemNode = call(OP_LEGAL_CODE, params).path("body").path("items").path("item");
+        List<LegalDistrict> result = new ArrayList<>();
+        if (itemNode.isArray()) {
+            for (JsonNode node : itemNode) result.add(toLegalDistrict(node));
+        } else if (itemNode.isObject()) {
+            result.add(toLegalDistrict(itemNode));
+        }
+        return List.copyOf(result);
     }
 
     /** 좌표(mapX/mapY)와 반경(radius) 기반으로 주변 관광정보 목록을 조회한다. */
@@ -215,27 +230,26 @@ public class TourApiService {
             response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "관광 API 호출이 중단되었습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_API_INTERRUPTED);
         } catch (IOException e) {
             log.warn("관광 API 호출 실패: {} - {}", operation, e.getMessage());
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "관광 API 호출에 실패했습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_API_FAILED);
         }
 
         if (response.statusCode() == 429) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                    "관광 API 호출 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+            throw new BusinessException(TourApiErrorCode.TOUR_API_RATE_LIMITED);
         }
 
         String body = response.body();
         if (body == null || body.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "관광 API 응답이 비어 있습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_API_RESPONSE_INVALID);
         }
 
         // 공공데이터포털 오류는 _type=json 여부와 무관하게 XML로만 내려온다.
         String trimmed = body.stripLeading();
         if (trimmed.charAt(0) == '<') {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "관광 API 호출이 거부되었습니다: " + extractXmlError(body));
+            log.warn("관광 API XML 오류 응답: {}", extractXmlError(body));
+            throw new BusinessException(TourApiErrorCode.TOUR_API_RESPONSE_INVALID);
         }
 
         JsonNode root;
@@ -243,15 +257,15 @@ public class TourApiService {
             root = objectMapper.readTree(body);
         } catch (Exception e) {
             log.warn("관광 API 응답 파싱 실패: {} - {}", operation, e.getMessage());
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "관광 API 응답을 해석하지 못했습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_API_RESPONSE_INVALID);
         }
 
         JsonNode header = root.path("response").path("header");
         String resultCode = header.path("resultCode").asText("");
         String resultMsg = header.path("resultMsg").asText("");
         if (!RESULT_CODE_OK.equals(resultCode)) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "관광 API 오류(" + resultCode + "): " + resultMsg);
+            log.warn("관광 API 업무 오류: code={}, message={}", resultCode, resultMsg);
+            throw new BusinessException(TourApiErrorCode.TOUR_API_RESPONSE_INVALID);
         }
         return root.path("response");
     }
@@ -271,15 +285,14 @@ public class TourApiService {
 
     private String ensureServiceKey() {
         if (serviceKey == null || serviceKey.isBlank()) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "관광 API 키(TOUR_API_KEY)가 설정되지 않았습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_API_NOT_CONFIGURED);
         }
         return serviceKey;
     }
 
     private void requireParam(String name, String value) {
         if (value == null || value.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "필수 파라미터 " + name + "이(가) 없습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_PARAMETER_REQUIRED, name);
         }
     }
 
@@ -311,6 +324,10 @@ public class TourApiService {
                 text(node, "progresstype"),
                 text(node, "festivaltype")
         );
+    }
+
+    private LegalDistrict toLegalDistrict(JsonNode node) {
+        return new LegalDistrict(text(node, "code"), text(node, "name"));
     }
 
     private String text(JsonNode node, String field) {
@@ -395,5 +412,8 @@ public class TourApiService {
             String lclsSystm1, String lclsSystm2, String lclsSystm3,
             String dist, String eventStartDate, String eventEndDate,
             String progressType, String festivalType) {
+    }
+
+    public record LegalDistrict(String code, String name) {
     }
 }

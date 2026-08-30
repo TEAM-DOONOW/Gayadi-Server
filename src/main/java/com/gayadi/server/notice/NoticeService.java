@@ -1,10 +1,9 @@
 package com.gayadi.server.notice;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.RowSupport;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -52,7 +51,7 @@ public class NoticeService {
                 .query().listOfRows().stream()
                 .findFirst()
                 .map(this::toResponse)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "공지를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(NoticeErrorCode.NOTICE_NOT_FOUND));
     }
 
     private NoticeResponse toResponse(Map<String, Object> row) {
@@ -79,7 +78,7 @@ public class NoticeService {
 
     private void validateId(String noticeId) {
         if (noticeId == null || !noticeId.matches("[a-zA-Z0-9-]{1,50}")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "공지 식별자가 올바르지 않습니다.");
+            throw new BusinessException(NoticeErrorCode.NOTICE_ID_INVALID);
         }
     }
 

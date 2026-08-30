@@ -1,6 +1,6 @@
 package com.gayadi.server.recommendation;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.weather.WeatherApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +34,9 @@ public class WeatherSituationEnricher {
                     decimal(observation.temperature()),
                     decimal(observation.windSpeed()));
             return new TravelSituation(observed, current.congestion(), current.transit());
-        } catch (ApiException exception) {
+        } catch (BusinessException exception) {
             // 추천 Agent는 기상청 장애와 독립적으로 사용 가능해야 한다.
-            log.warn("기상청 실황 보강 생략: status={}", exception.getStatus().value());
+            log.warn("기상청 실황 보강 생략: code={}", exception.getErrorCode().code());
             return current;
         }
     }

@@ -1,8 +1,7 @@
 package com.gayadi.server.auth;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.KeyHelper;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.common.exception.BusinessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -44,7 +43,7 @@ public class AuthService {
             return loginResult(id);
         } catch (DataIntegrityViolationException exception) {
             if (isDuplicateEmail(exception)) {
-                throw new ApiException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+                throw new BusinessException(AuthErrorCode.AUTH_EMAIL_ALREADY_REGISTERED);
             }
             throw exception;
         }
@@ -57,7 +56,7 @@ public class AuthService {
         return message.contains("uk_users_email");
     }
 
-    @Transactional(noRollbackFor = ApiException.class)
+    @Transactional(noRollbackFor = BusinessException.class)
     public Map<String, Object> login(String email, String password) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         Map<String, Object> user = jdbc.sql("""
@@ -72,21 +71,29 @@ public class AuthService {
                 .orElseThrow(() -> unauthorized());
         long userId = ((Number) user.get("id")).longValue();
         if (!"ACTIVE".equals(String.valueOf(user.get("status")))) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "사용할 수 없는 계정입니다.");
-        }
-
-        LocalDateTime lockedUntil = localDateTime(user.get("login_locked_until"));
-        if (lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now())) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                    "로그인 시도가 많아 잠시 잠겼습니다. 15분 뒤 다시 시도해 주세요.");
+            throw new BusinessException(AuthErrorCode.AUTH_ACCOUNT_UNAVAILABLE);
         }
 
         String hash = user.get("password_hash") == null ? null : user.get("password_hash").toString();
+        LocalDateTime lockedUntil = localDateTime(user.get("login_locked_until"));
+        if (lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now())) {
+            if (hash != null && passwordEncoder.matches(password, hash)) {
+                clearFailedLogins(userId);
+                return loginResult(userId);
+            }
+            throw new BusinessException(AuthErrorCode.AUTH_LOGIN_RATE_LIMITED);
+        }
+
         if (hash == null || !passwordEncoder.matches(password, hash)) {
             recordFailedLogin(userId);
             throw unauthorized();
         }
 
+        clearFailedLogins(userId);
+        return loginResult(userId);
+    }
+
+    private void clearFailedLogins(long userId) {
         jdbc.sql("""
                 UPDATE users
                 SET last_login_at = CURRENT_TIMESTAMP, failed_login_attempts = 0,
@@ -95,7 +102,6 @@ public class AuthService {
                 """)
                 .param(userId)
                 .update();
-        return loginResult(userId);
     }
 
     private void recordFailedLogin(long userId) {
@@ -124,8 +130,8 @@ public class AuthService {
         return LocalDateTime.parse(value.toString().replace(' ', 'T'));
     }
 
-    private ApiException unauthorized() {
-        return new ApiException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
+    private BusinessException unauthorized() {
+        return new BusinessException(AuthErrorCode.AUTH_INVALID_CREDENTIALS);
     }
 
     private Map<String, Object> loginResult(long userId) {

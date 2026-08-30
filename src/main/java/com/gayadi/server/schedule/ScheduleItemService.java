@@ -1,11 +1,11 @@
 package com.gayadi.server.schedule;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.travel.TripErrorCode;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -179,11 +179,11 @@ public class ScheduleItemService {
         trips.requireMember(tripId, userId);
         requireEditableTrip(trip);
         if (scheduleIds == null || scheduleIds.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 순서를 하나 이상 보내 주세요.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_ORDER_REQUIRED);
         }
         Set<Long> unique = new LinkedHashSet<>(scheduleIds);
         if (unique.size() != scheduleIds.size()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "같은 일정이 순서 목록에 두 번 들어 있습니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_ORDER_DUPLICATED);
         }
         List<Map<String, Object>> existing = jdbc.sql("""
                 SELECT i.id, i.plan_id
@@ -196,7 +196,7 @@ public class ScheduleItemService {
                 .map(row -> RowSupport.longValue(row, "id"))
                 .collect(java.util.stream.Collectors.toSet());
         if (!existingIds.equals(unique)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "현재 여행의 모든 일정을 빠짐없이 보내 주세요.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_ORDER_INCOMPLETE);
         }
         Map<Long, Long> planByItem = new HashMap<>();
         existing.forEach(row -> planByItem.put(
@@ -235,7 +235,7 @@ public class ScheduleItemService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private void incrementPlanVersion(long planId) {
@@ -279,7 +279,7 @@ public class ScheduleItemService {
                 .query().listOfRows().stream()
                 .findFirst()
                 .map(this::toView)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 
     private Map<String, Object> lockedItem(long tripId, long itemId) {
@@ -293,7 +293,7 @@ public class ScheduleItemService {
                 .params(tripId, itemId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 
     private long planForDate(
@@ -321,7 +321,7 @@ public class ScheduleItemService {
                 .params(tripId, date)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "일정표를 만들지 못했습니다."));
+                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_PLAN_CREATION_CONFLICT));
     }
 
     private int nextSequence(long planId) {
@@ -352,7 +352,7 @@ public class ScheduleItemService {
         LocalDate start = localDate(RowSupport.value(trip, "start_date"));
         LocalDate end = localDate(RowSupport.value(trip, "end_date"));
         if (date.isBefore(start) || date.isAfter(end)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 날짜는 여행 기간 안이어야 합니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_DATE_OUTSIDE_TRIP);
         }
     }
 
@@ -384,23 +384,23 @@ public class ScheduleItemService {
     private void validateCommand(ScheduleCommand command) {
         if (command == null || command.title() == null || command.title().isBlank()
                 || command.title().trim().length() > 200) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 이름은 1자에서 200자 사이여야 합니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_TITLE_INVALID);
         }
         if (command.date() == null || command.time() == null || command.type() == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 날짜, 시각과 종류가 필요합니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_REQUIRED_FIELDS_MISSING);
         }
         if (command.endTime() != null && !command.endTime().isAfter(command.time())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 종료 시각은 시작 시각보다 뒤여야 합니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_END_TIME_INVALID);
         }
         if (command.memo() != null && command.memo().trim().length() > 500) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "일정 메모는 500자까지 입력할 수 있습니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_MEMO_TOO_LONG);
         }
     }
 
     private void requireEditableTrip(Map<String, Object> trip) {
         String status = RowSupport.strValue(trip, "status");
         if ("COMPLETED".equals(status) || "CANCELED".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "완료되거나 취소된 여행의 일정은 바꿀 수 없습니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_TRIP_NOT_EDITABLE);
         }
     }
 
@@ -415,7 +415,7 @@ public class ScheduleItemService {
                 .query(Long.class)
                 .single();
         if (count == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다.");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_PLACE_NOT_FOUND);
         }
     }
 

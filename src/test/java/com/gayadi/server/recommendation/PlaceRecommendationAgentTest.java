@@ -114,6 +114,42 @@ class PlaceRecommendationAgentTest {
         assertThat(query.contentTypeIds()).containsExactly("14", "12");
     }
 
+    @Test
+    void fallsBackToServerPlanningAndRankingWhenTheLanguageModelFails() {
+        FakeGateway gateway = new FakeGateway(List.of(
+                candidate("near", "가까운 박물관", "CULTURE", true, 1.0),
+                candidate("far", "먼 박물관", "CULTURE", true, 10.0)));
+        RecommendationLanguageModel failing = new RecommendationLanguageModel() {
+            @Override
+            public PlaceSearchPlan createSearchPlan(RecommendationContext context) {
+                throw new IllegalStateException("model unavailable");
+            }
+
+            @Override
+            public PlaceSearchPlan refineSearchPlan(RecommendationContext context,
+                                                    PlaceSearchPlan previousPlan,
+                                                    List<TourPlaceCandidate> candidates) {
+                throw new IllegalStateException("model unavailable");
+            }
+
+            @Override
+            public CandidateDecision decide(RecommendationContext context,
+                                            List<TourPlaceCandidate> candidates) {
+                throw new IllegalStateException("model unavailable");
+            }
+        };
+        PlaceRecommendationAgent agent = new PlaceRecommendationAgent(failing, gateway);
+        PlaceRecommendationRequest request = request(TravelSituation.empty());
+        request.setLimit(1);
+
+        PlaceRecommendationResponse response = agent.recommendPlaces(request);
+
+        assertThat(response.recommendations()).extracting(RecommendedPlace::placeId)
+                .containsExactly("near");
+        assertThat(response.recommendations().getFirst().reason())
+                .contains("검색 조건");
+    }
+
     private PlaceRecommendationRequest request(TravelSituation situation) {
         PlaceRecommendationRequest request = new PlaceRecommendationRequest();
         request.setDestination("울산");

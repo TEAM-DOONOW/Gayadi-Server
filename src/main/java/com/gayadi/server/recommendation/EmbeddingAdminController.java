@@ -1,12 +1,11 @@
 package com.gayadi.server.recommendation;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,12 +31,11 @@ public class EmbeddingAdminController {
     @Operation(summary = "장소 검색 자료 갱신")
     public Map<String, Object> embedPlaces(@AuthenticationPrincipal Long userId) {
         if (adminUserId <= 0 || userId == null || userId.longValue() != adminUserId) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "관리자만 장소 검색 자료를 갱신할 수 있습니다.");
+            throw new BusinessException(RecommendationErrorCode.EMBEDDING_ADMIN_FORBIDDEN);
         }
         PlaceEmbeddingService service = serviceProvider.getIfAvailable();
         if (service == null) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "장소 검색 자료 갱신 기능이 설정되지 않았습니다.");
+            throw new BusinessException(RecommendationErrorCode.EMBEDDING_UNAVAILABLE);
         }
         int count = service.embedAllPlaces();
         return Map.of("status", "완료", "embeddedCount", count,

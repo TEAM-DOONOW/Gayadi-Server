@@ -28,11 +28,11 @@ public class PlaceRecommendationRequest {
     private String destination = "";
 
     @Size(max = 10)
-    @Schema(description = "한국관광공사 시도 코드", example = "31")
+    @Schema(description = "법정동 시도 코드", example = "11")
     private String regionCode = "";
 
     @Size(max = 10)
-    @Schema(description = "한국관광공사 시군구 코드")
+    @Schema(description = "법정동 시군구 코드(3자리 또는 시도 포함 5자리)", example = "110")
     private String sigunguCode = "";
 
     @Pattern(regexp = PURPOSE_PLACE_RECOMMENDATION + "|" + PURPOSE_PLAN_GENERATION

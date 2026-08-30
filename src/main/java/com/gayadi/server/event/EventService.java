@@ -1,12 +1,12 @@
 package com.gayadi.server.event;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.travel.TripErrorCode;
 import com.gayadi.server.schedule.PlanService;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,8 +47,9 @@ public class EventService {
 
     @Transactional
     public Map<String, Object> observe(long tripId, Observation command) {
-        Map<String, Object> trip = lockInProgressTrip(tripId);
         validateObservation(command);
+        String normalizedData = ObservationPayloadValidator.validateAndSerialize(command.values(), json);
+        Map<String, Object> trip = lockInProgressTrip(tripId);
         long regionId = RowSupport.longValue(trip, "region_id");
         requirePlaceInRegion(command.placeId(), regionId);
         Map<String, Object> planSnapshot = plans.get(tripId);
@@ -63,7 +64,7 @@ public class EventService {
                 """,
                 command.placeId(), regionId, command.eventType(), command.source(),
                 LocalDateTime.now().plusHours(SITUATION_VALID_HOURS), command.severity().name(),
-                json.write(command.values()));
+                normalizedData);
 
         if (command.severity() == Severity.LOW) {
             return Map.of("eventId", eventId, "impact", false, "message", "일정 변경이 필요하지 않습니다.");
@@ -71,7 +72,7 @@ public class EventService {
 
         List<Map<String, Object>> options = shelterOptions(tripId, regionId, command.placeId());
         if (options.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT, "해당 지역에 이용할 수 있는 실내 대체 장소가 없습니다.");
+            throw new BusinessException(EventErrorCode.EVENT_INDOOR_ALTERNATIVE_NOT_FOUND);
         }
 
         long proposalId = keyHelper.insert("""
@@ -185,12 +186,12 @@ public class EventService {
         lockInProgressTrip(tripId);
         Map<String, Object> proposal = lockedProposal(tripId, proposalId);
         if (!"PENDING".equals(RowSupport.strValue(proposal, "status"))) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 처리된 변경 제안입니다.");
+            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_ALREADY_DECIDED);
         }
 
         int proposalRevision = RowSupport.intValue(proposal, "base_revision_no");
         if (command.baseRevisionNo() != proposalRevision) {
-            throw new ApiException(HttpStatus.CONFLICT, "변경 제안의 일정 버전과 요청한 버전이 다릅니다.");
+            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_REVISION_MISMATCH);
         }
 
         if (!command.approve()) {
@@ -203,7 +204,7 @@ public class EventService {
                     .params(command.decidedBy(), proposalId, tripId)
                     .update();
             if (rejected == 0) {
-                throw new ApiException(HttpStatus.CONFLICT, "이미 처리된 변경 제안입니다.");
+                throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_ALREADY_DECIDED);
             }
             return proposal(proposalId);
         }
@@ -215,7 +216,7 @@ public class EventService {
         Map<String, Object> currentPlan = lockedPlan(tripId, planId);
         int currentVersion = RowSupport.intValue(currentPlan, "version");
         if (currentVersion != proposalRevision) {
-            throw new ApiException(HttpStatus.CONFLICT, "일정이 이미 변경되었습니다.");
+            throw new BusinessException(EventErrorCode.EVENT_PLAN_ALREADY_CHANGED);
         }
 
         int planUpdated = jdbc.sql("""
@@ -226,7 +227,7 @@ public class EventService {
                 .params(planId, tripId, proposalRevision)
                 .update();
         if (planUpdated == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "일정이 이미 변경되었습니다.");
+            throw new BusinessException(EventErrorCode.EVENT_PLAN_ALREADY_CHANGED);
         }
 
         int itemUpdated = jdbc.sql("""
@@ -244,7 +245,7 @@ public class EventService {
                 .params(selected.placeId(), selected.placeName(), planId)
                 .update();
         if (itemUpdated == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "변경할 수 있는 예정 일정이 없습니다.");
+            throw new BusinessException(EventErrorCode.EVENT_SCHEDULE_CHANGE_TARGET_NOT_FOUND);
         }
 
         // 하나의 제안을 적용하면 같은 구버전 일정을 기준으로 만든 나머지 제안은 선택할 수 없다.
@@ -278,7 +279,7 @@ public class EventService {
                 .params(json.write(after), selected.key(), command.decidedBy(), proposalId, tripId)
                 .update();
         if (proposalUpdated == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 처리된 변경 제안입니다.");
+            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_ALREADY_DECIDED);
         }
 
         return proposal(proposalId);
@@ -302,7 +303,7 @@ public class EventService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "변경 제안을 만들 일정이 없습니다."));
+                .orElseThrow(() -> new BusinessException(EventErrorCode.CHANGE_PROPOSAL_TARGET_PLAN_NOT_FOUND));
     }
 
     private Map<String, Object> lockInProgressTrip(long tripId) {
@@ -314,9 +315,9 @@ public class EventService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
         if (!"IN_PROGRESS".equals(RowSupport.strValue(trip, "status"))) {
-            throw new ApiException(HttpStatus.CONFLICT, "여행 중에만 현장 상황을 처리할 수 있습니다.");
+            throw new BusinessException(EventErrorCode.EVENT_TRIP_NOT_IN_PROGRESS);
         }
         return trip;
     }
@@ -404,7 +405,7 @@ public class EventService {
                 .params(proposalId, tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "해당 여행의 변경 제안을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(EventErrorCode.CHANGE_PROPOSAL_NOT_FOUND));
     }
 
     private Map<String, Object> lockedPlan(long tripId, long planId) {
@@ -417,7 +418,7 @@ public class EventService {
                 .params(planId, tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "변경할 일정을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(EventErrorCode.EVENT_PLAN_NOT_FOUND));
     }
 
     private void ensureActiveAlternative(long tripId, long placeId, boolean requireIndoor) {
@@ -437,8 +438,7 @@ public class EventService {
                 .orElse(0L);
         if (count == 0) {
             String label = requireIndoor ? "실내 대체 장소" : "대체 장소";
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "선택한 " + label + "를 더 이상 이용할 수 없습니다.");
+            throw new BusinessException(EventErrorCode.EVENT_ALTERNATIVE_PLACE_UNAVAILABLE, label);
         }
     }
 
@@ -450,22 +450,22 @@ public class EventService {
                 .optional()
                 .orElse(0L);
         if (count == 0) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "관측 장소가 여행 지역에 속하지 않습니다.");
+            throw new BusinessException(EventErrorCode.OBSERVATION_PLACE_OUTSIDE_REGION);
         }
     }
 
     private SelectedOption selectedOption(Map<String, Object> proposal, String selectedKey) {
         if (selectedKey == null || selectedKey.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "승인할 대체 장소를 선택해야 합니다.");
+            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTION_REQUIRED);
         }
         Object rawOptions = valueOrNull(proposal, "options_snapshot");
         if (rawOptions == null || rawOptions.toString().isBlank()) {
-            throw new ApiException(HttpStatus.CONFLICT, "변경 제안의 대체 장소 정보가 없습니다.");
+            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTIONS_MISSING);
         }
 
         Object parsed = json.read(rawOptions.toString(), Object.class);
         if (!(parsed instanceof List<?> options)) {
-            throw new ApiException(HttpStatus.CONFLICT, "변경 제안의 대체 장소 정보가 올바르지 않습니다.");
+            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTIONS_INVALID);
         }
         for (Object value : options) {
             if (!(value instanceof Map<?, ?> option)) continue;
@@ -474,14 +474,14 @@ public class EventService {
             Object placeId = option.get("placeId");
             Object placeName = option.get("placeName");
             if (placeId == null || placeName == null) {
-                throw new ApiException(HttpStatus.CONFLICT, "변경 제안의 대체 장소 정보가 올바르지 않습니다.");
+                throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTIONS_INVALID);
             }
             Object requireIndoor = option.get("requireIndoor");
             boolean indoor = requireIndoor == null || Boolean.parseBoolean(requireIndoor.toString());
             return new SelectedOption(
                     selectedKey, number(placeId).longValue(), placeName.toString(), indoor);
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST, "변경 제안에 포함된 대체 장소만 선택할 수 있습니다.");
+        throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTION_NOT_ALLOWED);
     }
 
     private Map<String, Object> proposal(long id) {
@@ -489,7 +489,7 @@ public class EventService {
                 .param(id)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "변경 제안을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(EventErrorCode.CHANGE_PROPOSAL_NOT_FOUND));
         return withOptions(row);
     }
 
@@ -540,7 +540,7 @@ public class EventService {
     private void validateObservation(Observation command) {
         ChangeProposalType.fromEventType(command.eventType());
         if (command.source().length() > 50) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "현장 상황 출처는 50자까지 입력할 수 있습니다.");
+            throw new BusinessException(EventErrorCode.OBSERVATION_SOURCE_TOO_LONG);
         }
     }
 
