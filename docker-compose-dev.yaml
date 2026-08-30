@@ -1,0 +1,12 @@
+services:
+  gayadi-be:
+    image: gayadi-cr.kr.ncr.ntruss.com/gayadi-be-dev:latest
+    container_name: gayadi-be-container
+
+    ports:
+      - "8080:8080"
+
+    env_file:
+      - /home/ubuntu/gayadi/.env-dev
+
+    restart: unless-stopped
