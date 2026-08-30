@@ -10,20 +10,20 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
   datasource:
-    url: ${DB_URL:jdbc:h2:mem:gayadi;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE}
-    username: ${DB_USERNAME:sa}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gayadi}
+    username: ${DB_USERNAME:gayadi}
     password: ${DB_PASSWORD:}
-    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    driver-class-name: org.postgresql.Driver
   flyway:
     enabled: true
-  h2:
-    console:
-      enabled: ${H2_CONSOLE_ENABLED:false}
-      path: /h2-console
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
   ai:
+    # 임베딩·VectorStore는 미구현이다. API-first Chat Agent만 선택적으로 활성화한다.
     model:
       chat: ${AI_CHAT_MODEL:none}
-      embedding: ${AI_EMBEDDING_MODEL:none}
     openai:
       api-key: ${GROQ_API_KEY:${OPENAI_API_KEY:}}
       base-url: ${AI_LLM_BASE_URL:https://api.openai.com}
@@ -32,30 +32,32 @@ spring:
         options:
           model: ${AI_LLM_MODEL:gpt-4o-mini}
           temperature: ${AI_LLM_TEMPERATURE:0.1}
-      embedding:
-        options:
-          model: text-embedding-3-small
-firebase:
-  enabled: ${FIREBASE_ENABLED:false}
-  project-id: ${FIREBASE_PROJECT_ID:}
-  service-account-key-path: ${FIREBASE_SERVICE_ACCOUNT_KEY_PATH:}
-
 tour:
   api:
     key: ${TOUR_API_KEY:}
     base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
     mobile-app: ${TOUR_API_MOBILE_APP:Gayadi}
+    connect-timeout: ${TOUR_API_CONNECT_TIMEOUT:5s}
+    request-timeout: ${TOUR_API_REQUEST_TIMEOUT:10s}
 
 congestion:
   api:
     key: ${CONGESTION_API_KEY:${TOUR_API_KEY:}}
     base-url: ${CONGESTION_API_BASE_URL:https://apis.data.go.kr/B551011/TatsCnctrRateService}
     mobile-app: ${CONGESTION_API_MOBILE_APP:${TOUR_API_MOBILE_APP:Gayadi}}
+    connect-timeout: ${CONGESTION_API_CONNECT_TIMEOUT:5s}
+    request-timeout: ${CONGESTION_API_REQUEST_TIMEOUT:10s}
+    cache-ttl: ${CONGESTION_CACHE_TTL:30m}
+    maximum-cache-entries: ${CONGESTION_MAXIMUM_CACHE_ENTRIES:512}
 
 weather:
   api:
     key: ${WEATHER_API_KEY:${TOUR_API_KEY:}}
     base-url: ${WEATHER_API_BASE_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+    connect-timeout: ${WEATHER_API_CONNECT_TIMEOUT:5s}
+    request-timeout: ${WEATHER_API_REQUEST_TIMEOUT:10s}
+    page-size: ${WEATHER_API_PAGE_SIZE:1000}
+    maximum-pages: ${WEATHER_API_MAXIMUM_PAGES:20}
 
 route:
   provider: ${ROUTE_PROVIDER:local}
@@ -63,15 +65,16 @@ route:
     app-key: ${SKT_APPKEY:}
     base-url: ${TRANSIT_API_BASE_URL:https://apis.openapi.sk.com/transit/routes}
     fallback-to-local: ${TMAP_FALLBACK_TO_LOCAL:true}
+    connect-timeout: ${TMAP_CONNECT_TIMEOUT:5s}
+    request-timeout: ${TMAP_REQUEST_TIMEOUT:15s}
+    maximum-results: ${TMAP_MAXIMUM_RESULTS:10}
 
 app:
   ai:
     enabled: ${APP_AI_ENABLED:false}
-    embedding:
-      enabled: ${APP_AI_EMBEDDING_ENABLED:false}
-    vector-store-file: ${AI_VECTOR_STORE_FILE:.data/place-vectors.json}
-  admin:
-    user-id: ${ADMIN_USER_ID:0}
+  auth:
+    maximum-failed-attempts: ${AUTH_MAXIMUM_FAILED_ATTEMPTS:5}
+    lock-minutes: ${AUTH_LOCK_MINUTES:15}
   jwt:
     secret: ${JWT_SECRET:}
     expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:604800}

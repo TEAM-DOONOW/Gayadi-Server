@@ -1,6 +1,7 @@
 package com.gayadi.server.friendship;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -29,7 +30,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @Validated
 @RestController
@@ -39,17 +39,19 @@ import java.util.Map;
 public class FriendshipController {
 
     private final FriendshipService service;
+    private final ApiResponseMapper mapper;
 
-    public FriendshipController(FriendshipService service) {
+    public FriendshipController(FriendshipService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping
     @Operation(summary = "친구 관계 목록")
     @ApiResponse(responseCode = "200", description = "현재 사용자의 친구 관계 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Friendship.class))))
-    public List<Map<String, Object>> friendships(
+                    schema = @Schema(implementation = ApiResponses.Friendship.class))))
+    public List<ApiResponses.Friendship> friendships(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "50")
@@ -57,29 +59,31 @@ public class FriendshipController {
             @Max(value = 100, message = "한 번에 100개까지 조회할 수 있습니다.") int limit,
             @RequestParam(defaultValue = "0")
             @PositiveOrZero(message = "조회 시작 위치는 0 이상이어야 합니다.") int offset) {
-        return service.list(userId, status, limit, offset);
+        return mapper.toDtoList(service.list(userId, status, limit, offset), ApiResponses.Friendship.class);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "친구 요청 등록")
     @ApiResponse(responseCode = "201", description = "등록한 친구 요청입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Friendship.class)))
-    public Map<String, Object> friendship(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Friendship.class)))
+    public ApiResponses.Friendship friendship(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody FriendshipRequest request) {
-        return service.create(userId, request.getTargetUserId());
+        return mapper.toDto(service.create(userId, request.getTargetUserId()), ApiResponses.Friendship.class);
     }
 
     @PatchMapping("/{friendshipId}")
     @Operation(summary = "친구 관계 상태 변경")
     @ApiResponse(responseCode = "200", description = "상태를 바꾼 친구 관계입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Friendship.class)))
-    public Map<String, Object> friendshipStatus(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Friendship.class)))
+    public ApiResponses.Friendship friendshipStatus(
             @AuthenticationPrincipal Long userId,
             @PathVariable @Positive(message = "친구 관계 번호는 1 이상이어야 합니다.") long friendshipId,
             @Valid @RequestBody FriendshipStatusRequest request) {
-        return service.update(userId, friendshipId, request.getStatus(), request.getVersion());
+        return mapper.toDto(
+                service.update(userId, friendshipId, request.getStatus(), request.getVersion()),
+                ApiResponses.Friendship.class);
     }
 
     @DeleteMapping("/{friendshipId}")

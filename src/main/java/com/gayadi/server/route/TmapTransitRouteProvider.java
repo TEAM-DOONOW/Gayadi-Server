@@ -3,8 +3,8 @@ package com.gayadi.server.route;
 import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.Location;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -24,34 +24,33 @@ import java.util.List;
 
 /** SK Open API TMAP 대중교통 경로를 RouteProvider 계약으로 변환합니다. */
 @Component
+@Primary
 @ConditionalOnProperty(name = "route.provider", havingValue = "tmap")
 public class TmapTransitRouteProvider implements RouteProvider {
 
     private static final DateTimeFormatter SEARCH_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
-    private static final int MAX_RESULTS = 10;
-
     private final HttpClient client;
     private final ObjectMapper objectMapper;
     private final String appKey;
     private final String baseUrl;
     private final boolean fallbackToLocal;
-    private final LocalRouteProvider localFallback = new LocalRouteProvider();
+    private final LocalRouteProvider localFallback;
+    private final Duration requestTimeout;
+    private final int maximumResults;
 
     @Autowired
     public TmapTransitRouteProvider(
             ObjectMapper objectMapper,
-            @Value("${route.tmap.app-key:}") String appKey,
-            @Value("${route.tmap.base-url:https://apis.openapi.sk.com/transit/routes}") String baseUrl,
-            @Value("${route.tmap.fallback-to-local:true}") boolean fallbackToLocal) {
-        this.client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+            TmapProperties properties,
+            LocalRouteProvider localFallback) {
+        this.client = HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build();
         this.objectMapper = objectMapper;
-        this.appKey = appKey;
-        this.baseUrl = baseUrl;
-        this.fallbackToLocal = fallbackToLocal;
-    }
-
-    public TmapTransitRouteProvider(ObjectMapper objectMapper, String appKey, String baseUrl) {
-        this(objectMapper, appKey, baseUrl, false);
+        this.appKey = properties.appKey() == null ? "" : properties.appKey().trim();
+        this.baseUrl = properties.baseUrl().trim();
+        this.fallbackToLocal = properties.fallbackToLocal();
+        this.localFallback = localFallback;
+        this.requestTimeout = properties.requestTimeout();
+        this.maximumResults = properties.maximumResults();
     }
 
     @Override
@@ -92,13 +91,13 @@ public class TmapTransitRouteProvider implements RouteProvider {
                   "searchDttm": "%s"
                 }
                 """.formatted(origin.longitude(), origin.latitude(),
-                destination.longitude(), destination.latitude(), MAX_RESULTS,
+                destination.longitude(), destination.latitude(), maximumResults,
                 LocalDateTime.now().format(SEARCH_TIME));
 
         HttpResponse<String> response;
         try {
             response = client.send(HttpRequest.newBuilder(URI.create(baseUrl))
-                    .timeout(Duration.ofSeconds(15))
+                    .timeout(requestTimeout)
                     .header("Accept", "application/json")
                     .header("Content-Type", "application/json")
                     .header("appKey", appKey)

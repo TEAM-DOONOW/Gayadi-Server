@@ -2,20 +2,22 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| 문서 상태 | MVP 출시 기준 |
+| 문서 상태 | 초기 설계 참고 자료(현재 구현 기준 아님) |
 | 대상 | Android, Backend, Infra 개발자 |
 | 기준일 | 2026-07-19 |
 | 공식 ERD | [`docs/database/gayadi-erdcloud.sql`](../database/gayadi-erdcloud.sql) |
 
-이 문서는 GAYADI 서버의 제품 흐름, 데이터 모델, API, 운영 기준을 정의하는 기준 문서다. 구현 중 설계가 변경되면 코드와 함께 이 문서를 수정한다.
+이 문서는 초기 제품 흐름을 설명하는 참고 자료다. 현재 구현과 DB의 기준은 `HANDOFF.md`,
+`src/main/resources/db/migration`, Swagger 및 통합 테스트이며, 아래의 과거 테이블명·확장 구성은
+현재 스키마로 간주하지 않는다.
 
 ### 현재 구현 기준
 
-- Spring Boot 4.1 / Java 21 / Maven Wrapper
-- 로컬 기본 실행은 H2, 운영 프로필은 PostgreSQL
-- Flyway가 아래 11개 테이블과 기준 장소·설문 데이터를 생성
+- Spring Boot 4.1 / Java 21 / Gradle Wrapper
+- 개발·운영은 PostgreSQL, 자동화 테스트만 PostgreSQL 호환 H2
+- Flyway V1~V16이 초기 ERD 21개와 확장 11개, 총 32개 업무 테이블을 생성
 - 관광·날씨·혼잡·대중교통 API가 없어도 로컬 스텁으로 핵심 흐름 실행 가능
-- OAuth/OIDC, Redis, FCM/SSE 및 실제 외부 공급자 어댑터는 다음 연동 단계
+- OAuth/OIDC, Redis, SSE는 미구현이며 `HANDOFF.md`에서 관리
 
 ## 1. 서비스 개요
 
@@ -209,11 +211,11 @@ flowchart TB
         PLAN --> ROUTE
     end
 
-    USECASE --> DB[(H2 로컬 · PostgreSQL 운영)]
+    USECASE --> DB[(PostgreSQL)]
     PLACE --> PLACE_API[관광·지도 API]
     EVENT --> EVENT_API[날씨·혼잡 API]
     ROUTE --> ROUTE_API[대중교통 경로 API]
-    PLAN --> PUSH[FCM Push · SSE]
+    PLAN --> PUSH[SSE 알림]
     USECASE --> REDIS[(Redis 캐시)]
 ```
 
@@ -235,8 +237,8 @@ flowchart TB
 
 ### 7.2 데이터와 백그라운드 처리
 
-- H2: 별도 설치 없이 로컬에서 전체 흐름을 확인하기 위한 개발용 DB
-- PostgreSQL: 사용자, 여행, 설문 응답, 일정, 장소, 판단에 사용한 이벤트를 보관하는 운영 DB
+- H2: 자동화 테스트에서만 사용하는 PostgreSQL 호환 DB
+- PostgreSQL: 개발·운영 업무 데이터의 유일한 원본
 - Redis(선택): 자주 바뀌는 날씨·혼잡·경로 응답과 아직 선택하지 않은 경로 후보를 짧게 캐시
 - Scheduler(운영 연동 시): 출발이 임박했거나 진행 중인 여행의 장소만 선별해 외부 데이터를 갱신
 - 외부 API Adapter: 공급자가 바뀌어도 도메인 모듈이 영향을 적게 받도록 표준 모델로 변환
@@ -245,7 +247,7 @@ flowchart TB
 
 ### 7.3 MVP와 확장 기준
 
-- 현재 MVP: Spring Boot 애플리케이션 1개와 H2 또는 PostgreSQL 1개로 시작한다.
+- 현재 MVP: Spring Boot 애플리케이션 1개와 PostgreSQL 1개로 운영한다.
 - 외부 응답량이나 호출 비용이 커질 때 Redis 캐시를 추가한다.
 - 서버가 여러 대가 되면 Scheduler 중복 실행을 Redis 분산 락으로 막는다.
 - 외부 데이터 수집과 일정 재계산이 API 응답을 지연시킬 때 Worker를 분리한다.
@@ -351,7 +353,7 @@ flowchart TD
 | 날씨 | 기상청 단기예보 조회서비스 | 초단기실황, 초단기예보, 단기예보 조회 |
 | 혼잡도 | 서울 실시간 도시데이터 API | 주요 장소의 실시간 인구·혼잡도 조회 |
 | 대중교통 경로 | ODsay 대중교통 API | 출발·귀가 경로, 소요시간, 환승, 요금 조회 |
-| 푸시 알림 | Firebase Cloud Messaging | 일정 변경 제안과 여행 알림 전송 |
+| 실시간 알림 | Server-Sent Events | 일정 변경 제안과 여행 알림 전송 |
 
 SSE는 외부 공급자 API가 아니라 GAYADI 서버가 앱에 제공하는 실시간 스트림이다. 서울 실시간 도시데이터의 지원 지역 밖에서는 혼잡도를 `UNKNOWN`으로 처리하고, 일정 변경은 날씨·교통 등 확인 가능한 정보만으로 판단한다.
 

@@ -39,8 +39,7 @@ class TmapTransitRouteProviderTest {
     @Test
     void convertsTmapTransitResponseToRouteEstimate() {
         TmapTransitRouteProvider provider = new TmapTransitRouteProvider(
-                new ObjectMapper(), "test-app-key",
-                "http://127.0.0.1:" + server.getAddress().getPort() + "/transit/routes");
+                new ObjectMapper(), properties("test-app-key", false), new LocalRouteProvider());
 
         assertThat(provider.providerName()).isEqualTo("TMAP_TRANSIT");
 
@@ -66,8 +65,7 @@ class TmapTransitRouteProviderTest {
             exchange.close();
         });
         TmapTransitRouteProvider provider = new TmapTransitRouteProvider(
-                new ObjectMapper(), "invalid-app-key",
-                "http://127.0.0.1:" + server.getAddress().getPort() + "/transit/routes", true);
+                new ObjectMapper(), properties("invalid-app-key", true), new LocalRouteProvider());
 
         List<RouteProvider.RouteEstimate> estimates = provider.estimateSegments(List.of(
                 new Location("출발", 35.5384, 129.3114),
@@ -102,5 +100,11 @@ class TmapTransitRouteProviderTest {
         try (var output = exchange.getResponseBody()) {
             output.write(bytes);
         }
+    }
+
+    private TmapProperties properties(String appKey, boolean fallbackToLocal) {
+        return new TmapProperties(appKey,
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/transit/routes",
+                fallbackToLocal, java.time.Duration.ofSeconds(5), java.time.Duration.ofSeconds(15), 10);
     }
 }

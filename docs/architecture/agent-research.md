@@ -2,7 +2,7 @@
 
 기준일: 2026-08-21
 
-대상 구현: Java 21, Spring Boot 4.1, Spring AI 2.0.0, Groq Chat, 한국관광공사 TourAPI, PostgreSQL/H2
+대상 구현: Java 21, Spring Boot 4.1, Spring AI 2.0.0, Groq Chat, 한국관광공사 TourAPI, PostgreSQL(H2는 테스트 전용)
 
 이 문서는 GAYADI의 여행지 추천 Agent와 상황 대처 Agent를 구현하는 데 필요한 연구 논문과 공식 개발 자료를 선별한 문서다. 일반적인 LLM 개론보다 다음 문제에 직접 연결되는 자료를 우선한다.
 
@@ -66,7 +66,7 @@ Groq 공식 문서 기준으로 tool use와 Structured Outputs는 현재 한 요
 | 검색 인덱스 | `PlaceEmbeddingService` | 필요 시 semantic query 작성 | 문서 생성, 임베딩, lexical·dense 검색, 삭제·버전 관리 |
 | 평가 | 신규 필요 | 후보·추천·질의에 대한 판단 보조 | 정답셋, trace, 상태 비교, 회귀 테스트 |
 
-기존 `RecommendationService`는 임베딩이 켜진 경우의 legacy 벡터 경로로 남겨 두고, 새 `PlaceRecommendationAgent`는 TourAPI API-first 경로를 사용한다. 새 경로에는 TourAPI 목록·공통 상세·소개 상세 조회, 후보 정규화, 선택 후보의 `places` 스냅샷 저장이 구현되어 있다.
+`PlaceRecommendationAgent`는 TourAPI API-first 경로를 사용한다. TourAPI 목록·공통 상세·소개 상세 조회, 후보 정규화, 선택 후보의 `places` 스냅샷 저장이 구현되어 있다. 임베딩 검색은 아직 구현하지 않는다.
 
 ## 3. 필독 연구 논문
 

@@ -24,7 +24,7 @@ class JwtServiceTest {
 
     private final JsonSupport json = new JsonSupport(new ObjectMapper());
     private final JwtService service = new JwtService(
-            json, new MockEnvironment(), SECRET, 3600);
+            json, new MockEnvironment(), new JwtProperties(SECRET, 3600));
 
     @Test
     void parsesIssuedToken() {

@@ -1,6 +1,7 @@
 package com.gayadi.server.route;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @Validated
 @RestController
@@ -37,9 +37,11 @@ import java.util.Map;
 public class RouteController {
 
     private final RouteService service;
+    private final ApiResponseMapper mapper;
 
-    public RouteController(RouteService service) {
+    public RouteController(RouteService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @PostMapping("/route-recommendations")
@@ -48,39 +50,41 @@ public class RouteController {
             summary = "경로 추천",
             description = "출발·일정·귀가 경로를 계산해 추천안으로 저장합니다. userId는 인증 사용자 본인의 식별자만 받을 수 있습니다.")
     @ApiResponse(responseCode = "201", description = "저장한 추천 경로입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Route.class)))
-    public Map<String, Object> recommendation(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Route.class)))
+    public ApiResponses.Route recommendation(
             @AuthenticationPrincipal Long userId,
             @PathVariable @Positive long tripId,
             @Valid @RequestBody RecommendationRequest request) {
-        return service.recommendForUser(
-                tripId, userId, service.routePhase(request.type()), request.userId());
+        return mapper.toDto(service.recommendForUser(
+                        tripId, userId, service.routePhase(request.type()), request.userId()),
+                ApiResponses.Route.class);
     }
 
     @GetMapping("/route-selections")
     @Operation(summary = "선택한 경로 목록")
     @ApiResponse(responseCode = "200", description = "현재 선택한 경로 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Route.class))))
-    public List<Map<String, Object>> selections(
+                    schema = @Schema(implementation = ApiResponses.Route.class))))
+    public List<ApiResponses.Route> selections(
             @AuthenticationPrincipal Long userId,
             @PathVariable @Positive long tripId) {
-        return service.selectionsForUser(tripId, userId);
+        return mapper.toDtoList(service.selectionsForUser(tripId, userId), ApiResponses.Route.class);
     }
 
     @PutMapping("/route-selections/{type}")
     @Operation(summary = "추천 경로 선택",
             description = "서버 경로 번호 routeId 또는 앱 선택값 optionId 중 하나를 보냅니다.")
     @ApiResponse(responseCode = "200", description = "선택한 경로입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Route.class)))
-    public Map<String, Object> selection(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Route.class)))
+    public ApiResponses.Route selection(
             @AuthenticationPrincipal Long userId,
             @PathVariable @Positive long tripId,
             @PathVariable String type,
             @Valid @RequestBody SelectionRequest request) {
-        return service.selectForUser(
-                tripId, userId, service.routePhase(type), request.routeId(),
-                request.optionId(), request.userId());
+        return mapper.toDto(service.selectForUser(
+                        tripId, userId, service.routePhase(type), request.routeId(),
+                        request.optionId(), request.userId()),
+                ApiResponses.Route.class);
     }
 
     @DeleteMapping("/route-selections/{type}")

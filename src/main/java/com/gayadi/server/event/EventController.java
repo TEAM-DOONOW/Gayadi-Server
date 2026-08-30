@@ -1,6 +1,7 @@
 package com.gayadi.server.event;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import com.gayadi.server.travel.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -31,10 +32,12 @@ public class EventController {
 
     private final EventService service;
     private final TripService trips;
+    private final ApiResponseMapper mapper;
 
-    public EventController(EventService service, TripService trips) {
+    public EventController(EventService service, TripService trips, ApiResponseMapper mapper) {
         this.service = service;
         this.trips = trips;
+        this.mapper = mapper;
     }
 
     @PostMapping("/event-observations")
@@ -42,53 +45,59 @@ public class EventController {
     @Operation(summary = "현장 상황 등록")
     @ApiResponse(responseCode = "201", description = "상황 영향도 또는 일정 변경 제안입니다.",
             content = @Content(schema = @Schema(oneOf = {
-                    ApiSuccessSchemas.EventObservation.class,
-                    ApiSuccessSchemas.ChangeProposalDetail.class})))
-    public Map<String, Object> observe(
+                    ApiResponses.EventObservation.class,
+                    ApiResponses.ChangeProposalDetail.class})))
+    public ApiResponses.EventResult observe(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody ObservationRequest request) {
         trips.requireMember(tripId, userId);
-        return service.observe(tripId, new EventService.Observation(
+        Map<String, Object> result = service.observe(tripId, new EventService.Observation(
                 request.getPlaceId(),
                 request.getEventType(),
                 request.getSource(),
                 request.getSeverity(),
                 request.getValues()
         ));
+        Class<? extends ApiResponses.EventResult> responseType = result.containsKey("eventId")
+                ? ApiResponses.EventObservation.class
+                : ApiResponses.ChangeProposalDetail.class;
+        return mapper.toDto(result, responseType);
     }
 
     @GetMapping("/change-proposals")
     @Operation(summary = "일정 변경 제안 목록")
     @ApiResponse(responseCode = "200", description = "일정 변경 제안 목록입니다.",
             content = @Content(array = @ArraySchema(schema = @Schema(
-                    implementation = ApiSuccessSchemas.ChangeProposalDetail.class))))
-    public List<Map<String, Object>> proposals(
+                    implementation = ApiResponses.ChangeProposalDetail.class))))
+    public List<ApiResponses.ChangeProposalDetail> proposals(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @RequestParam(defaultValue = "30") int limit,
             @RequestParam(defaultValue = "0") int offset) {
         trips.requireMember(tripId, userId);
-        return service.proposals(tripId, limit, offset);
+        return mapper.toDtoList(
+                service.proposals(tripId, limit, offset),
+                ApiResponses.ChangeProposalDetail.class);
     }
 
     @PatchMapping("/change-proposals/{proposalId}")
     @Operation(summary = "일정 변경 제안 처리")
     @ApiResponse(responseCode = "200", description = "처리한 일정 변경 제안입니다.",
             content = @Content(schema = @Schema(
-                    implementation = ApiSuccessSchemas.ChangeProposalDetail.class)))
-    public Map<String, Object> decide(
+                    implementation = ApiResponses.ChangeProposalDetail.class)))
+    public ApiResponses.ChangeProposalDetail decide(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @PathVariable long proposalId,
             @Valid @RequestBody DecisionRequest request) {
         trips.requireMember(tripId, userId);
-        return service.decide(tripId, proposalId, new EventService.Decision(
+        return mapper.toDto(service.decide(tripId, proposalId, new EventService.Decision(
                 request.getApprove(),
                 request.getSelectedOptionKey(),
                 request.getBaseRevisionNo(),
                 userId
-        ));
+        )), ApiResponses.ChangeProposalDetail.class);
     }
 
     public static class ObservationRequest {

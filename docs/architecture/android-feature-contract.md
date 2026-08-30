@@ -7,17 +7,17 @@
 | Android 사용자 기능 | 서버 도메인 | 대표 API | 서버 상태 | 현재 Android 데이터 원본 |
 | --- | --- | --- | --- | --- |
 | 가입·로그인·프로필·탈퇴 | `auth` | `/api/v1/auth/**`, `/api/v1/users/current` | 구현 | 로컬 프로필, 로그인 화면은 서버 미연결 |
-| 여행 성향 설문·결과 | `survey` | `/api/v1/surveys/**` | 구현 | Firestore |
+| 여행 성향 설문·결과 | `survey` | `/api/v1/surveys/**` | 구현 | 서버 API → PostgreSQL |
 | 여행 생성·편집·상태 변경 | `travel` | `/api/v1/trips/**` | 구현 | 단말 파일 |
-| 초대 코드 참여·참여자 관리 | `invitation`, `travel` | `/api/v1/trip-memberships`, `/trips/{tripId}/invitations`, `/participants` | 구현 | 단말 파일 + Firestore |
-| 그룹 가능 날짜 제출·확정 | `coordination` | `/trips/{tripId}/date-coordination/**` | 구현 | Firestore |
+| 초대 코드 참여·참여자 관리 | `invitation`, `travel` | `/api/v1/trip-memberships`, `/trips/{tripId}/invitations`, `/participants` | 구현 | 서버 API → PostgreSQL |
+| 그룹 가능 날짜 제출·확정 | `coordination` | `/trips/{tripId}/date-coordination/**` | 구현 | 서버 API → PostgreSQL |
 | 일정 CRUD·정렬·방문 처리 | `schedule` | `/trips/{tripId}/schedules`, `/schedule-orders` | 구현 | 단말 파일 |
 | 장소 검색·상세·주변·찜 | `place`, `favorite`, `tourapi` | `/api/v1/places`, `/api/v1/tour/**`, `/favorite-places` | 구현 | TourAPI만 서버 호출, 찜은 단말 파일 |
 | 출발·귀가 경로 추천·선택 | `route` | `/route-recommendations`, `/route-selections` | 구현 | 단말 파일 |
 | 경비 CRUD·공금·정산 | `expense` | `/expenses`, `/shared-fund`, `/expense-settlement` | 구현 | 단말 파일 |
 | 여행 홈 집계 | `dashboard` | `/trips/{tripId}/dashboard` | 구현 | 단말 파일 조합 |
 | 날씨·혼잡·교통 변화 대응 | `weather`, `event`, `recommendation` | `/situation-responses`, `/change-proposals`, `/weather/**` | 구현 | 재일정 UI 상태만 로컬이며 화면/API 연결 없음 |
-| 공지·약관·문의 | `notice`, `legal`, `support` | `/notices`, `/legal-documents`, `/inquiries` | 구현 | Firestore |
+| 공지·약관·문의 | `notice`, `legal`, `support` | `/notices`, `/legal-documents`, `/inquiries` | 구현 | 서버 API → PostgreSQL |
 
 ## Agent 판단
 

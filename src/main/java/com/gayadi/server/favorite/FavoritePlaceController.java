@@ -1,6 +1,7 @@
 package com.gayadi.server.favorite;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,7 +16,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users/current/favorite-places")
@@ -24,32 +24,36 @@ import java.util.Map;
 public class FavoritePlaceController {
 
     private final FavoritePlaceService service;
+    private final ApiResponseMapper mapper;
 
-    public FavoritePlaceController(FavoritePlaceService service) {
+    public FavoritePlaceController(FavoritePlaceService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping
     @Operation(summary = "찜한 장소 목록")
     @ApiResponse(responseCode = "200", description = "현재 사용자가 찜한 장소 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.FavoritePlace.class))))
-    public List<Map<String, Object>> favoritePlaces(
+                    schema = @Schema(implementation = ApiResponses.FavoritePlace.class))))
+    public List<ApiResponses.FavoritePlace> favoritePlaces(
             @AuthenticationPrincipal Long userId,
             @RequestParam(defaultValue = "30") int limit,
             @RequestParam(defaultValue = "0") int offset) {
-        return service.list(userId, limit, offset);
+        return mapper.toDtoList(service.list(userId, limit, offset), ApiResponses.FavoritePlace.class);
     }
 
     @PutMapping("/{placeId}")
     @Operation(summary = "장소 찜 저장")
     @ApiResponse(responseCode = "200", description = "저장한 찜 장소입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.FavoritePlace.class)))
-    public Map<String, Object> favoritePlace(
+            content = @Content(schema = @Schema(implementation = ApiResponses.FavoritePlace.class)))
+    public ApiResponses.FavoritePlace favoritePlace(
             @PathVariable long placeId,
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody(required = false) FavoritePlaceRequest request) {
-        return service.save(userId, placeId, request == null ? null : request.getMemo());
+        return mapper.toDto(
+                service.save(userId, placeId, request == null ? null : request.getMemo()),
+                ApiResponses.FavoritePlace.class);
     }
 
     @DeleteMapping("/{placeId}")

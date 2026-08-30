@@ -3,7 +3,7 @@ package com.gayadi.server.tourapi;
 import com.gayadi.server.common.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -35,24 +35,24 @@ public class TourApiService {
     private static final String OP_LEGAL_CODE = "ldongCode2";
     private static final String RESULT_CODE_OK = "0000";
 
-    private final HttpClient client = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
+    private final HttpClient client;
 
     private final ObjectMapper objectMapper;
     private final String baseUrl;
     private final String serviceKey;
     private final String mobileApp;
+    private final Duration requestTimeout;
 
+    @Autowired
     public TourApiService(
             ObjectMapper objectMapper,
-            @Value("${tour.api.key:}") String serviceKey,
-            @Value("${tour.api.base-url:https://apis.data.go.kr/B551011/KorService2}") String baseUrl,
-            @Value("${tour.api.mobile-app:Gayadi}") String mobileApp) {
+            TourApiProperties properties) {
         this.objectMapper = objectMapper;
-        this.serviceKey = serviceKey;
-        this.baseUrl = baseUrl;
-        this.mobileApp = mobileApp;
+        this.serviceKey = properties.key() == null ? "" : properties.key().trim();
+        this.baseUrl = stripTrailingSlash(properties.baseUrl());
+        this.mobileApp = properties.mobileApp().trim();
+        this.requestTimeout = properties.requestTimeout();
+        this.client = HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build();
     }
 
     /** 지역 및 시군구를 기반으로 관광정보 목록을 조회한다. */
@@ -221,7 +221,7 @@ public class TourApiService {
     private JsonNode call(String operation, Map<String, String> params) {
         URI uri = buildUri(operation, params);
         HttpRequest request = HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofSeconds(10))
+                .timeout(requestTimeout)
                 .header("Accept", "application/json")
                 .GET()
                 .build();
@@ -283,6 +283,12 @@ public class TourApiService {
             query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
         }
         return URI.create(baseUrl + "/" + operation + "?" + query);
+    }
+
+    private static String stripTrailingSlash(String value) {
+        String result = value == null ? "" : value.trim();
+        while (result.endsWith("/")) result = result.substring(0, result.length() - 1);
+        return result;
     }
 
     private String ensureServiceKey() {

@@ -1,6 +1,7 @@
 package com.gayadi.server.recommendation;
 
 import com.gayadi.server.congestion.CongestionForecastService;
+import com.gayadi.server.congestion.CongestionApiProperties;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
@@ -9,7 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CongestionSituationEnricherTest {
 
     private final CongestionSituationEnricher enricher = new CongestionSituationEnricher(
-            new CongestionForecastService(new ObjectMapper(), "", "https://example.invalid", "test"));
+            new CongestionForecastService(new ObjectMapper(), new CongestionApiProperties(
+                    "", "https://example.invalid", "test", java.time.Duration.ofSeconds(5),
+                    java.time.Duration.ofSeconds(10), java.time.Duration.ofMinutes(30), 32)));
 
     @Test
     void fillsMissingCongestionWithClearlyIdentifiableEstimate() {

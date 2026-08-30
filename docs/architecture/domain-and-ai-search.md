@@ -23,9 +23,9 @@
 | Itinerary & Mobility | `schedule`, `route` | `travel_plans`, `travel_plan_items`, `travel_routes`, `travel_supplies` | 일정 생성·편집, 순서, 경로 후보·선택, 준비물 |
 | Live Context & Adaptation | `event`, `weather` | `event_observations`, `ai_schedule_change_proposals` | 날씨·혼잡·교통 관측, 영향 판단, 변경 제안·승인 |
 | AI Recommendation | `recommendation` | 검색 인덱스와 임베딩 자료 | 후보 검색, 재정렬, 설명 생성. 업무 원본의 소유자는 아님 |
-| Supporting / Adapter | `dashboard`, `legal`, `firebase`, `tourapi`, `common`, `config` | `legal_documents`, `notifications` 등 | 조회 조합, 법률 문서, 외부 API 변환, 알림·공통 기능 |
+| Supporting / Adapter | `dashboard`, `legal`, `tourapi`, `common`, `config` | `legal_documents`, `notifications` 등 | 조회 조합, 법률 문서, 외부 API 변환, 알림·공통 기능 |
 
-`dashboard`는 여러 도메인을 조합하는 read model이므로 독립 업무 도메인으로 키우지 않는다. `tourapi`, `weather`, `firebase`도 외부 공급자 교체를 위한 어댑터로 둔다. `notifications`와 `travel_supplies`는 스키마가 먼저 존재하고 업무 API가 아직 완성되지 않은 기능으로 표시한다.
+`dashboard`는 여러 도메인을 조합하는 read model이므로 독립 업무 도메인으로 키우지 않는다. `tourapi`, `weather`는 외부 공급자 교체를 위한 어댑터로 둔다. `notifications`와 `travel_supplies`는 스키마가 먼저 존재하고 업무 API가 아직 완성되지 않은 기능으로 표시한다.
 
 ## 3. 의존 방향
 
@@ -86,7 +86,7 @@ Dashboard ---------(read composition)--> 여러 도메인
 
 ### 저장소 선택
 
-현재 구현의 `SimpleVectorStore`와 `.data/place-vectors.json`은 단일 인스턴스 개발용이다. 운영 검색의 기준으로 삼지 않는다.
+임베딩과 벡터 저장소는 현재 구현 범위가 아니다. 현재 장소 추천은 TourAPI 후보를 사용하는 API-first Agent 경로만 제공한다.
 
 | 선택지 | 판단 |
 | --- | --- |
@@ -173,7 +173,7 @@ Dashboard ---------(read composition)--> 여러 도메인
 
 ## 9. 현재 상태와 주의점
 
-- legacy 임베딩 모드에서는 `SimpleVectorStore`에 장소 설명을 저장하고 벡터 유사도 결과를 거리순으로 정렬한다. 기본 API-first Agent 모드에서는 Groq가 검색 계획을 만들고 TourAPI 후보를 서버가 취합한다.
+- 현재 구현은 Groq가 검색 계획을 만들고 TourAPI 후보를 서버가 취합하는 API-first Agent 경로다. 임베딩 검색은 향후 설계 후보일 뿐 운영 기능으로 간주하지 않는다.
 - 현재 파이프라인에는 BM25, hybrid fusion, 문서 버전, 증분 삭제, 검색 평가 세트가 없다.
 - `docs/presentation`의 Milvus 설명은 현재 구현과 일치하지 않으므로 운영 저장소를 확정할 때 함께 갱신해야 한다.
 - AI 추천 요청의 외부 처리 동의는 입력 검증에 사용되지만 동의 이력과 검색·모델 버전 감사 체계는 별도로 보강해야 한다.

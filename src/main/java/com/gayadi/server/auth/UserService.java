@@ -1,8 +1,9 @@
 package com.gayadi.server.auth;
 
 import com.gayadi.server.common.ApiException;
+import com.gayadi.server.auth.persistence.UserAccount;
+import com.gayadi.server.auth.persistence.UserAccountRepository;
 import com.gayadi.server.common.JsonSupport;
-import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.survey.SurveyService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -23,18 +24,19 @@ public class UserService {
             """;
 
     private final JdbcClient jdbc;
-    private final KeyHelper keyHelper;
     private final JsonSupport json;
+    private final UserAccountRepository accounts;
 
-    public UserService(JdbcClient jdbc, KeyHelper keyHelper, JsonSupport json) {
+    public UserService(JdbcClient jdbc, JsonSupport json, UserAccountRepository accounts) {
         this.jdbc = jdbc;
-        this.keyHelper = keyHelper;
         this.json = json;
+        this.accounts = accounts;
     }
 
+    @Transactional
     public Map<String, Object> create(String nickname) {
-        long id = keyHelper.insert("INSERT INTO users (nickname) VALUES (?)", nickname.trim());
-        return get(id);
+        UserAccount account = accounts.saveAndFlush(new UserAccount(nickname.trim(), null, null));
+        return get(account.getId());
     }
 
     public Map<String, Object> get(long id) {
@@ -81,16 +83,10 @@ public class UserService {
 
     @Transactional
     public Map<String, Object> update(long id, String nickname, String introduction) {
-        int updated = jdbc.sql("""
-                UPDATE users
-                SET nickname = ?, introduction = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND status = 'ACTIVE' AND deleted_at IS NULL
-                """)
-                .params(nickname.trim(), trimToNull(introduction), id)
-                .update();
-        if (updated == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
-        }
+        UserAccount account = accounts.findActive(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        account.updateProfile(nickname.trim(), trimToNull(introduction));
+        accounts.flush();
         return profile(id);
     }
 

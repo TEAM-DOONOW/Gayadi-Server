@@ -13,8 +13,8 @@
 - **언어**: Java 21
 - **프레임워크**: Spring Boot 4.1
 - **빌드**: Gradle
-- **선택 기능**: Spring AI 2.0(Groq API-first Agent, 임베딩은 선택)
-- **DB**: H2(로컬) / PostgreSQL(운영)
+- **선택 기능**: Spring AI 2.0(Groq API-first Agent)
+- **DB**: PostgreSQL(개발·운영), H2(자동화 테스트 전용)
 - **마이그레이션**: Flyway
 
 ## 아키텍처
@@ -32,9 +32,9 @@ Android 요청 → 인증·권한 검사 → PostgreSQL 조회·트랜잭션 →
 Spring Boot 4.1 기반의 단일 서버입니다.
 
 - 업무 모듈: `auth`, `travel`, `coordination`, `survey`, `schedule`, `place`, `favorite`, `invitation`, `friendship`, `expense`, `event`, `route`, `notice`, `support`, `legal`
-- 어댑터·조합 모듈: `tourapi`, `weather`, `recommendation`, `dashboard`, `firebase`, `common`, `config`
-- 로컬 DB: H2 메모리 DB + Flyway
-- 운영 DB: PostgreSQL
+- 어댑터·조합 모듈: `tourapi`, `weather`, `recommendation`, `dashboard`, `common`, `config`
+- 개발·운영 DB: PostgreSQL + Flyway
+- 테스트 DB: PostgreSQL 호환 H2 + Flyway
 - 경로: `RouteProvider` 교체 지점과 직선거리 기반 예상값 제공
 - AI 추천: `GROQ_API_KEY`와 Groq 호환 설정 시 TourAPI 후보를 검색·판단하는 Agent 활성화 (없어도 기존 API는 정상 동작)
 - 운영 확인: Actuator health/info
@@ -63,7 +63,7 @@ GET http://localhost:8080/api/v1/places
 GET http://localhost:8080/api/docs
 ```
 
-로컬 기본 설정은 H2 메모리 DB를 사용합니다. 운영에서는 `.env.example`을 참고해 다음 환경변수를 주입합니다.
+로컬과 운영 모두 PostgreSQL을 사용합니다. `.env.example`을 참고해 다음 환경변수를 주입합니다.
 
 ```text
 SPRING_PROFILES_ACTIVE=prod
@@ -75,7 +75,6 @@ APP_AI_ENABLED=true
 AI_CHAT_MODEL=openai
 AI_LLM_BASE_URL=https://api.groq.com/openai/v1
 AI_LLM_MODEL=openai/gpt-oss-20b
-APP_AI_EMBEDDING_ENABLED=false
 ```
 
 ## 핵심 API
@@ -130,7 +129,6 @@ APP_AI_EMBEDDING_ENABLED=false
 | 문서 | `GET /api/v1/legal-documents/{documentId}` | 약관·개인정보처리방침 조회 |
 | 선택 기능 | `POST /api/v1/recommendations/places` | Groq·TourAPI 기반 장소 추천 Agent |
 | 상황 대처 | `POST /api/v1/recommendations/situations` | 날씨·혼잡·교통·대중교통 누락을 반영한 장소 대안 |
-| 관리 | `POST /api/v1/admin/place-embeddings` | 관리자 전용 장소 검색 자료 갱신 |
 
 `TravelFlowIntegrationTests`가 사용자 생성부터 설문, 일정, 모여서 출발, 이벤트 변경 승인, revision 증가, 귀가 및 완료까지 검증합니다. `AndroidFeatureDomainHttpIntegrationTests`는 Android 화면의 날짜 조율, 공동 경비, 개인 지출, 정산, 공지와 문의를 실제 HTTP·JWT·Swagger 계약으로 검증합니다. `AiUserJourneyIntegrationTests`는 추천 결과가 상황 변화와 변경안 승인 후 일정·경로에 반영되는 사용자 경로를 검증합니다.
 
@@ -167,8 +165,8 @@ APP_AI_EMBEDDING_ENABLED=false
 - 서울 주요 121장소 실시간 혼잡 공급자 추가와 TMAP 운영 키 검증
 - 공공 API 수집 → 정제 → 검색 자료 저장 작업
 - Redis 기반 경로 후보 TTL 캐시
-- FCM/SSE 알림
-- Android의 파일·Firestore 저장소를 서버 API 저장소로 교체하고 로그인 토큰을 연결하는 작업
+- 서버 저장 알림의 실시간 전송 채널(SSE 등)
+- Android의 로컬 저장소를 서버 API 저장소로 교체하고 로그인 토큰을 연결하는 작업
 - PostgreSQL Testcontainers 통합 테스트와 CI/CD
 
 이 항목들은 모듈 경계와 교체 포인트를 유지하되, 로컬 서비스 기동을 막지 않도록 분리했습니다.

@@ -15,6 +15,6 @@ Use one of the commit types from [the commit convention](convention.md). Keep th
 
 ## Issue Extraction
 
-Extract `<type>/#<issue-number>` from a matching branch and format the message as `<type>/#<issue-number>: <subject>`.
+Extract the issue number from a matching branch and format the message as `<type>: <subject> (#<issue-number>)`.
 
 If the branch does not match, do not infer or invent an issue number. Ask the user for it.

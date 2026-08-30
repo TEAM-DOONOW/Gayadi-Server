@@ -1,7 +1,8 @@
 package com.gayadi.server.auth;
 
 import com.gayadi.server.common.ApiException;
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponses;
+import com.gayadi.server.common.dto.ApiResponseMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,34 +16,36 @@ import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "인증", description = "계정 등록과 로그인 토큰 발급을 처리합니다.")
 public class AuthController {
 
     private final AuthService service;
+    private final ApiResponseMapper mapper;
 
-    public AuthController(AuthService service) {
+    public AuthController(AuthService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @PostMapping("/registrations")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "계정 등록")
     @ApiResponse(responseCode = "201", description = "계정과 로그인 토큰을 발급했습니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.AuthToken.class)))
-    public Map<String, Object> signup(@Valid @RequestBody SignupRequest request) {
-        return service.signup(request.getEmail(), request.getPassword(), request.getNickname());
+            content = @Content(schema = @Schema(implementation = ApiResponses.AuthToken.class)))
+    public ApiResponses.AuthToken signup(@Valid @RequestBody SignupRequest request) {
+        return mapper.toDto(service.signup(request.getEmail(), request.getPassword(), request.getNickname()),
+                ApiResponses.AuthToken.class);
     }
 
     @PostMapping("/tokens")
     @Operation(summary = "로그인 토큰 발급")
     @ApiResponse(responseCode = "200", description = "로그인 토큰을 발급했습니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.AuthToken.class)))
-    public Map<String, Object> login(@Valid @RequestBody LoginRequest request) {
-        return service.login(request.getEmail(), request.getPassword());
+            content = @Content(schema = @Schema(implementation = ApiResponses.AuthToken.class)))
+    public ApiResponses.AuthToken login(@Valid @RequestBody LoginRequest request) {
+        return mapper.toDto(service.login(request.getEmail(), request.getPassword()),
+                ApiResponses.AuthToken.class);
     }
 
     public static class SignupRequest {

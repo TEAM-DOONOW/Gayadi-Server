@@ -1,6 +1,7 @@
 package com.gayadi.server.survey;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import com.gayadi.server.travel.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,7 +18,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -26,26 +26,28 @@ public class SurveyController {
 
     private final SurveyService service;
     private final TripService trips;
+    private final ApiResponseMapper mapper;
 
-    public SurveyController(SurveyService service, TripService trips) {
+    public SurveyController(SurveyService service, TripService trips, ApiResponseMapper mapper) {
         this.service = service;
         this.trips = trips;
+        this.mapper = mapper;
     }
 
     @GetMapping("/surveys/travel-personality-v1")
     @Operation(summary = "여행 성향 설문 조회")
     @ApiResponse(responseCode = "200", description = "여행 성향 문항과 결과 종류입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Survey.class)))
-    public Map<String, Object> personalitySurvey() {
-        return service.personalitySurvey();
+            content = @Content(schema = @Schema(implementation = ApiResponses.Survey.class)))
+    public ApiResponses.Survey personalitySurvey() {
+        return mapper.toDto(service.personalitySurvey(), ApiResponses.Survey.class);
     }
 
     @GetMapping("/surveys/travel-personality-v1/results/{resultCode}")
     @Operation(summary = "여행 성향 결과 조회")
     @ApiResponse(responseCode = "200", description = "여행 성향 결과의 상세 정보입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.PersonalityResult.class)))
-    public Map<String, Object> result(@PathVariable String resultCode) {
-        return service.result(resultCode);
+            content = @Content(schema = @Schema(implementation = ApiResponses.PersonalityResult.class)))
+    public ApiResponses.PersonalityResult result(@PathVariable String resultCode) {
+        return mapper.toDto(service.result(resultCode), ApiResponses.PersonalityResult.class);
     }
 
     @PostMapping("/surveys/travel-personality-v1/submissions")
@@ -53,11 +55,13 @@ public class SurveyController {
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "내 여행 성향 답변 제출")
     @ApiResponse(responseCode = "201", description = "답변을 채점한 여행 성향 결과입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.SurveySubmission.class)))
-    public Map<String, Object> submission(
+            content = @Content(schema = @Schema(implementation = ApiResponses.SurveySubmission.class)))
+    public ApiResponses.SurveySubmission submission(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ResponseRequest request) {
-        return service.respond(null, userId, request.getAnswers());
+        return mapper.toDto(
+                service.respond(null, userId, request.getAnswers()),
+                ApiResponses.SurveySubmission.class);
     }
 
     @PostMapping("/trips/{tripId}/survey-responses")
@@ -65,24 +69,26 @@ public class SurveyController {
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "여행별 성향 답변 제출")
     @ApiResponse(responseCode = "201", description = "여행에 저장한 성향 답변 결과입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.SurveySubmission.class)))
-    public Map<String, Object> tripSubmission(
+            content = @Content(schema = @Schema(implementation = ApiResponses.SurveySubmission.class)))
+    public ApiResponses.SurveySubmission tripSubmission(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody ResponseRequest request) {
-        return service.respond(Long.valueOf(tripId), userId, request.getAnswers());
+        return mapper.toDto(
+                service.respond(Long.valueOf(tripId), userId, request.getAnswers()),
+                ApiResponses.SurveySubmission.class);
     }
 
     @GetMapping("/trips/{tripId}/personality-profile")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "여행 참여자 성향 요약")
     @ApiResponse(responseCode = "200", description = "여행 참여자의 성향 분포입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.GroupPersonality.class)))
-    public Map<String, Object> groupProfile(
+            content = @Content(schema = @Schema(implementation = ApiResponses.GroupPersonality.class)))
+    public ApiResponses.GroupPersonality groupProfile(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId) {
         trips.requireMember(tripId, userId);
-        return service.groupProfile(tripId);
+        return mapper.toDto(service.groupProfile(tripId), ApiResponses.GroupPersonality.class);
     }
 
     public static class ResponseRequest {

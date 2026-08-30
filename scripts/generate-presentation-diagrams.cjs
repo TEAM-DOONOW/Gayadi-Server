@@ -181,7 +181,7 @@ const flowNodes = [
   { id: 'observe', x: 1100, y: 330, w: 620, h: 90, title: '날씨 · 혼잡 · 교통 확인', module: '외부 API 처리 · 이벤트 DB', color: C.orange },
   { id: 'impact', x: 1245, y: 445, w: 330, h: 110, title: '일정 영향 발생', module: '이벤트 처리', color: C.orange, decision: true },
   { id: 'alternative', x: 1085, y: 580, w: 650, h: 90, title: '대체 장소 · 경로 추천', module: 'AI 서비스 처리 · Milvus · 외부 API 처리', color: C.teal },
-  { id: 'notify', x: 1140, y: 695, w: 540, h: 82, title: '변경 제안 알림', module: 'FCM', color: C.rose },
+  { id: 'notify', x: 1140, y: 695, w: 540, h: 82, title: '변경 제안 알림', module: 'SSE', color: C.rose },
   { id: 'approve', x: 1245, y: 800, w: 330, h: 110, title: '사용자 승인', module: '여행 관리', color: C.rose, decision: true },
   { id: 'apply', x: 1080, y: 1010, w: 660, h: 90, title: '현재 일정 수정 · revision 증가', module: '여행 관리', color: C.green, fill: C.paleGreen },
 

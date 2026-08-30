@@ -5,7 +5,7 @@ description: Analyze Git changes and prepare commits according to the Gayadi-Ser
 
 # Git Commit Assistant
 
-Follow the project format: `<type>/#<issue-number>: <subject>`.
+Follow the project format: `<type>: <subject> (#<issue-number>)`.
 
 ## Workflow
 
@@ -14,20 +14,20 @@ Follow the project format: `<type>/#<issue-number>: <subject>`.
 3. Separate staged and unstaged changes. Identify unrelated changes and potential secrets such as credentials, tokens, signing files, or `.env` files.
 4. Do not stage unrelated files or potential secrets. Do not use `git add .` or `git add -A` by default; stage only explicitly selected paths.
 5. Select the commit type from the actual diff. Prefer a valid branch type when it agrees with the diff; otherwise explain the discrepancy.
-6. Extract the type and issue number from `<type>/#<issue-number>-<description>`. If none exists, do not invent one; ask the user because this project requires it.
+6. Extract the issue number from `<type>/#<issue-number>-<description>` or use an issue number explicitly supplied by the user. If neither exists, do not invent one; ask the user because this project requires it.
 7. Draft a Korean subject by default, or English when requested. Keep it within 50 characters and follow the language-specific rules.
-8. Propose the message and, when helpful, `git commit -m "<type>/#<issue-number>: <subject>"`.
+8. Propose the message and, when helpful, `git commit -m "<type>: <subject> (#<issue-number>)"`.
 9. Treat requests to review, draft, or prepare as proposal-only. Execute `git commit` only when the user explicitly asks to create the commit.
 10. Before committing, show the files and review the staged diff. After committing, report the hash, message, and committed files.
 
 ## Examples
 
 ```text
-feat/#10: 여행 일정 생성 API 구현
-fix/#18: 경로 추천 NPE 수정
-refactor/#27: 이벤트 서비스 구조 개선
-docs/#35: README API 목록 수정
-chore/#41: Spring AI 의존성 버전 업데이트
+feat: 여행 일정 생성 API 구현 (#10)
+fix: 경로 추천 NPE 수정 (#18)
+refactor: 이벤트 서비스 구조 개선 (#27)
+docs: README API 목록 수정 (#35)
+chore: Spring AI 의존성 버전 업데이트 (#41)
 ```
 
 ## References

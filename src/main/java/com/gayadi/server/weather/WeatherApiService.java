@@ -2,11 +2,10 @@ package com.gayadi.server.weather;
 
 import com.gayadi.server.common.ApiException;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,11 +29,9 @@ public class WeatherApiService {
 
     private final WeatherApiClient client;
 
-    public WeatherApiService(
-            ObjectMapper objectMapper,
-            @Value("${weather.api.key:}") String serviceKey,
-            @Value("${weather.api.base-url:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}") String baseUrl) {
-        this.client = new WeatherApiClient(objectMapper, serviceKey, baseUrl);
+    @Autowired
+    public WeatherApiService(WeatherApiClient client) {
+        this.client = client;
     }
 
     /** 초단기실황 조회 — 현재 날씨 관측값. */

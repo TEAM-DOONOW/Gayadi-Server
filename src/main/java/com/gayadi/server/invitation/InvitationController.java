@@ -1,6 +1,7 @@
 package com.gayadi.server.invitation;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -28,61 +28,68 @@ import java.util.Map;
 public class InvitationController {
 
     private final InvitationService service;
+    private final ApiResponseMapper mapper;
 
-    public InvitationController(InvitationService service) {
+    public InvitationController(InvitationService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping("/trips/{tripId}/invitations")
     @Operation(summary = "여행 초대 목록")
     @ApiResponse(responseCode = "200", description = "여행에서 발급한 초대 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Invitation.class))))
-    public List<Map<String, Object>> invitations(
+                    schema = @Schema(implementation = ApiResponses.Invitation.class))))
+    public List<ApiResponses.Invitation> invitations(
             @PathVariable long tripId,
             @AuthenticationPrincipal Long userId,
             @RequestParam(defaultValue = "30") int limit,
             @RequestParam(defaultValue = "0") int offset) {
-        return service.list(tripId, userId, limit, offset);
+        return mapper.toDtoList(service.list(tripId, userId, limit, offset), ApiResponses.Invitation.class);
     }
 
     @PostMapping("/trips/{tripId}/invitations")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "여행 초대 발급")
     @ApiResponse(responseCode = "201", description = "발급한 초대입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Invitation.class)))
-    public Map<String, Object> invitation(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Invitation.class)))
+    public ApiResponses.Invitation invitation(
             @PathVariable long tripId,
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody CreateInvitationRequest request) {
-        return service.create(tripId, userId, request.getInviteeUserId(), request.getExpiresAt());
+        return mapper.toDto(
+                service.create(tripId, userId, request.getInviteeUserId(), request.getExpiresAt()),
+                ApiResponses.Invitation.class);
     }
 
     @PatchMapping("/trips/{tripId}/invitations/{invitationId}")
     @Operation(summary = "여행 초대 상태 변경")
     @ApiResponse(responseCode = "200", description = "상태를 바꾼 초대입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Invitation.class)))
-    public Map<String, Object> invitationStatus(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Invitation.class)))
+    public ApiResponses.Invitation invitationStatus(
             @PathVariable long tripId,
             @PathVariable long invitationId,
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody UpdateInvitationRequest request) {
-        return service.updateStatus(tripId, invitationId, userId, request.getStatus());
+        return mapper.toDto(
+                service.updateStatus(tripId, invitationId, userId, request.getStatus()),
+                ApiResponses.Invitation.class);
     }
 
     @PostMapping("/trip-memberships")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "초대 코드로 여행 참여")
     @ApiResponse(responseCode = "201", description = "여행 참여 결과입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Membership.class)))
-    public Map<String, Object> membership(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Membership.class)))
+    public ApiResponses.Membership membership(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody JoinTripRequest request) {
-        return service.join(
-                userId,
-                request.getInviteCode(),
-                request.getDeparturePlaceId(),
-                request.getReturnPlaceId());
+        return mapper.toDto(service.join(
+                        userId,
+                        request.getInviteCode(),
+                        request.getDeparturePlaceId(),
+                        request.getReturnPlaceId()),
+                ApiResponses.Membership.class);
     }
 
     public static class CreateInvitationRequest {

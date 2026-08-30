@@ -3,8 +3,10 @@ package com.gayadi.server;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -24,9 +26,29 @@ class OpenApiIntegrationTests {
     @Autowired
     ObjectMapper objectMapper;
 
+    @Autowired
+    @Qualifier("requestMappingHandlerMapping")
+    RequestMappingHandlerMapping handlerMapping;
+
     private final HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
+
+    @Test
+    void publicControllersDoNotExposeJdbcMapsAsSuccessResponses() {
+        handlerMapping.getHandlerMethods().values().stream()
+                .filter(handler -> handler.getBeanType().getPackageName()
+                        .startsWith("com.gayadi.server"))
+                .forEach(handler -> {
+                    Class<?> responseType = handler.getMethod().getReturnType();
+                    Assertions.assertThat(responseType)
+                            .as(handler.getBeanType().getSimpleName() + "." + handler.getMethod().getName())
+                            .isNotEqualTo(Map.class);
+                    Assertions.assertThat(handler.getMethod().getGenericReturnType().getTypeName())
+                            .as(handler.getBeanType().getSimpleName() + "." + handler.getMethod().getName())
+                            .doesNotContain("java.util.Map");
+                });
+    }
 
     @Test
     void exposesOnlyApiPathsWithDocumentInformationAndSecurityScheme() throws Exception {

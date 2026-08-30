@@ -1,47 +1,46 @@
 package com.gayadi.server.auth;
 
 import com.gayadi.server.common.ApiException;
-import com.gayadi.server.common.KeyHelper;
+import com.gayadi.server.auth.persistence.UserAccount;
+import com.gayadi.server.auth.persistence.UserAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.time.LocalDateTime;
-import java.sql.Timestamp;
 import java.util.Map;
 import java.util.Locale;
 
 @Service
 public class AuthService {
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int LOCK_MINUTES = 15;
-
     private final UserService userService;
     private final JwtService jwtService;
-    private final JdbcClient jdbc;
-    private final KeyHelper keyHelper;
+    private final UserAccountRepository accounts;
+    private final AuthProperties properties;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(UserService userService, JwtService jwtService, JdbcClient jdbc, KeyHelper keyHelper) {
+    public AuthService(
+            UserService userService,
+            JwtService jwtService,
+            UserAccountRepository accounts,
+            AuthProperties properties) {
         this.userService = userService;
         this.jwtService = jwtService;
-        this.jdbc = jdbc;
-        this.keyHelper = keyHelper;
+        this.accounts = accounts;
+        this.properties = properties;
     }
 
     @Transactional
     public Map<String, Object> signup(String email, String password, String nickname) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         try {
-            long id = keyHelper.insert(
-                    "INSERT INTO users (nickname, email, password_hash) VALUES (?, ?, ?)",
-                    nickname.trim(), normalizedEmail, passwordEncoder.encode(password));
-            return loginResult(id);
+            UserAccount account = accounts.saveAndFlush(new UserAccount(
+                    nickname.trim(), normalizedEmail, passwordEncoder.encode(password)));
+            return loginResult(account.getId());
         } catch (DataIntegrityViolationException exception) {
             if (isDuplicateEmail(exception)) {
                 throw new ApiException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
@@ -60,76 +59,31 @@ public class AuthService {
     @Transactional(noRollbackFor = ApiException.class)
     public Map<String, Object> login(String email, String password) {
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-        Map<String, Object> user = jdbc.sql("""
-                SELECT id, email, status, password_hash, failed_login_attempts, login_locked_until
-                FROM users
-                WHERE email = ? AND deleted_at IS NULL
-                FOR UPDATE
-                """)
-                .param(normalizedEmail)
-                .query().listOfRows().stream()
-                .findFirst()
+        UserAccount user = accounts.findForLogin(normalizedEmail)
                 .orElseThrow(() -> unauthorized());
-        long userId = ((Number) user.get("id")).longValue();
-        if (!"ACTIVE".equals(String.valueOf(user.get("status")))) {
+        long userId = user.getId();
+        if (!"ACTIVE".equals(user.getStatus())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "사용할 수 없는 계정입니다.");
         }
 
-        String hash = user.get("password_hash") == null ? null : user.get("password_hash").toString();
-        LocalDateTime lockedUntil = localDateTime(user.get("login_locked_until"));
+        String hash = user.getPasswordHash();
+        LocalDateTime lockedUntil = user.getLoginLockedUntil();
         if (lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now())) {
             if (hash != null && passwordEncoder.matches(password, hash)) {
-                clearFailedLogins(userId);
+                user.recordSuccessfulLogin();
                 return loginResult(userId);
             }
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                    "로그인 시도가 많아 잠시 잠겼습니다. 15분 뒤 다시 시도해 주세요.");
+                    "로그인 시도가 많아 잠시 잠겼습니다. 잠시 후 다시 시도해 주세요.");
         }
 
         if (hash == null || !passwordEncoder.matches(password, hash)) {
-            recordFailedLogin(userId);
+            user.recordFailedLogin(properties.maximumFailedAttempts(), properties.lockMinutes());
             throw unauthorized();
         }
 
-        clearFailedLogins(userId);
+        user.recordSuccessfulLogin();
         return loginResult(userId);
-    }
-
-    private void clearFailedLogins(long userId) {
-        jdbc.sql("""
-                UPDATE users
-                SET last_login_at = CURRENT_TIMESTAMP, failed_login_attempts = 0,
-                    login_locked_until = NULL, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """)
-                .param(userId)
-                .update();
-    }
-
-    private void recordFailedLogin(long userId) {
-        jdbc.sql("""
-                UPDATE users
-                SET failed_login_attempts = CASE
-                        WHEN failed_login_attempts + 1 >= ? THEN 0
-                        ELSE failed_login_attempts + 1
-                    END,
-                    login_locked_until = CASE
-                        WHEN failed_login_attempts + 1 >= ? THEN ?
-                        ELSE login_locked_until
-                    END,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND status = 'ACTIVE' AND deleted_at IS NULL
-                """)
-                .params(MAX_FAILED_ATTEMPTS, MAX_FAILED_ATTEMPTS,
-                        LocalDateTime.now().plusMinutes(LOCK_MINUTES), userId)
-                .update();
-    }
-
-    private LocalDateTime localDateTime(Object value) {
-        if (value == null) return null;
-        if (value instanceof LocalDateTime time) return time;
-        if (value instanceof Timestamp timestamp) return timestamp.toLocalDateTime();
-        return LocalDateTime.parse(value.toString().replace(' ', 'T'));
     }
 
     private ApiException unauthorized() {

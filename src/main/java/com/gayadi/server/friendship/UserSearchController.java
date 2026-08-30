@@ -1,6 +1,7 @@
 package com.gayadi.server.friendship;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @Validated
 @RestController
@@ -30,17 +30,19 @@ import java.util.Map;
 public class UserSearchController {
 
     private final FriendshipService service;
+    private final ApiResponseMapper mapper;
 
-    public UserSearchController(FriendshipService service) {
+    public UserSearchController(FriendshipService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping
     @Operation(summary = "친구 추가용 사용자 검색", description = "이메일은 검색하거나 응답하지 않습니다.")
     @ApiResponse(responseCode = "200", description = "닉네임과 일치하는 공개 사용자 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.UserSearch.class))))
-    public List<Map<String, Object>> users(
+                    schema = @Schema(implementation = ApiResponses.UserSearch.class))))
+    public List<ApiResponses.UserSearch> users(
             @AuthenticationPrincipal Long userId,
             @RequestParam
             @NotBlank(message = "검색할 닉네임을 입력해 주세요.")
@@ -48,6 +50,6 @@ public class UserSearchController {
             @RequestParam(defaultValue = "20")
             @Min(value = 1, message = "조회 개수는 1개 이상이어야 합니다.")
             @Max(value = 30, message = "한 번에 30개까지 조회할 수 있습니다.") int limit) {
-        return service.searchUsers(userId, query, limit);
+        return mapper.toDtoList(service.searchUsers(userId, query, limit), ApiResponses.UserSearch.class);
     }
 }

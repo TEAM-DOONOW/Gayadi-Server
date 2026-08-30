@@ -1,4 +1,4 @@
-package com.gayadi.server.config;
+package com.gayadi.server.common.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Map 기반 성공 응답을 OpenAPI에 정확히 보여 주기 위한 문서 전용 형식입니다.
- * 실제 응답 객체로 사용하지 않으며, 컨트롤러의 성공 응답 설명에서만 참조합니다.
+ * 공개 API의 타입 안전 성공 응답 DTO 모음입니다.
+ * 영속 엔티티나 JDBC 행 Map을 HTTP 경계에 직접 노출하지 않습니다.
  */
-public final class ApiSuccessSchemas {
+public final class ApiResponses {
 
-    private ApiSuccessSchemas() {
+    private ApiResponses() {
     }
 
     @Schema(name = "AuthTokenResponse", description = "가입 또는 로그인으로 발급한 인증 정보")
@@ -135,7 +135,16 @@ public final class ApiSuccessSchemas {
             @Schema(description = "여행 번호") long trip_id,
             @Schema(description = "첫날의 일차") int day_number,
             @Schema(description = "첫날 날짜") LocalDate plan_date,
+            String title,
+            String description,
+            String source_type,
             @Schema(description = "일정 상태", example = "DRAFT") String status,
+            String preference_snapshot,
+            long created_by,
+            int version,
+            LocalDateTime created_at,
+            LocalDateTime updated_at,
+            @Schema(description = "기존 앱 계약을 위해 유지하는 첫날 방문 순서") List<PlanItem> items,
             @Schema(description = "전체 일차별 일정") List<PlanDay> days
     ) {
     }
@@ -146,7 +155,15 @@ public final class ApiSuccessSchemas {
             long trip_id,
             @Schema(description = "여행 몇 일차인지", example = "1") int day_number,
             LocalDate plan_date,
+            String title,
+            String description,
+            String source_type,
             String status,
+            String preference_snapshot,
+            long created_by,
+            int version,
+            LocalDateTime created_at,
+            LocalDateTime updated_at,
             @Schema(description = "해당 일차의 방문 순서") List<PlanItem> items
     ) {
     }
@@ -337,7 +354,7 @@ public final class ApiSuccessSchemas {
     }
 
     @Schema(name = "RouteLocationResponse", description = "경로의 장소와 좌표")
-    public record Location(String name, double latitude, double longitude) {
+    public record Location(String label, double latitude, double longitude) {
     }
 
     @Schema(name = "RouteSegmentResponse", description = "경로 안의 한 이동 구간")
@@ -410,11 +427,14 @@ public final class ApiSuccessSchemas {
     }
 
     @Schema(name = "EventObservationResponse", description = "일정 변경이 필요하지 않은 현장 상황 등록 결과")
+    public sealed interface EventResult permits EventObservation, ChangeProposalDetail {
+    }
+
     public record EventObservation(
             long eventId,
             boolean impact,
             String message
-    ) {
+    ) implements EventResult {
     }
 
     @Schema(name = "ChangeProposalResponse", description = "현장 상황에 따라 만든 일정 변경 제안")
@@ -435,7 +455,7 @@ public final class ApiSuccessSchemas {
             LocalDateTime appliedAt,
             Object before,
             Object after
-    ) {
+    ) implements EventResult {
     }
 
     @Schema(name = "PublicUserResponse", description = "다른 사용자에게 공개하는 프로필")

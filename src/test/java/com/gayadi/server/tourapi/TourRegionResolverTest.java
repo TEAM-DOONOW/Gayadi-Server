@@ -37,7 +37,9 @@ class TourRegionResolverTest {
 
     private static final class StubTourApiService extends TourApiService {
         private StubTourApiService() {
-            super(new ObjectMapper(), "test", "http://example.com", "test");
+            super(new ObjectMapper(), new TourApiProperties(
+                    "test", "http://example.com", "test",
+                    java.time.Duration.ofSeconds(5), java.time.Duration.ofSeconds(10)));
         }
 
         @Override

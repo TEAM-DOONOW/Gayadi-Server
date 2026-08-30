@@ -4,6 +4,8 @@ import com.gayadi.server.common.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -23,39 +25,53 @@ import java.util.Map;
 /**
  * 기상청 API HTTP 통신 담당 — URI 빌드, 호출, 응답 검증, XML 오러 추출.
  */
-class WeatherApiClient {
+@Component
+public class WeatherApiClient {
 
     private static final Logger log = LoggerFactory.getLogger(WeatherApiClient.class);
 
     private static final String RESULT_CODE_OK = "00";
     private static final String RESULT_CODE_NO_DATA = "03";
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
-    private static final int DEFAULT_PAGE_SIZE = 1000;
-    private static final int MAX_PAGES = 20;
-
-    private final HttpClient client = HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .build();
+    private final HttpClient client;
 
     private final ObjectMapper objectMapper;
     private final String baseUrl;
     private final String serviceKey;
+    private final Duration requestTimeout;
+    private final int pageSize;
+    private final int maximumPages;
 
-    WeatherApiClient(
+    @Autowired
+    WeatherApiClient(ObjectMapper objectMapper, WeatherApiProperties properties) {
+        this(objectMapper, properties.key(), properties.baseUrl(), properties.connectTimeout(),
+                properties.requestTimeout(), properties.pageSize(), properties.maximumPages());
+    }
+
+    public WeatherApiClient(
             ObjectMapper objectMapper,
             String serviceKey,
             String baseUrl) {
+        this(objectMapper, serviceKey, baseUrl, Duration.ofSeconds(5), Duration.ofSeconds(10),
+                1000, 20);
+    }
+
+    WeatherApiClient(
+            ObjectMapper objectMapper, String serviceKey, String baseUrl,
+            Duration connectTimeout, Duration requestTimeout, int pageSize, int maximumPages) {
         this.objectMapper = objectMapper;
-        this.serviceKey = serviceKey;
-        this.baseUrl = baseUrl;
+        this.serviceKey = serviceKey == null ? "" : serviceKey.trim();
+        this.baseUrl = stripTrailingSlash(baseUrl);
+        this.requestTimeout = requestTimeout;
+        this.pageSize = pageSize;
+        this.maximumPages = maximumPages;
+        this.client = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
     }
 
     /** 지정한 오퍼레이션을 호출해 response JSON 노드를 반환한다. */
     JsonNode call(String operation, Map<String, String> params) {
         URI uri = buildUri(operation, params);
         HttpRequest request = HttpRequest.newBuilder(uri)
-                .timeout(REQUEST_TIMEOUT)
+                .timeout(requestTimeout)
                 .header("Accept", "application/json")
                 .GET()
                 .build();
@@ -124,7 +140,7 @@ class WeatherApiClient {
         int page = 1;
         int totalCount = Integer.MAX_VALUE;
 
-        while (result.size() < totalCount && page <= MAX_PAGES) {
+        while (result.size() < totalCount && page <= maximumPages) {
             pageParams.put("pageNo", String.valueOf(page));
             JsonNode body = call(operation, pageParams).path("body");
             List<JsonNode> pageItems = itemsOf(body);
@@ -148,7 +164,7 @@ class WeatherApiClient {
 
     Map<String, String> baseParams() {
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("numOfRows", String.valueOf(DEFAULT_PAGE_SIZE));
+        params.put("numOfRows", String.valueOf(pageSize));
         params.put("pageNo", "1");
         params.put("dataType", "JSON");
         params.put("serviceKey", ensureServiceKey());
@@ -182,6 +198,12 @@ class WeatherApiClient {
             query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
         }
         return URI.create(baseUrl + "/" + operation + "?" + query);
+    }
+
+    private static String stripTrailingSlash(String value) {
+        String result = value == null ? "" : value.trim();
+        while (result.endsWith("/")) result = result.substring(0, result.length() - 1);
+        return result;
     }
 
     private String ensureServiceKey() {

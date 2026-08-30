@@ -1,16 +1,12 @@
 package com.gayadi.server.route;
 
 import com.gayadi.server.common.Location;
-import org.springframework.context.annotation.Profile;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
-@Profile("!external-route")
-@ConditionalOnProperty(name = "route.provider", havingValue = "local", matchIfMissing = true)
 public class LocalRouteProvider implements RouteProvider {
 
     @Override

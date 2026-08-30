@@ -1,7 +1,8 @@
 package com.gayadi.server.schedule;
 
 import com.gayadi.server.common.AppDateFormat;
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponseMapper;
+import com.gayadi.server.common.dto.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,7 +21,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}")
@@ -29,44 +29,46 @@ import java.util.Map;
 public class ScheduleItemController {
 
     private final ScheduleItemService service;
+    private final ApiResponseMapper mapper;
 
-    public ScheduleItemController(ScheduleItemService service) {
+    public ScheduleItemController(ScheduleItemService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping("/schedules")
     @Operation(summary = "일정 목록")
     @ApiResponse(responseCode = "200", description = "여행의 날짜별 일정 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Schedule.class))))
-    public List<Map<String, Object>> list(
+                    schema = @Schema(implementation = ApiResponses.Schedule.class))))
+    public List<ApiResponses.Schedule> list(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId) {
-        return service.list(userId, tripId);
+        return mapper.toDtoList(service.list(userId, tripId), ApiResponses.Schedule.class);
     }
 
     @PostMapping("/schedules")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "일정 추가")
     @ApiResponse(responseCode = "201", description = "추가한 일정입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Schedule.class)))
-    public Map<String, Object> create(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Schedule.class)))
+    public ApiResponses.Schedule create(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody CreateScheduleRequest request) {
-        return service.create(userId, tripId, request.command());
+        return mapper.toDto(service.create(userId, tripId, request.command()), ApiResponses.Schedule.class);
     }
 
     @PatchMapping("/schedules/{scheduleId}")
     @Operation(summary = "일정 수정")
     @ApiResponse(responseCode = "200", description = "수정한 일정입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Schedule.class)))
-    public Map<String, Object> update(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Schedule.class)))
+    public ApiResponses.Schedule update(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @PathVariable long scheduleId,
             @Valid @RequestBody UpdateScheduleRequest request) {
-        return service.update(userId, tripId, scheduleId, request.patch());
+        return mapper.toDto(service.update(userId, tripId, scheduleId, request.patch()), ApiResponses.Schedule.class);
     }
 
     @DeleteMapping("/schedules/{scheduleId}")
@@ -83,12 +85,14 @@ public class ScheduleItemController {
     @Operation(summary = "일정 순서 변경")
     @ApiResponse(responseCode = "200", description = "바뀐 순서대로 정렬한 일정 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Schedule.class))))
-    public List<Map<String, Object>> reorder(
+                    schema = @Schema(implementation = ApiResponses.Schedule.class))))
+    public List<ApiResponses.Schedule> reorder(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody ScheduleOrderRequest request) {
-        return service.reorder(userId, tripId, request.getScheduleIds());
+        return mapper.toDtoList(
+                service.reorder(userId, tripId, request.getScheduleIds()),
+                ApiResponses.Schedule.class);
     }
 
     public static class CreateScheduleRequest {

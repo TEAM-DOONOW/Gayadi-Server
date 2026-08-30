@@ -1,7 +1,7 @@
 package com.gayadi.server;
 
-import com.gayadi.server.recommendation.PlaceEmbeddingService;
-import com.gayadi.server.recommendation.RecommendationService;
+import com.gayadi.server.recommendation.PlaceRecommendationAgent;
+import com.gayadi.server.recommendation.SituationResponseAgent;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,9 +10,7 @@ import org.springframework.context.ApplicationContext;
 
 @SpringBootTest(properties = {
         "app.ai.enabled=true",
-        "app.ai.embedding.enabled=true",
         "spring.ai.model.chat=openai",
-        "spring.ai.model.embedding=openai",
         "spring.ai.openai.api-key=test-key"
 })
 class AiEnabledContextTests {
@@ -22,7 +20,7 @@ class AiEnabledContextTests {
 
     @Test
     void startsRecommendationComponentsWithExplicitSettings() {
-        Assertions.assertThat(context.getBean(RecommendationService.class)).isNotNull();
-        Assertions.assertThat(context.getBean(PlaceEmbeddingService.class)).isNotNull();
+        Assertions.assertThat(context.getBean(PlaceRecommendationAgent.class)).isNotNull();
+        Assertions.assertThat(context.getBean(SituationResponseAgent.class)).isNotNull();
     }
 }

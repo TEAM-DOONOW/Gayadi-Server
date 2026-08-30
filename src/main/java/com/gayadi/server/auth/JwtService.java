@@ -2,7 +2,6 @@ package com.gayadi.server.auth;
 
 import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.core.env.Environment;
@@ -37,9 +36,8 @@ public class JwtService {
     public JwtService(
             JsonSupport json,
             Environment environment,
-            @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expires-in-seconds:604800}") long expiresInSeconds) {
-        String configuredSecret = secret == null ? "" : secret.trim();
+            JwtProperties properties) {
+        String configuredSecret = properties.secret() == null ? "" : properties.secret().trim();
         boolean weakSecret = configuredSecret.length() < GENERATED_SECRET_BYTES
                 || configuredSecret.toLowerCase(java.util.Locale.ROOT).contains("change-me");
         if (Arrays.asList(environment.getActiveProfiles()).contains("prod") && weakSecret) {
@@ -54,7 +52,7 @@ public class JwtService {
         this.secret = configuredSecret.isEmpty()
                 ? generatedDevelopmentSecret()
                 : configuredSecret.getBytes(StandardCharsets.UTF_8);
-        this.expiresIn = Duration.ofSeconds(expiresInSeconds);
+        this.expiresIn = Duration.ofSeconds(properties.expiresInSeconds());
     }
 
     public String issue(long userId, String email) {

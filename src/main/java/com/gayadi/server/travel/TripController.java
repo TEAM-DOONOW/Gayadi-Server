@@ -1,7 +1,8 @@
 package com.gayadi.server.travel;
 
 import com.gayadi.server.common.AppDateFormat;
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.common.dto.ApiResponses;
+import com.gayadi.server.common.dto.ApiResponseMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/trips")
@@ -31,57 +31,60 @@ import java.util.Map;
 public class TripController {
 
     private final TripService service;
+    private final ApiResponseMapper mapper;
 
-    public TripController(TripService service) {
+    public TripController(TripService service, ApiResponseMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping
     @Operation(summary = "내 여행 목록")
     @ApiResponse(responseCode = "200", description = "현재 사용자가 참여한 여행 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Trip.class))))
-    public List<Map<String, Object>> list(
+                    schema = @Schema(implementation = ApiResponses.Trip.class))))
+    public List<ApiResponses.Trip> list(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "30") int limit,
             @RequestParam(defaultValue = "0") int offset) {
-        return service.listForUser(userId, status, limit, offset);
+        return mapper.toDtoList(service.listForUser(userId, status, limit, offset), ApiResponses.Trip.class);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "여행 생성")
     @ApiResponse(responseCode = "201", description = "생성한 여행입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Trip.class)))
-    public Map<String, Object> create(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Trip.class)))
+    public ApiResponses.Trip create(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody CreateTripRequest request) {
-        return service.createForUser(
-                userId, request.getName(), request.parsedStartDate(), request.parsedEndDate(), request.getCities());
+        return mapper.toDto(service.createForUser(
+                userId, request.getName(), request.parsedStartDate(), request.parsedEndDate(), request.getCities()),
+                ApiResponses.Trip.class);
     }
 
     @GetMapping("/{tripId}")
     @Operation(summary = "여행 상세 조회")
     @ApiResponse(responseCode = "200", description = "여행의 상세 정보입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Trip.class)))
-    public Map<String, Object> get(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Trip.class)))
+    public ApiResponses.Trip get(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId) {
         service.requireMember(tripId, userId);
-        return service.view(tripId);
+        return mapper.toDto(service.view(tripId), ApiResponses.Trip.class);
     }
 
     @PatchMapping("/{tripId}")
     @Operation(summary = "여행 정보 수정")
     @ApiResponse(responseCode = "200", description = "수정한 여행입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Trip.class)))
-    public Map<String, Object> update(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Trip.class)))
+    public ApiResponses.Trip update(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody UpdateTripRequest request) {
-        return service.update(userId, tripId, request.getName(), request.parsedStartDate(),
-                request.parsedEndDate(), request.getCities(), request.getVersion());
+        return mapper.toDto(service.update(userId, tripId, request.getName(), request.parsedStartDate(),
+                request.parsedEndDate(), request.getCities(), request.getVersion()), ApiResponses.Trip.class);
     }
 
     @DeleteMapping("/{tripId}")
@@ -94,39 +97,40 @@ public class TripController {
     @PatchMapping("/{tripId}/status")
     @Operation(summary = "여행 진행 상태 변경")
     @ApiResponse(responseCode = "200", description = "상태를 바꾼 여행입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Trip.class)))
-    public Map<String, Object> status(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Trip.class)))
+    public ApiResponses.Trip status(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody TripStatusRequest request) {
-        return service.changeStatus(userId, tripId, request.getStatus());
+        return mapper.toDto(service.changeStatus(userId, tripId, request.getStatus()), ApiResponses.Trip.class);
     }
 
     @GetMapping("/{tripId}/participants")
     @Operation(summary = "여행 참여자 목록")
     @ApiResponse(responseCode = "200", description = "여행에 참여 중인 사용자 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Participant.class))))
-    public List<Map<String, Object>> participants(
+                    schema = @Schema(implementation = ApiResponses.Participant.class))))
+    public List<ApiResponses.Participant> participants(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId) {
         service.requireMember(tripId, userId);
-        return service.members(tripId);
+        return mapper.toDtoList(service.members(tripId), ApiResponses.Participant.class);
     }
 
     @PutMapping("/{tripId}/participants/{participantUserId}")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "여행 참여자 추가")
     @ApiResponse(responseCode = "201", description = "추가한 여행 참여자입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Participant.class)))
-    public Map<String, Object> participant(
+            content = @Content(schema = @Schema(implementation = ApiResponses.Participant.class)))
+    public ApiResponses.Participant participant(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @PathVariable long participantUserId,
             @Valid @RequestBody(required = false) ParticipantRequest request) {
         ParticipantRequest settings = request == null ? new ParticipantRequest() : request;
-        return service.addMemberAsOwner(userId, tripId, new TripService.AddMember(
-                participantUserId, settings.getDeparturePlaceId(), settings.getReturnPlaceId()));
+        return mapper.toDto(service.addMemberAsOwner(userId, tripId, new TripService.AddMember(
+                participantUserId, settings.getDeparturePlaceId(), settings.getReturnPlaceId())),
+                ApiResponses.Participant.class);
     }
 
     @DeleteMapping("/{tripId}/participants/{participantUserId}")

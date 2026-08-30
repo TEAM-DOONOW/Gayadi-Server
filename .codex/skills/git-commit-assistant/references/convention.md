@@ -2,7 +2,7 @@
 
 ## Structure
 
-`<type>/#<issue-number>: <subject>`
+`<type>: <subject> (#<issue-number>)`
 
 An issue number is required. Do not invent one when it cannot be extracted from the branch; ask the user.
 
@@ -29,7 +29,7 @@ An issue number is required. Do not invent one when it cannot be extracted from 
 ## Examples
 
 ```text
-feat/#10: 여행 일정 생성 API 구현
-fix/#25: 경로 추천 NPE 수정
-docs/#35: README API 목록 수정
+feat: 여행 일정 생성 API 구현 (#10)
+fix: 경로 추천 NPE 수정 (#25)
+docs: README API 목록 수정 (#35)
 ```

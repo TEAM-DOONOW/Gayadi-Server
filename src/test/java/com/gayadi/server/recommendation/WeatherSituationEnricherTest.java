@@ -2,6 +2,7 @@ package com.gayadi.server.recommendation;
 
 import com.gayadi.server.common.ApiException;
 import com.gayadi.server.weather.WeatherApiService;
+import com.gayadi.server.weather.WeatherApiClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import tools.jackson.databind.ObjectMapper;
@@ -47,7 +48,7 @@ class WeatherSituationEnricherTest {
         private final boolean fail;
 
         private StubWeatherService(AtomicInteger calls, boolean fail) {
-            super(new ObjectMapper(), "", "https://example.invalid/weather");
+            super(new WeatherApiClient(new ObjectMapper(), "", "https://example.invalid/weather"));
             this.calls = calls;
             this.fail = fail;
         }

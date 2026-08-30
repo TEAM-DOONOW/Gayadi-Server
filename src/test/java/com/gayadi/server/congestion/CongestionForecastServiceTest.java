@@ -108,9 +108,10 @@ class CongestionForecastServiceTest {
     }
 
     private CongestionForecastService service(String context, String key) {
-        return new CongestionForecastService(new ObjectMapper(), key,
-                "http://127.0.0.1:" + server.getAddress().getPort() + "/" + context,
-                "GayadiTest");
+        return new CongestionForecastService(new ObjectMapper(), new CongestionApiProperties(
+                key, "http://127.0.0.1:" + server.getAddress().getPort() + "/" + context,
+                "GayadiTest", java.time.Duration.ofSeconds(5), java.time.Duration.ofSeconds(10),
+                java.time.Duration.ofMinutes(30), 512));
     }
 
     private void forecast(HttpExchange exchange) throws IOException {

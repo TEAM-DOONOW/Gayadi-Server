@@ -3,7 +3,7 @@ package com.gayadi.server.congestion;
 import com.gayadi.server.common.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -36,27 +36,29 @@ public class CongestionForecastService {
     private static final Logger log = LoggerFactory.getLogger(CongestionForecastService.class);
     private static final String OPERATION = "tatsCnctrRatedList";
     private static final ZoneId KOREA = ZoneId.of("Asia/Seoul");
-    private static final Duration SNAPSHOT_CACHE_TTL = Duration.ofMinutes(30);
-    private static final int MAX_SNAPSHOT_CACHE_ENTRIES = 512;
-
-    private final HttpClient client = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5)).build();
+    private final HttpClient client;
     private final ObjectMapper objectMapper;
     private final String serviceKey;
     private final String baseUrl;
     private final String mobileApp;
+    private final Duration requestTimeout;
+    private final Duration cacheTtl;
+    private final int maximumCacheEntries;
     private final Map<GroupKey, CachedSnapshot> snapshotCache = new ConcurrentHashMap<>();
     private final Map<GroupKey, Object> snapshotLocks = new ConcurrentHashMap<>();
 
+    @Autowired
     public CongestionForecastService(
             ObjectMapper objectMapper,
-            @Value("${congestion.api.key:}") String serviceKey,
-            @Value("${congestion.api.base-url:https://apis.data.go.kr/B551011/TatsCnctrRateService}") String baseUrl,
-            @Value("${congestion.api.mobile-app:Gayadi}") String mobileApp) {
+            CongestionApiProperties properties) {
         this.objectMapper = objectMapper;
-        this.serviceKey = serviceKey == null ? "" : serviceKey.trim();
-        this.baseUrl = stripTrailingSlash(baseUrl);
-        this.mobileApp = mobileApp == null || mobileApp.isBlank() ? "Gayadi" : mobileApp.trim();
+        this.serviceKey = properties.key() == null ? "" : properties.key().trim();
+        this.baseUrl = stripTrailingSlash(properties.baseUrl());
+        this.mobileApp = properties.mobileApp().trim();
+        this.requestTimeout = properties.requestTimeout();
+        this.cacheTtl = properties.cacheTtl();
+        this.maximumCacheEntries = properties.maximumCacheEntries();
+        this.client = HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build();
     }
 
     public CongestionForecast forecast(Request request) {
@@ -99,12 +101,12 @@ public class CongestionForecastService {
 
     private ProviderSnapshot cachedSnapshot(GroupKey key) throws Exception {
         CachedSnapshot cached = snapshotCache.get(key);
-        if (cached != null && cached.isFresh()) return cached.snapshot();
+        if (cached != null && cached.isFresh(cacheTtl)) return cached.snapshot();
         Object lock = snapshotLocks.computeIfAbsent(key, ignored -> new Object());
         try {
             synchronized (lock) {
                 cached = snapshotCache.get(key);
-                if (cached != null && cached.isFresh()) return cached.snapshot();
+                if (cached != null && cached.isFresh(cacheTtl)) return cached.snapshot();
                 ProviderSnapshot snapshot = providerSnapshot(
                         key.areaCode(), key.districtCode(), key.targetDate());
                 if (snapshot != null) {
@@ -119,8 +121,8 @@ public class CongestionForecastService {
     }
 
     private void trimSnapshotCache() {
-        snapshotCache.entrySet().removeIf(entry -> !entry.getValue().isFresh());
-        if (snapshotCache.size() < MAX_SNAPSHOT_CACHE_ENTRIES) return;
+        snapshotCache.entrySet().removeIf(entry -> !entry.getValue().isFresh(cacheTtl));
+        if (snapshotCache.size() < maximumCacheEntries) return;
         snapshotCache.entrySet().stream()
                 .min(Map.Entry.comparingByValue((left, right) -> left.createdAt().compareTo(right.createdAt())))
                 .ifPresent(entry -> snapshotCache.remove(entry.getKey(), entry.getValue()));
@@ -139,7 +141,7 @@ public class CongestionForecastService {
         params.put("_type", "json");
 
         HttpResponse<String> response = client.send(
-                HttpRequest.newBuilder(buildUri(params)).timeout(Duration.ofSeconds(10))
+                HttpRequest.newBuilder(buildUri(params)).timeout(requestTimeout)
                         .header("Accept", "application/json").GET().build(),
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() != 200 || response.body() == null || response.body().isBlank()
@@ -283,8 +285,8 @@ public class CongestionForecastService {
     }
 
     private record CachedSnapshot(ProviderSnapshot snapshot, Instant createdAt) {
-        private boolean isFresh() {
-            return createdAt.plus(SNAPSHOT_CACHE_TTL).isAfter(Instant.now());
+        private boolean isFresh(Duration ttl) {
+            return createdAt.plus(ttl).isAfter(Instant.now());
         }
     }
 

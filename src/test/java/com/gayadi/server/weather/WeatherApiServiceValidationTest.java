@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class WeatherApiServiceValidationTest {
 
     private final WeatherApiService service = new WeatherApiService(
-            new ObjectMapper(), "", "https://example.invalid/weather");
+            new WeatherApiClient(new ObjectMapper(), "", "https://example.invalid/weather"));
 
     @Test
     void requiresOneCompleteLocationPairWithinTheSupportedGrid() {

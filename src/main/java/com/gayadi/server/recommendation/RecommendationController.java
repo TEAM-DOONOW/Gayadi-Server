@@ -20,14 +20,11 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "bearerAuth")
 public class RecommendationController {
 
-    private final ObjectProvider<RecommendationService> serviceProvider;
     private final ObjectProvider<PlaceRecommendationAgent> agentProvider;
     private final ObjectProvider<SituationResponseAgent> situationAgentProvider;
 
-    public RecommendationController(ObjectProvider<RecommendationService> serviceProvider,
-                                    ObjectProvider<PlaceRecommendationAgent> agentProvider,
+    public RecommendationController(ObjectProvider<PlaceRecommendationAgent> agentProvider,
                                     ObjectProvider<SituationResponseAgent> situationAgentProvider) {
-        this.serviceProvider = serviceProvider;
         this.agentProvider = agentProvider;
         this.situationAgentProvider = situationAgentProvider;
     }
@@ -51,12 +48,8 @@ public class RecommendationController {
         if (agent != null) {
             return agent.recommendPlaces(request);
         }
-        RecommendationService service = serviceProvider.getIfAvailable();
-        if (service == null) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "맞춤 장소 추천 기능이 설정되지 않았습니다.");
-        }
-        return service.recommendPlaces(request);
+        throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
+                "맞춤 장소 추천 Agent가 설정되지 않았습니다.");
     }
 
     @PostMapping("/situations")
