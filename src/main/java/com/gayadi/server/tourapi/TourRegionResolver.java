@@ -1,7 +1,6 @@
 package com.gayadi.server.tourapi;
 
-import com.gayadi.server.common.ApiException;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.common.exception.BusinessException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -26,8 +25,7 @@ public class TourRegionResolver {
         String normalized = normalize(regionName);
         List<AreaTarget> targets = APP_REGIONS.get(normalized);
         if (targets == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "지원하지 않는 여행 지역입니다: " + normalized);
+            throw new BusinessException(TourApiErrorCode.TOUR_REGION_UNSUPPORTED, normalized);
         }
         List<RegionCode> result = new ArrayList<>();
         for (AreaTarget target : targets) {
@@ -56,8 +54,7 @@ public class TourRegionResolver {
         }
         List<RegionCode> distinct = result.stream().distinct().toList();
         if (distinct.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "관광 API에서 여행 지역의 법정동 코드를 찾지 못했습니다.");
+            throw new BusinessException(TourApiErrorCode.TOUR_REGION_CODE_NOT_FOUND);
         }
         return distinct;
     }

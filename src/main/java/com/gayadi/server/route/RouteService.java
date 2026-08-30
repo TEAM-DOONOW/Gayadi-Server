@@ -1,6 +1,8 @@
 package com.gayadi.server.route;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.schedule.ScheduleErrorCode;
+import com.gayadi.server.travel.TripErrorCode;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.Location;
@@ -8,7 +10,6 @@ import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.schedule.PlanService;
 import com.gayadi.server.travel.DepartureMode;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -101,8 +102,7 @@ public class RouteService {
         List<RouteProvider.RouteEstimate> estimates = provider.estimateSegments(
                 context.stops(), phase.name());
         if (estimates == null || estimates.size() != context.stops().size() - 1) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "경로 공급자가 전체 이동 구간을 계산하지 못했습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_PROVIDER_FAILED);
         }
         List<SegmentEstimate> segments = new ArrayList<>();
         int durationMinutes = 0;
@@ -115,8 +115,7 @@ public class RouteService {
             RouteProvider.RouteEstimate estimate = estimates.get(index);
             if (estimate == null || estimate.durationMinutes() < 0
                     || estimate.transferCount() < 0 || estimate.fare() < 0) {
-                throw new ApiException(HttpStatus.BAD_GATEWAY,
-                        "경로 공급자가 올바르지 않은 이동 정보를 보냈습니다.");
+                throw new BusinessException(RouteErrorCode.ROUTE_PROVIDER_FAILED);
             }
             segments.add(new SegmentEstimate(index + 1, origin, destination, estimate));
             durationMinutes += estimate.durationMinutes();
@@ -139,16 +138,14 @@ public class RouteService {
         Long authenticatedUserId = preparation.authenticatedUserId();
         lockTrip(tripId);
         if (!preparation.routeRevision().equals(routeRevision(tripId, memberId))) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "경로를 계산하는 동안 일정이 바뀌었습니다. 다시 요청해 주세요.");
+            throw new BusinessException(RouteErrorCode.ROUTE_CALCULATION_CHANGED);
         }
         if (authenticatedUserId != null) {
             trips.requireMember(tripId, authenticatedUserId);
             if (memberId != null) {
                 long currentMemberId = participantIdForUser(tripId, authenticatedUserId);
                 if (memberId != currentMemberId) {
-                    throw new ApiException(HttpStatus.CONFLICT,
-                            "경로를 계산하는 동안 참여자 정보가 바뀌었습니다. 다시 요청해 주세요.");
+                    throw new BusinessException(RouteErrorCode.ROUTE_CALCULATION_CHANGED);
                 }
             }
         }
@@ -289,7 +286,7 @@ public class RouteService {
 
         RoutePhase routePhase = RoutePhase.valueOf(RowSupport.strValue(route, "phase"));
         if (routePhase != phase) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "경로 종류와 추천 경로가 서로 다릅니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_TYPE_MISMATCH);
         }
         Long routeMemberId = nullableLong(route, "member_id");
         if (requestedRouteId != null && routeMemberId != null && routeMemberId == actorMemberId) {
@@ -297,11 +294,11 @@ public class RouteService {
             expectedMemberId = actorMemberId;
         }
         if (!Objects.equals(routeMemberId, expectedMemberId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "자신의 경로만 선택할 수 있습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_SELECTION_FORBIDDEN);
         }
         String status = RowSupport.strValue(route, "status");
         if (!"RECOMMENDED".equals(status) && !"SELECTED".equals(status)) {
-            throw new ApiException(HttpStatus.CONFLICT, "이 경로는 더 이상 선택할 수 없습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_NOT_SELECTABLE);
         }
 
         expireSelections(planId, phase, routeMemberId, routeId);
@@ -405,13 +402,13 @@ public class RouteService {
 
     public RoutePhase routePhase(String type) {
         if (type == null || type.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "경로 종류를 골라 주세요.");
+            throw new BusinessException(RouteErrorCode.ROUTE_TYPE_REQUIRED);
         }
         return switch (type.trim().toUpperCase(Locale.ROOT)) {
             case "DEPARTURE" -> RoutePhase.DEPARTURE;
             case "ITINERARY", "IN_TRIP" -> RoutePhase.IN_TRIP;
             case "HOME", "RETURN" -> RoutePhase.RETURN;
-            default -> throw new ApiException(HttpStatus.BAD_REQUEST, "올바르지 않은 경로 종류입니다.");
+            default -> throw new BusinessException(RouteErrorCode.ROUTE_TYPE_INVALID);
         };
     }
 
@@ -423,24 +420,24 @@ public class RouteService {
         if (mode == DepartureMode.TOGETHER && member == null) {
             Long meetingPlaceId = nullableLong(trip, "meeting_place_id");
             if (meetingPlaceId == null) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "집결 장소가 설정되지 않았습니다.");
+                throw new BusinessException(RouteErrorCode.ROUTE_MEETING_PLACE_REQUIRED);
             }
             return RouteContext.of(
                     placeLocation(getPlace(meetingPlaceId)), firstPlace, "GROUP");
         }
         if (member == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "개별 출발 경로에는 참여자 식별자가 필요합니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_MEMBER_REQUIRED);
         }
         Long departurePlaceId = nullableLong(member, "departure_place_id");
         if (departurePlaceId == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "출발 장소가 설정되지 않았습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_DEPARTURE_PLACE_REQUIRED);
         }
         Location origin = placeLocation(getPlace(departurePlaceId));
         Location destination;
         if (mode == DepartureMode.TOGETHER) {
             Long meetingPlaceId = nullableLong(trip, "meeting_place_id");
             if (meetingPlaceId == null) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "집결 장소가 설정되지 않았습니다.");
+                throw new BusinessException(RouteErrorCode.ROUTE_MEETING_PLACE_REQUIRED);
             }
             destination = placeLocation(getPlace(meetingPlaceId));
         } else {
@@ -451,11 +448,11 @@ public class RouteService {
 
     private RouteContext returnContext(long tripId, Map<String, Object> member) {
         if (member == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "귀가 경로에는 참여자 식별자가 필요합니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_MEMBER_REQUIRED);
         }
         Long returnPlaceId = nullableLong(member, "return_place_id");
         if (returnPlaceId == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "귀가 장소가 설정되지 않았습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_RETURN_PLACE_REQUIRED);
         }
         return RouteContext.of(
                 placeLocation(plans.lastPlace(tripId)),
@@ -467,8 +464,7 @@ public class RouteService {
     private RouteContext itineraryContext(long tripId) {
         List<Location> stops = itineraryStops(tripId);
         if (stops.size() < 2) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "여행 동선을 계산하려면 장소 일정이 두 개 이상 필요합니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_STOPS_INSUFFICIENT);
         }
         return new RouteContext(stops, "GROUP");
     }
@@ -486,8 +482,7 @@ public class RouteService {
                 .params(tripId, MAX_ITINERARY_STOPS + 1)
                 .query().listOfRows();
         if (rows.size() > MAX_ITINERARY_STOPS) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "여행 동선은 장소 일정 100개까지 계산할 수 있습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_ITINERARY_TOO_LARGE);
         }
         List<Location> stops = new ArrayList<>();
         for (Map<String, Object> row : rows) {
@@ -531,7 +526,7 @@ public class RouteService {
                 .map(row -> RowSupport.strValue(row, "departure_mode") + ":"
                         + String.valueOf(nullableValue(row, "meeting_place_id")) + ":"
                         + RowSupport.intValue(row, "version"))
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
         String member = memberId == null ? "GROUP" : jdbc.sql("""
                 SELECT departure_place_id, return_place_id, updated_at
                 FROM trip_participants WHERE id = ? AND status = 'JOINED'
@@ -548,7 +543,7 @@ public class RouteService {
 
     private String normalizedOptionId(RoutePhase phase, String requestedOptionId) {
         if (requestedOptionId == null || requestedOptionId.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "선택할 경로 번호나 선택안 값을 보내 주세요.");
+            throw new BusinessException(RouteErrorCode.ROUTE_OPTION_REQUIRED);
         }
         String optionId = requestedOptionId.trim().toLowerCase(Locale.ROOT);
         boolean allowed = switch (phase) {
@@ -557,7 +552,7 @@ public class RouteService {
             case RETURN -> optionId.equals("home-fast") || optionId.equals("home-rest");
         };
         if (!allowed) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "경로 종류에 맞는 선택안 값을 보내 주세요.");
+            throw new BusinessException(RouteErrorCode.ROUTE_OPTION_INVALID);
         }
         return optionId;
     }
@@ -587,19 +582,17 @@ public class RouteService {
                 return RowSupport.longValue(candidate, "id");
             }
         }
-        throw new ApiException(HttpStatus.NOT_FOUND,
-                "선택할 수 있는 추천 경로를 찾지 못했습니다. 경로를 다시 추천받아 주세요.");
+        throw new BusinessException(RouteErrorCode.ROUTE_SELECTABLE_NOT_FOUND);
     }
 
     private Long resolveMemberId(Map<String, Object> trip, RoutePhase phase,
                                  Long requestedUserId, long actorUserId, long actorMemberId) {
         if (requestedUserId != null && requestedUserId != actorUserId) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "자신의 경로만 조회하거나 바꿀 수 있습니다.");
+            throw new BusinessException(RouteErrorCode.ROUTE_ACCESS_FORBIDDEN);
         }
         if (requestedUserId != null) {
             if (phase == RoutePhase.IN_TRIP) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "여행 동선은 참여자 번호 없이 여행 전체 기준으로 요청해 주세요.");
+                throw new BusinessException(RouteErrorCode.ROUTE_GROUP_MEMBER_FORBIDDEN);
             }
             return actorMemberId;
         }
@@ -621,7 +614,7 @@ public class RouteService {
                 .param(tripId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "경로 계산 전에 일정이 필요합니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_PLAN_REQUIRED));
     }
 
     private Map<String, Object> lockTrip(long tripId) {
@@ -633,7 +626,7 @@ public class RouteService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private void lockPlan(long planId) {
@@ -641,7 +634,7 @@ public class RouteService {
                 .param(planId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 
     private long routePlanId(long tripId, long routeId) {
@@ -654,7 +647,7 @@ public class RouteService {
                 .params(routeId, tripId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "추천 경로를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND));
     }
 
     private Map<String, Object> lockedRoute(long routeId, long planId) {
@@ -665,7 +658,7 @@ public class RouteService {
                 .params(routeId, planId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "추천 경로를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND));
     }
 
     private Map<String, Object> routeById(long tripId, long routeId) {
@@ -682,7 +675,7 @@ public class RouteService {
                 .params(routeId, tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "추천 경로를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND));
     }
 
     private void expireActiveRoutes(long planId, RoutePhase phase, Long memberId) {
@@ -733,7 +726,7 @@ public class RouteService {
                 .params(tripId, userId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "여행 참여자만 처리할 수 있습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_MEMBER_REQUIRED));
     }
 
     private Map<String, Object> member(long tripId, long memberId) {
@@ -745,7 +738,7 @@ public class RouteService {
                 .params(tripId, memberId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행 참여자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_MEMBER_NOT_FOUND));
     }
 
     private Map<String, Object> getPlace(long placeId) {
@@ -756,7 +749,7 @@ public class RouteService {
                 .param(placeId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "경로에 필요한 장소를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_PLACE_NOT_FOUND));
     }
 
     private Location placeLocation(Map<String, Object> place) {
@@ -836,8 +829,7 @@ public class RouteService {
                 .param(participantId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.CONFLICT, "경로의 참여자 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_MEMBER_DATA_MISSING));
     }
 
     private String apiType(RoutePhase phase) {

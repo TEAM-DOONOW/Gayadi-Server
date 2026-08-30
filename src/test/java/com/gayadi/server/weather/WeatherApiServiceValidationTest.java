@@ -1,6 +1,6 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
@@ -14,16 +14,16 @@ class WeatherApiServiceValidationTest {
     @Test
     void requiresOneCompleteLocationPairWithinTheSupportedGrid() {
         assertThatThrownBy(() -> service.ultraSrtNcst(request(37.56, null, null, null)))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("각 쌍");
         assertThatThrownBy(() -> service.ultraSrtNcst(request(37.56, 126.98, 60, 127)))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("한 가지 위치 형식");
         assertThatThrownBy(() -> service.ultraSrtNcst(request(null, null, 0, 127)))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("nx 1~149");
         assertThatThrownBy(() -> service.ultraSrtNcst(request(0.0, 0.0, null, null)))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("국내 위치");
     }
 
@@ -31,11 +31,11 @@ class WeatherApiServiceValidationTest {
     void validatesForecastVersionInputsBeforeCallingTheProvider() {
         assertThatThrownBy(() -> service.fcstVersion(
                 new WeatherApiService.FcstVersionRequest("OTHER", "202608250200")))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ODAM, VSRT, SHRT");
         assertThatThrownBy(() -> service.fcstVersion(
                 new WeatherApiService.FcstVersionRequest("SHRT", "202602300200")))
-                .isInstanceOf(ApiException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("유효한 YYYYMMDDHHMM");
     }
 

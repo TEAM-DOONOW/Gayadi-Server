@@ -1,11 +1,11 @@
 package com.gayadi.server.invitation;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.travel.TripErrorCode;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,18 +79,18 @@ public class InvitationService {
         Map<String, Object> trip = lockTrip(tripId);
         trips.requireOwner(tripId, userId);
         if (!"PLANNING".equals(RowSupport.strValue(trip, "status"))) {
-            throw new ApiException(HttpStatus.CONFLICT, "준비 중인 여행에서만 초대할 수 있습니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_TRIP_NOT_PLANNING);
         }
 
         if (inviteeUserId != null) {
             if (isJoinedMember(tripId, inviteeUserId)) {
-                throw new ApiException(HttpStatus.CONFLICT, "이미 여행에 참여 중인 사용자입니다.");
+                throw new BusinessException(InvitationErrorCode.INVITEE_ALREADY_MEMBER);
             }
         }
 
         LocalDateTime expiration = expiresAt == null ? LocalDateTime.now().plusDays(7) : expiresAt;
         if (!expiration.isAfter(LocalDateTime.now())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "초대 만료 시각은 현재보다 뒤여야 합니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_EXPIRATION_INVALID);
         }
 
         long invitationId;
@@ -101,8 +101,7 @@ public class InvitationService {
                     VALUES (?, ?, ?, ?, 'PENDING', ?)
                     """, tripId, userId, inviteeUserId, availableCode(), expiration);
         } catch (org.springframework.dao.DuplicateKeyException exception) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "초대 코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_CODE_UNAVAILABLE);
         }
         return toInvitationView(invitation(invitationId, tripId));
     }
@@ -119,7 +118,7 @@ public class InvitationService {
         } else {
             Object invitee = current.get("invitee_user_id");
             if (invitee == null || ((Number) invitee).longValue() != userId) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "초대를 받은 사용자만 거절할 수 있습니다.");
+                throw new BusinessException(InvitationErrorCode.INVITATION_DECLINE_FORBIDDEN);
             }
         }
 
@@ -134,7 +133,7 @@ public class InvitationService {
                 .params(status, invitationId, tripId)
                 .update();
         if (updated == 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "대기 중인 초대만 상태를 바꿀 수 있습니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_STATUS_NOT_PENDING);
         }
         return toInvitationView(invitation(invitationId, tripId));
     }
@@ -171,7 +170,7 @@ public class InvitationService {
         validateMemberCapacity(lockedTrip, tripId);
 
         if (isJoinedMember(tripId, userId)) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 참여 중인 여행입니다.");
+            throw new BusinessException(TripErrorCode.TRIP_ALREADY_JOINED);
         }
 
         int accepted = jdbc.sql("""
@@ -185,7 +184,7 @@ public class InvitationService {
                 .params(userId, invitationId, normalizedCode, userId)
                 .update();
         if (accepted != 1) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 사용했거나 만료된 초대 코드입니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_CODE_USED_OR_EXPIRED);
         }
 
         trips.addMember(tripId, new TripService.AddMember(userId, departurePlaceId, returnPlaceId));
@@ -206,13 +205,12 @@ public class InvitationService {
                 .param(inviteCode)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND, "유효한 초대 코드를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_CODE_NOT_FOUND));
 
         Map<String, Object> lockedTrip = lockTrip(tripId);
         validateMemberCapacity(lockedTrip, tripId);
         if (isJoinedMember(tripId, userId)) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 참여 중인 여행입니다.");
+            throw new BusinessException(TripErrorCode.TRIP_ALREADY_JOINED);
         }
         trips.addMember(tripId, new TripService.AddMember(userId, departurePlaceId, returnPlaceId));
         return membership(tripId, userId, null);
@@ -228,24 +226,24 @@ public class InvitationService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private void validateJoinableInvitation(Map<String, Object> invitation, long userId) {
         String status = RowSupport.strValue(invitation, "status");
         LocalDateTime expiresAt = localDateTime(RowSupport.value(invitation, "expires_at"));
         if (!"PENDING".equals(status) || !expiresAt.isAfter(LocalDateTime.now())) {
-            throw new ApiException(HttpStatus.CONFLICT, "이미 사용했거나 만료된 초대 코드입니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_CODE_USED_OR_EXPIRED);
         }
         Object invitee = invitation.get("invitee_user_id");
         if (invitee != null && ((Number) invitee).longValue() != userId) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "다른 사용자에게 발급된 초대 코드입니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_CODE_FORBIDDEN);
         }
     }
 
     private void validateMemberCapacity(Map<String, Object> trip, long tripId) {
         if (!"PLANNING".equals(RowSupport.strValue(trip, "status"))) {
-            throw new ApiException(HttpStatus.CONFLICT, "준비 중인 여행에만 참여할 수 있습니다.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_TRIP_NOT_JOINABLE);
         }
         Object value = trip.get("max_members");
         if (value == null) {
@@ -259,7 +257,7 @@ public class InvitationService {
                 .query(Integer.class)
                 .single();
         if (joined >= ((Number) value).intValue()) {
-            throw new ApiException(HttpStatus.CONFLICT, "여행 참여 인원이 모두 찼습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_MEMBER_CAPACITY_REACHED);
         }
     }
 
@@ -301,7 +299,7 @@ public class InvitationService {
                 return code.toString();
             }
         }
-        throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "초대 코드를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new BusinessException(InvitationErrorCode.INVITATION_CODE_UNAVAILABLE);
     }
 
     private LocalDateTime localDateTime(Object value) {
@@ -311,16 +309,11 @@ public class InvitationService {
         if (value instanceof Timestamp timestamp) {
             return timestamp.toLocalDateTime();
         }
-        throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "초대 만료 시각을 확인하지 못했습니다.");
+        throw new IllegalStateException("저장된 초대 만료 시각을 읽지 못했습니다.");
     }
 
     private String normalizeCode(String inviteCode) {
-        String normalized = inviteCode == null ? "" : inviteCode.trim().toUpperCase(Locale.ROOT);
-        if (!normalized.matches("[A-Z0-9]{6}|[A-Z0-9]{8}")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "여행 공유 코드는 6자리, 특정 사용자 초대 코드는 8자리여야 합니다.");
-        }
-        return normalized;
+        return inviteCode == null ? "" : inviteCode.trim().toUpperCase(Locale.ROOT);
     }
 
     private void checkJoinAttemptLimit(long userId) {
@@ -333,8 +326,7 @@ public class InvitationService {
             return current;
         });
         if (window.count().get() > MAX_JOIN_ATTEMPTS_PER_WINDOW) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                    "초대 코드 확인 요청이 많습니다. 10분 뒤 다시 시도해 주세요.");
+            throw new BusinessException(InvitationErrorCode.INVITATION_JOIN_RATE_LIMITED);
         }
         if (joinAttempts.size() > 10000) {
             joinAttempts.entrySet().removeIf(entry ->
@@ -362,14 +354,14 @@ public class InvitationService {
                 .params(invitationId, tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "초대를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_NOT_FOUND));
     }
 
     private Map<String, Object> membership(long tripId, long userId, Long invitationId) {
         Map<String, Object> participantView = trips.members(tripId).stream()
                 .filter(member -> RowSupport.longValue(member, "id") == userId)
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "여행 참여 정보를 저장하지 못했습니다."));
+                .orElseThrow(() -> new IllegalStateException("저장한 여행 참여 정보를 다시 조회하지 못했습니다."));
         participantView = new LinkedHashMap<>(participantView);
         participantView.put("tripId", tripId);
         Map<String, Object> result = new LinkedHashMap<>();

@@ -1,7 +1,6 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.common.exception.BusinessException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -46,8 +45,7 @@ final class KmaBaseTimeCalculator {
         boolean hasDate = baseDate != null && !baseDate.isBlank();
         boolean hasTime = baseTime != null && !baseTime.isBlank();
         if (hasDate != hasTime) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "baseDate와 baseTime은 함께 입력해야 합니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_BASE_PAIR_REQUIRED);
         }
         if (hasDate) {
             validateExplicit(type, baseDate, baseTime);
@@ -113,14 +111,12 @@ final class KmaBaseTimeCalculator {
             case VILAGE_FCST -> minute == 0 && VILAGE_BASE_HOURS.contains(hour);
         };
         if (!allowed) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "선택한 조회 종류에서 사용할 수 없는 발표시각입니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_BASE_TIME_UNAVAILABLE);
         }
     }
 
-    private static ApiException invalidBaseDateTime() {
-        return new ApiException(HttpStatus.BAD_REQUEST,
-                "baseDate는 YYYYMMDD, baseTime은 HHMM 형식이어야 합니다.");
+    private static BusinessException invalidBaseDateTime() {
+        return new BusinessException(WeatherErrorCode.WEATHER_BASE_DATETIME_INVALID);
     }
 
     private static BaseDateTime of(LocalDateTime base) {

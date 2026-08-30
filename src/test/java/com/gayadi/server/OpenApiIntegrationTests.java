@@ -151,6 +151,21 @@ class OpenApiIntegrationTests {
         });
     }
 
+    @Test
+    void documentsTheRuntimeErrorResponseContract() throws Exception {
+        JsonNode document = objectMapper.readTree(get(uri("/api/openapi")).body());
+        JsonNode schemas = document.path("components").path("schemas");
+        JsonNode error = schemas.path("ApiErrorResponse");
+
+        Assertions.assertThat(error.path("properties").properties().stream()
+                        .map(java.util.Map.Entry::getKey))
+                .contains("timestamp", "status", "code", "message", "path", "traceId", "details");
+        Assertions.assertThat(error.path("properties").path("details").path("type").toString())
+                .contains("array");
+        Assertions.assertThat(error.path("properties").path("details").path("items").path("$ref").asString())
+                .isEqualTo("#/components/schemas/ApiErrorDetail");
+    }
+
     private JsonNode successSchema(JsonNode document, OperationKey key) {
         return document.path("paths").path(key.path()).path(key.method())
                 .path("responses").path(key.responseCode())

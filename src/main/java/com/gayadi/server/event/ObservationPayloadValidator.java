@@ -1,8 +1,7 @@
 package com.gayadi.server.event;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.common.exception.BusinessException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -55,9 +54,8 @@ final class ObservationPayloadValidator {
         throw invalid();
     }
 
-    private static ApiException invalid() {
-        return new ApiException(HttpStatus.BAD_REQUEST,
-                "현장 상황 상세값은 8KB, 깊이 4단계, 항목 32개 이내여야 합니다.");
+    private static BusinessException invalid() {
+        return new BusinessException(EventErrorCode.OBSERVATION_PAYLOAD_INVALID);
     }
 
     private static final class Counter {

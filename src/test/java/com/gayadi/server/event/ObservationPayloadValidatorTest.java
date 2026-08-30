@@ -1,7 +1,7 @@
 package com.gayadi.server.event;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
@@ -29,7 +29,9 @@ class ObservationPayloadValidatorTest {
         for (int index = 0; index < 33; index++) values.put("key" + index, index);
 
         assertThatThrownBy(() -> ObservationPayloadValidator.validateAndSerialize(values, json))
-                .isInstanceOf(ApiException.class).hasMessageContaining("항목 32개");
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(EventErrorCode.OBSERVATION_PAYLOAD_INVALID));
     }
 
     @Test
@@ -38,6 +40,8 @@ class ObservationPayloadValidatorTest {
 
         assertThatThrownBy(() -> ObservationPayloadValidator.validateAndSerialize(
                 Map.of("description", oversized), json))
-                .isInstanceOf(ApiException.class);
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(EventErrorCode.OBSERVATION_PAYLOAD_INVALID));
     }
 }

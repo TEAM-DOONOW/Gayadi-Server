@@ -1,9 +1,9 @@
 package com.gayadi.server.favorite;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.auth.UserErrorCode;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.place.PlaceService;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,7 +84,7 @@ public class FavoritePlaceService {
                 .params(userId, placeId)
                 .update();
         if (deleted == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "찜한 장소를 찾을 수 없습니다.");
+            throw new BusinessException(FavoriteErrorCode.FAVORITE_PLACE_NOT_FOUND);
         }
     }
 
@@ -93,7 +93,7 @@ public class FavoritePlaceService {
                 .param(userId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     private String normalizeMemo(String memo) {
@@ -117,7 +117,7 @@ public class FavoritePlaceService {
                 .params(userId, placeId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "장소 찜을 저장하지 못했습니다."));
+                .orElseThrow(() -> new IllegalStateException("저장한 찜 장소를 다시 조회하지 못했습니다."));
         return toView(row);
     }
 

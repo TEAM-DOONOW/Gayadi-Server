@@ -1,6 +1,5 @@
 package com.gayadi.server.auth;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.config.ApiSuccessSchemas;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

@@ -1,6 +1,6 @@
 package com.gayadi.server.tourapi;
 
-import com.gayadi.server.common.ApiErrorResponse;
+import com.gayadi.server.common.response.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

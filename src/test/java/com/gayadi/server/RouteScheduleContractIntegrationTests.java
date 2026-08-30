@@ -1,7 +1,7 @@
 package com.gayadi.server;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.route.RouteController;
 import com.gayadi.server.route.RoutePhase;
@@ -16,7 +16,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.LocalDate;
@@ -95,9 +94,9 @@ class RouteScheduleContractIntegrationTests {
         long otherUserId = id(users.create("다른사용자" + System.nanoTime() % 1_000_000));
         Assertions.assertThatThrownBy(() -> routes.recommendForUser(
                         fixture.tripId(), fixture.ownerId(), RoutePhase.RETURN, otherUserId))
-                .isInstanceOfSatisfying(ApiException.class,
-                        exception -> Assertions.assertThat(exception.getStatus())
-                                .isEqualTo(HttpStatus.FORBIDDEN));
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode().status().value())
+                                .isEqualTo(403));
     }
 
     @Test

@@ -1,9 +1,8 @@
 package com.gayadi.server.auth;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.core.env.Environment;
 
@@ -125,10 +124,9 @@ public class JwtService {
         try {
             long now = Instant.now().getEpochSecond();
             if (claims.get("exp") == null || toLong(claims.get("exp")) <= now) {
-                throw new ApiException(HttpStatus.UNAUTHORIZED,
-                        "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+                throw new BusinessException(AuthErrorCode.AUTH_TOKEN_EXPIRED);
             }
-        } catch (ApiException exception) {
+        } catch (BusinessException exception) {
             throw exception;
         } catch (RuntimeException exception) {
             throw unauthorized();
@@ -167,7 +165,7 @@ public class JwtService {
         return value;
     }
 
-    private ApiException unauthorized() {
-        return new ApiException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+    private BusinessException unauthorized() {
+        return new BusinessException(AuthErrorCode.AUTH_TOKEN_INVALID);
     }
 }

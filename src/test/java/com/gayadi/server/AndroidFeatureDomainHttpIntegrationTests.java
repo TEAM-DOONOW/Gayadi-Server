@@ -49,6 +49,13 @@ class AndroidFeatureDomainHttpIntegrationTests {
                 owner.token(), availability), 200);
         Assertions.assertThat(ownerDates.path("canFinalize").asBoolean()).isFalse();
 
+        JsonNode incompleteSubmissions = body(request("PUT",
+                "/api/v1/trips/" + tripId + "/date-coordination/finalized-dates",
+                owner.token(), """
+                        {"startDate":"%s","endDate":"%s"}
+                        """.formatted(commonStart, commonEnd)), 409);
+        assertError(incompleteSubmissions, 409, "COORDINATION_SUBMISSIONS_INCOMPLETE");
+
         JsonNode allDates = body(request("PUT",
                 "/api/v1/trips/" + tripId + "/date-coordination/availability/current",
                 member.token(), """
@@ -56,12 +63,12 @@ class AndroidFeatureDomainHttpIntegrationTests {
                         """.formatted(commonStart, commonEnd, commonEnd.plusDays(1))), 200);
         Assertions.assertThat(allDates.path("commonDates").size()).isEqualTo(2);
 
-        HttpResponse<String> memberFinalize = request("PUT",
+        JsonNode memberFinalize = body(request("PUT",
                 "/api/v1/trips/" + tripId + "/date-coordination/finalized-dates",
                 member.token(), """
                         {"startDate":"%s","endDate":"%s"}
-                        """.formatted(commonStart, commonEnd));
-        Assertions.assertThat(memberFinalize.statusCode()).isEqualTo(403);
+                        """.formatted(commonStart, commonEnd)), 403);
+        assertError(memberFinalize, 403, "TRIP_OWNER_REQUIRED");
 
         JsonNode finalized = body(request("PUT",
                 "/api/v1/trips/" + tripId + "/date-coordination/finalized-dates",
@@ -82,6 +89,15 @@ class AndroidFeatureDomainHttpIntegrationTests {
         long scheduleId = schedule.path("id").asLong();
         Assertions.assertThat(schedule.path("endTime").asText()).isEqualTo("11:30");
         Assertions.assertThat(schedule.path("memo").asText()).isEqualTo("정문에서 만나기");
+
+        JsonNode outsideTripSchedule = body(request("POST",
+                "/api/v1/trips/" + tripId + "/schedules", owner.token(), """
+                        {
+                          "title":"여행 밖 일정","date":"%s","time":"10:00",
+                          "type":"MAIN"
+                        }
+                        """.formatted(commonEnd.plusDays(1))), 400);
+        assertError(outsideTripSchedule, 400, "SCHEDULE_DATE_OUTSIDE_TRIP");
 
         JsonNode updatedSchedule = body(request("PATCH",
                 "/api/v1/trips/" + tripId + "/schedules/" + scheduleId, member.token(), """
@@ -161,6 +177,42 @@ class AndroidFeatureDomainHttpIntegrationTests {
         Assertions.assertThat(scheduleProperties.has("memo")).isTrue();
     }
 
+    @Test
+    void expenseBusinessFailuresUseStableErrorCodes() throws Exception {
+        Account owner = register("expense-errors-" + System.nanoTime() + "@example.com", "경비검증");
+        LocalDate start = LocalDate.now().plusDays(10);
+        LocalDate end = start.plusDays(2);
+        JsonNode trip = body(request("POST", "/api/v1/trips", owner.token(), """
+                {"name":"경비 오류 검증","startDate":"%s","endDate":"%s","cities":["서울"]}
+                """.formatted(start, end)), 201);
+        long tripId = trip.path("id").asLong();
+
+        JsonNode duplicateParticipant = body(request("POST",
+                "/api/v1/trips/" + tripId + "/expenses", owner.token(), """
+                        {
+                          "title":"중복 분담","amount":1000,"payerId":%d,
+                          "participantIds":[%d,%d],"date":"%s","time":"12:00",
+                          "category":"OTHER","paymentSource":"PERSONAL"
+                        }
+                        """.formatted(owner.id(), owner.id(), owner.id(), start)), 400);
+        assertError(duplicateParticipant, 400, "EXPENSE_PARTICIPANT_DUPLICATED");
+
+        JsonNode insufficientFund = body(request("POST",
+                "/api/v1/trips/" + tripId + "/expenses", owner.token(), """
+                        {
+                          "title":"공동 경비 초과","amount":1000,
+                          "participantIds":[%d],"date":"%s","time":"12:00",
+                          "category":"OTHER","paymentSource":"SHARED_FUND"
+                        }
+                        """.formatted(owner.id(), start)), 409);
+        assertError(insufficientFund, 409, "SHARED_FUND_BALANCE_INSUFFICIENT");
+
+        JsonNode missingExpense = body(request("DELETE",
+                "/api/v1/trips/" + tripId + "/expenses/999999999",
+                owner.token(), null), 404);
+        assertError(missingExpense, 404, "EXPENSE_NOT_FOUND");
+    }
+
     private Account register(String email, String nickname) throws Exception {
         JsonNode response = body(request("POST", "/api/v1/auth/registrations", null,
                 "{\"email\":\"" + email
@@ -187,6 +239,13 @@ class AndroidFeatureDomainHttpIntegrationTests {
                 .withFailMessage("HTTP %s: %s", response.statusCode(), response.body())
                 .isEqualTo(expectedStatus);
         return response.body().isBlank() ? json.createObjectNode() : json.readTree(response.body());
+    }
+
+    private void assertError(JsonNode response, int status, String code) {
+        Assertions.assertThat(response.path("status").asInt()).isEqualTo(status);
+        Assertions.assertThat(response.path("code").asText()).isEqualTo(code);
+        Assertions.assertThat(response.path("traceId").asText()).isNotBlank();
+        Assertions.assertThat(response.path("details").isNull()).isTrue();
     }
 
     private record Account(long id, String token) {

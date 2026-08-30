@@ -1,9 +1,9 @@
 package com.gayadi.server.recommendation;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.weather.WeatherErrorCode;
 import com.gayadi.server.weather.WeatherApiService;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,7 +55,7 @@ class WeatherSituationEnricherTest {
         @Override
         public UltraSrtNcstResponse ultraSrtNcst(WeatherRequest request) {
             calls.incrementAndGet();
-            if (fail) throw new ApiException(HttpStatus.BAD_GATEWAY, "provider unavailable");
+            if (fail) throw new BusinessException(WeatherErrorCode.WEATHER_API_FAILED);
             return new UltraSrtNcstResponse(
                     "20260825", "1400", 60, 127,
                     "23.5", "0.5", "1mm 미만", "1.0", "0.5", "85",

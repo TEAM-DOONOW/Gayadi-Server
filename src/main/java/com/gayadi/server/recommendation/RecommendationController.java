@@ -1,7 +1,7 @@
 package com.gayadi.server.recommendation;
 
-import com.gayadi.server.common.ApiException;
-import com.gayadi.server.common.ApiErrorResponse;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.common.response.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -53,8 +52,7 @@ public class RecommendationController {
         }
         RecommendationService service = serviceProvider.getIfAvailable();
         if (service == null) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "맞춤 장소 추천 기능이 설정되지 않았습니다.");
+            throw new BusinessException(RecommendationErrorCode.RECOMMENDATION_UNAVAILABLE);
         }
         return service.recommendPlaces(request);
     }
@@ -76,8 +74,7 @@ public class RecommendationController {
     public SituationResponse respondToSituation(@Valid @RequestBody PlaceRecommendationRequest request) {
         SituationResponseAgent agent = situationAgentProvider.getIfAvailable();
         if (agent == null) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "상황 대처 Agent가 설정되지 않았습니다.");
+            throw new BusinessException(RecommendationErrorCode.SITUATION_AGENT_UNAVAILABLE);
         }
         return agent.respond(request);
     }

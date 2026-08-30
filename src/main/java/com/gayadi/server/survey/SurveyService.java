@@ -1,11 +1,11 @@
 package com.gayadi.server.survey;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.KeyHelper;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.common.exception.CommonErrorCode;
 import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +43,7 @@ public class SurveyService {
                 .param(PERSONALITY_SURVEY_ID)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "진행 중인 성향 설문이 없습니다."));
+                .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_ACTIVE_NOT_FOUND));
 
         List<Map<String, Object>> rows = jdbc.sql("""
                 SELECT q.id AS question_id, q.question_text, q.axis_type, q.sequence_no AS question_sequence,
@@ -125,7 +125,7 @@ public class SurveyService {
                 case "TRAVEL_PREPARATION" -> prepScore += option.scoreValue();
                 case "PLACE_PREFERENCE" -> placeScore += option.scoreValue();
                 case "TRAVEL_STYLE" -> styleScore += option.scoreValue();
-                default -> throw new ApiException(HttpStatus.CONFLICT, "설문 문항의 분류가 올바르지 않습니다.");
+                default -> throw new BusinessException(SurveyErrorCode.SURVEY_QUESTION_CATEGORY_INVALID);
             }
         }
 
@@ -170,7 +170,7 @@ public class SurveyService {
 
     public Map<String, Object> result(String code) {
         if (code == null || code.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "성향 결과 코드가 필요합니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_RESULT_CODE_REQUIRED);
         }
         String normalizedCode = code.trim().toUpperCase(Locale.ROOT);
         Map<String, Object> row = jdbc.sql("""
@@ -182,7 +182,7 @@ public class SurveyService {
                 .param(normalizedCode)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "성향 검사 결과를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_RESULT_NOT_FOUND));
         return resultDetails(row);
     }
 
@@ -198,8 +198,7 @@ public class SurveyService {
                 .params(tripId, PERSONALITY_SURVEY_ID)
                 .query().listOfRows();
         if (profileRows.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "일정 생성 전에 한 명 이상 성향 설문을 제출해야 합니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_PROFILE_REQUIRED);
         }
 
         Map<String, Long> distribution = new LinkedHashMap<>();
@@ -222,7 +221,7 @@ public class SurveyService {
                 .params(tripId, PERSONALITY_SURVEY_ID)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "성향 설문 응답이 필요합니다."));
+                .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_RESPONSE_REQUIRED));
     }
 
     private Map<String, Object> response(long attemptId) {
@@ -230,7 +229,7 @@ public class SurveyService {
                 .param(attemptId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "설문 응답을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_RESPONSE_NOT_FOUND));
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("attemptId", RowSupport.longValue(attempt, "id"));
         value.put("tripId", valueOrNull(attempt, "trip_id"));
@@ -251,17 +250,17 @@ public class SurveyService {
                 .param(userId)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "사용할 수 없는 계정입니다."));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
     }
 
     private Map<String, SelectedOption> validateAndLoadResponses(List<SurveyController.ResponseItem> responses) {
         if (responses == null || responses.isEmpty()) {
             int count = activeQuestionCount();
-            throw new ApiException(HttpStatus.BAD_REQUEST, "활성 문항 " + count + "개에 모두 답변해야 합니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_ALL_ANSWERS_REQUIRED, count);
         }
         if (responses.stream().anyMatch(response -> response == null
                 || response.getQuestionId() == null || response.getOptionId() == null)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "문항과 선택지 식별자가 모두 필요합니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_ANSWER_IDS_REQUIRED);
         }
 
         List<Map<String, Object>> activeQuestions = jdbc.sql("""
@@ -275,7 +274,7 @@ public class SurveyService {
                 .query().listOfRows();
 
         if (activeQuestions.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT, "진행할 수 있는 성향 설문이 없습니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_UNAVAILABLE);
         }
         int requiredCount = activeQuestions.size();
         long distinctQuestions = responses.stream()
@@ -283,8 +282,7 @@ public class SurveyService {
                 .distinct()
                 .count();
         if (responses.size() != requiredCount || distinctQuestions != requiredCount) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "활성 문항 " + requiredCount + "개에 모두 한 번씩 답변해야 합니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_ANSWER_COUNT_INVALID, requiredCount);
         }
 
         Map<String, ActiveQuestion> activeQuestionById = new LinkedHashMap<>();
@@ -321,11 +319,11 @@ public class SurveyService {
         for (SurveyController.ResponseItem response : responses) {
             ActiveQuestion activeQuestion = activeQuestionById.get(response.getQuestionId());
             if (activeQuestion == null) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "활성 설문의 문항만 제출할 수 있습니다.");
+                throw new BusinessException(SurveyErrorCode.SURVEY_QUESTION_INACTIVE);
             }
             LoadedOption option = optionById.get(response.getQuestionId() + ":" + response.getOptionId());
             if (option == null || option.questionId() != activeQuestion.questionId()) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "선택지가 해당 문항에 속하지 않습니다.");
+                throw new BusinessException(SurveyErrorCode.SURVEY_OPTION_MISMATCH);
             }
             selected.put(response.getQuestionId(), new SelectedOption(
                     activeQuestion.questionId(),
@@ -371,7 +369,7 @@ public class SurveyService {
             case "TRAVEL_PREPARATION" -> "preparation";
             case "PLACE_PREFERENCE" -> "place";
             case "TRAVEL_STYLE" -> "energy";
-            default -> throw new ApiException(HttpStatus.CONFLICT, "설문 문항의 분류가 올바르지 않습니다.");
+            default -> throw new BusinessException(SurveyErrorCode.SURVEY_QUESTION_CATEGORY_INVALID);
         };
     }
 
@@ -381,7 +379,7 @@ public class SurveyService {
 
     private String apiOptionId(int sequence) {
         if (sequence < 1 || sequence > 26) {
-            throw new ApiException(HttpStatus.CONFLICT, "설문 선택지 순서가 올바르지 않습니다.");
+            throw new BusinessException(SurveyErrorCode.SURVEY_OPTION_SEQUENCE_INVALID);
         }
         return String.valueOf((char) ('a' + sequence - 1));
     }
