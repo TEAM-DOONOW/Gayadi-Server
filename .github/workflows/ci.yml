@@ -1,9 +1,9 @@
 name: server-ci
 
-on:
-  push:
-    branches: [main, develop, "agent/**"]
-  pull_request:
+#on:
+#  push:
+#    branches: [main, develop, "agent/**"]
+# pull_request:
 
 permissions:
   contents: read

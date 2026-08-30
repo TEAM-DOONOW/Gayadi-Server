@@ -1,4 +1,4 @@
-name: ncp-ci
+name: ncp-ci-prod
 
 on:
   push:

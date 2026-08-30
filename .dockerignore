@@ -7,3 +7,6 @@ logs
 .env*
 *.iml
 *.log
+
+docker-compose*.yaml
+Dockerfile
