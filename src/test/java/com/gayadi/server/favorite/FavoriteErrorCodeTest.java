@@ -18,7 +18,5 @@ class FavoriteErrorCodeTest {
         assertThat(Arrays.stream(values).map(FavoriteErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(FavoriteErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.favorite."));
-        assertThat(Arrays.stream(values).map(FavoriteErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

@@ -18,7 +18,5 @@ class ScheduleErrorCodeTest {
         assertThat(Arrays.stream(values).map(ScheduleErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(ScheduleErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.schedule."));
-        assertThat(Arrays.stream(values).map(ScheduleErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

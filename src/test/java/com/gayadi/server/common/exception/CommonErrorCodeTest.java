@@ -18,7 +18,5 @@ class CommonErrorCodeTest {
         assertThat(Arrays.stream(values).map(CommonErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(CommonErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.common."));
-        assertThat(Arrays.stream(values).map(CommonErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

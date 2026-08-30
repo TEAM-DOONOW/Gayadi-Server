@@ -36,6 +36,17 @@ class ApiErrorResponseIntegrationTests {
     }
 
     @Test
+    void translatesErrorMessageFromAcceptLanguageWithoutChangingTheCode() throws Exception {
+        HttpResponse<String> response = get("/api/openapi/not-found", "en");
+
+        Assertions.assertThat(response.statusCode()).isEqualTo(404);
+        JsonNode body = objectMapper.readTree(response.body());
+        assertCommonFields(body, 404, "RESOURCE_NOT_FOUND", "/api/openapi/not-found");
+        Assertions.assertThat(body.path("message").asString())
+                .isEqualTo("The requested API endpoint was not found.");
+    }
+
+    @Test
     void returnsMethodNotAllowedWithAllowHeader() throws Exception {
         HttpResponse<String> response = get("/api/v1/auth/tokens");
 
@@ -103,9 +114,15 @@ class ApiErrorResponseIntegrationTests {
     }
 
     private HttpResponse<String> get(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-                .GET()
-                .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
+        return get(path, null);
+    }
+
+    private HttpResponse<String> get(String path, String language) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder(
+                URI.create("http://127.0.0.1:" + port + path));
+        if (language != null) {
+            request.header("Accept-Language", language);
+        }
+        return client.send(request.GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 }

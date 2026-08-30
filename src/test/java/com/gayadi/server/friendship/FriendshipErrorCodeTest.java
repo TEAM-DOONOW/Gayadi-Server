@@ -18,7 +18,5 @@ class FriendshipErrorCodeTest {
         assertThat(Arrays.stream(values).map(FriendshipErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(FriendshipErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.friendship."));
-        assertThat(Arrays.stream(values).map(FriendshipErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

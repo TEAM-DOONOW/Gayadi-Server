@@ -2,10 +2,12 @@ package com.gayadi.server.common.security;
 
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.response.ApiErrorResponseFactory;
+import com.gayadi.server.common.response.ApiMessageResolver;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import tools.jackson.databind.ObjectMapper;
@@ -14,7 +16,15 @@ class ApiSecurityHandlersTest {
 
     private final ApiSecurityErrorWriter writer = new ApiSecurityErrorWriter(
             new ApiErrorResponseFactory(),
-            new JsonSupport(new ObjectMapper()));
+            new JsonSupport(new ObjectMapper()),
+            new ApiMessageResolver(messageSource()));
+
+    private static ResourceBundleMessageSource messageSource() {
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("i18n/common/messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        return messageSource;
+    }
 
     @Test
     void authenticationFailureUsesCommon401Contract() throws Exception {

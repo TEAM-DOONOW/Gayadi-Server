@@ -40,19 +40,23 @@ class KmaBaseTimeCalculatorTest {
     void validatesExplicitDateTimeAsAPairAndByForecastType() {
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.VILAGE_FCST, "20260825", null))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("함께 입력");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_BASE_PAIR_REQUIRED));
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.VILAGE_FCST, "20260230", "0200"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("YYYYMMDD");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_BASE_DATETIME_INVALID));
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.ULTRA_FCST, "20260825", "1400"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("사용할 수 없는 발표시각");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_BASE_TIME_UNAVAILABLE));
         assertThatThrownBy(() -> KmaBaseTimeCalculator.resolve(
                 KmaBaseTimeCalculator.ForecastType.ULTRA_NCST, "20260825", "2400"))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("HHMM");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_BASE_DATETIME_INVALID));
     }
 }

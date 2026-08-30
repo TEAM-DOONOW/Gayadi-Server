@@ -18,7 +18,5 @@ class ExpenseErrorCodeTest {
         assertThat(Arrays.stream(values).map(ExpenseErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(ExpenseErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.expense."));
-        assertThat(Arrays.stream(values).map(ExpenseErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }

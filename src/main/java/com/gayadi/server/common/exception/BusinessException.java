@@ -13,7 +13,7 @@ public class BusinessException extends RuntimeException {
     private final Object[] messageArguments;
 
     public BusinessException(ErrorCode errorCode, Object... messageArguments) {
-        super(Objects.requireNonNull(errorCode, "errorCode는 필수입니다.").defaultMessage());
+        super(Objects.requireNonNull(errorCode, "errorCode는 필수입니다.").code());
         this.errorCode = errorCode;
         this.messageArguments = messageArguments == null
                 ? new Object[0]

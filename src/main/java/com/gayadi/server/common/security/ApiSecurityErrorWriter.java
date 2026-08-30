@@ -4,6 +4,7 @@ import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.exception.ErrorCode;
 import com.gayadi.server.common.response.ApiErrorResponse;
 import com.gayadi.server.common.response.ApiErrorResponseFactory;
+import com.gayadi.server.common.response.ApiMessageResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
@@ -16,10 +17,15 @@ public class ApiSecurityErrorWriter {
 
     private final ApiErrorResponseFactory responseFactory;
     private final JsonSupport json;
+    private final ApiMessageResolver messageResolver;
 
-    public ApiSecurityErrorWriter(ApiErrorResponseFactory responseFactory, JsonSupport json) {
+    public ApiSecurityErrorWriter(
+            ApiErrorResponseFactory responseFactory,
+            JsonSupport json,
+            ApiMessageResolver messageResolver) {
         this.responseFactory = responseFactory;
         this.json = json;
+        this.messageResolver = messageResolver;
     }
 
     public void write(
@@ -28,7 +34,7 @@ public class ApiSecurityErrorWriter {
             ErrorCode errorCode) throws IOException {
         ApiErrorResponse body = responseFactory.create(
                 errorCode,
-                errorCode.defaultMessage(),
+                messageResolver.resolve(errorCode, request.getLocale()),
                 request.getRequestURI(),
                 responseFactory.newTraceId(),
                 null);

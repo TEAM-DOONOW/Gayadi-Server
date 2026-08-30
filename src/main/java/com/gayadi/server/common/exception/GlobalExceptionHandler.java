@@ -3,6 +3,7 @@ package com.gayadi.server.common.exception;
 import com.gayadi.server.common.response.ApiErrorDetail;
 import com.gayadi.server.common.response.ApiErrorResponse;
 import com.gayadi.server.common.response.ApiErrorResponseFactory;
+import com.gayadi.server.common.response.ApiMessageResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -31,7 +32,6 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,16 +40,21 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private final ApiErrorResponseFactory responseFactory;
+    private final ApiMessageResolver messageResolver;
 
-    public GlobalExceptionHandler(ApiErrorResponseFactory responseFactory) {
+    public GlobalExceptionHandler(
+            ApiErrorResponseFactory responseFactory,
+            ApiMessageResolver messageResolver) {
         this.responseFactory = responseFactory;
+        this.messageResolver = messageResolver;
     }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiErrorResponse> handleBusiness(
             BusinessException ex, HttpServletRequest request) {
         ErrorCode errorCode = ex.getErrorCode();
-        String message = formatDefaultMessage(errorCode.defaultMessage(), ex.getMessageArguments());
+        String message = messageResolver.resolve(
+                errorCode, request.getLocale(), ex.getMessageArguments());
         if (errorCode.status().is5xxServerError()) {
             String traceId = responseFactory.newTraceId();
             log.error("외부 연동 또는 서비스 처리 오류: {} {} code={} traceId={}",
@@ -242,18 +247,11 @@ public class GlobalExceptionHandler {
         };
     }
 
-    private String formatDefaultMessage(String message, Object[] arguments) {
-        if (arguments == null || arguments.length == 0) {
-            return message;
-        }
-        return MessageFormat.format(message, arguments);
-    }
-
     private ResponseEntity<ApiErrorResponse> error(
             ErrorCode errorCode,
             String path,
             List<ApiErrorDetail> details) {
-        return error(errorCode, errorCode.defaultMessage(), path, details);
+        return error(errorCode, messageResolver.resolve(errorCode, null), path, details);
     }
 
     private ResponseEntity<ApiErrorResponse> error(
@@ -269,7 +267,7 @@ public class GlobalExceptionHandler {
             String path,
             List<ApiErrorDetail> details,
             String traceId) {
-        return error(errorCode, errorCode.defaultMessage(), path, details, traceId);
+        return error(errorCode, messageResolver.resolve(errorCode, null), path, details, traceId);
     }
 
     private ResponseEntity<ApiErrorResponse> error(

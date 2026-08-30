@@ -18,7 +18,5 @@ class TripErrorCodeTest {
         assertThat(Arrays.stream(values).map(TripErrorCode::status)).doesNotContainNull();
         assertThat(Arrays.stream(values).map(TripErrorCode::messageKey))
                 .allMatch(key -> key.startsWith("error.trip."));
-        assertThat(Arrays.stream(values).map(TripErrorCode::defaultMessage))
-                .allMatch(message -> !message.isBlank());
     }
 }
