@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: gayadi-server
   autoconfigure:
@@ -43,6 +45,12 @@ tour:
     key: ${TOUR_API_KEY:}
     base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
     mobile-app: ${TOUR_API_MOBILE_APP:Gayadi}
+
+congestion:
+  api:
+    key: ${CONGESTION_API_KEY:${TOUR_API_KEY:}}
+    base-url: ${CONGESTION_API_BASE_URL:https://apis.data.go.kr/B551011/TatsCnctrRateService}
+    mobile-app: ${CONGESTION_API_MOBILE_APP:${TOUR_API_MOBILE_APP:Gayadi}}
 
 weather:
   api:

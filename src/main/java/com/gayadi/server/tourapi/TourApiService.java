@@ -32,6 +32,7 @@ public class TourApiService {
     private static final String OP_SEARCH_KEYWORD = "searchKeyword2";
     private static final String OP_SEARCH_FESTIVAL = "searchFestival2";
     private static final String OP_SEARCH_STAY = "searchStay2";
+    private static final String OP_LEGAL_CODE = "ldongCode2";
     private static final String RESULT_CODE_OK = "0000";
 
     private final HttpClient client = HttpClient.newBuilder()
@@ -65,6 +66,21 @@ public class TourApiService {
         putIfPresent(params, "lclsSystm2", req.lclsSystm2());
         putIfPresent(params, "lclsSystm3", req.lclsSystm3());
         return listResponse(OP_AREA_BASED_LIST, params, req.pageSize(), pageNo);
+    }
+
+    /** 법정동 시도 코드에 속한 시군구 코드를 조회한다. */
+    public List<LegalDistrict> legalDistricts(String regionCode) {
+        requireParam("lDongRegnCd", regionCode);
+        Map<String, String> params = baseParams(100, 1, null);
+        params.put("lDongRegnCd", regionCode);
+        JsonNode itemNode = call(OP_LEGAL_CODE, params).path("body").path("items").path("item");
+        List<LegalDistrict> result = new ArrayList<>();
+        if (itemNode.isArray()) {
+            for (JsonNode node : itemNode) result.add(toLegalDistrict(node));
+        } else if (itemNode.isObject()) {
+            result.add(toLegalDistrict(itemNode));
+        }
+        return List.copyOf(result);
     }
 
     /** 좌표(mapX/mapY)와 반경(radius) 기반으로 주변 관광정보 목록을 조회한다. */
@@ -313,6 +329,10 @@ public class TourApiService {
         );
     }
 
+    private LegalDistrict toLegalDistrict(JsonNode node) {
+        return new LegalDistrict(text(node, "code"), text(node, "name"));
+    }
+
     private String text(JsonNode node, String field) {
         JsonNode value = node.path(field);
         return value.isMissingNode() || value.isNull() ? "" : value.asText("");
@@ -395,5 +415,8 @@ public class TourApiService {
             String lclsSystm1, String lclsSystm2, String lclsSystm3,
             String dist, String eventStartDate, String eventEndDate,
             String progressType, String festivalType) {
+    }
+
+    public record LegalDistrict(String code, String name) {
     }
 }

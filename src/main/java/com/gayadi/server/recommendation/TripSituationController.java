@@ -1,12 +1,17 @@
 package com.gayadi.server.recommendation;
 
 import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.ApiErrorResponse;
 import com.gayadi.server.event.ChangeProposalType;
 import com.gayadi.server.event.EventService;
 import com.gayadi.server.route.RouteService;
 import com.gayadi.server.survey.SurveyService;
 import com.gayadi.server.travel.TripService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,25 +41,43 @@ public class TripSituationController {
     private final RouteService routes;
     private final EventService events;
     private final WeatherSituationEnricher weather;
+    private final CongestionSituationEnricher congestion;
 
     public TripSituationController(ObjectProvider<SituationResponseAgent> agentProvider,
                                    TripService trips,
                                    SurveyService surveys,
                                    RouteService routes,
                                    EventService events,
-                                   WeatherSituationEnricher weather) {
+                                   WeatherSituationEnricher weather,
+                                   CongestionSituationEnricher congestion) {
         this.agentProvider = agentProvider;
         this.trips = trips;
         this.surveys = surveys;
         this.routes = routes;
         this.events = events;
         this.weather = weather;
+        this.congestion = congestion;
     }
 
     @PostMapping("/situation-responses")
     @Operation(summary = "여행 상황 대처",
             description = "여행의 참여자·성향과 날씨·혼잡·교통 상황을 반영해 대체 장소와 다음 조치를 제안합니다. "
-                    + "날씨를 생략하면 현재 위치의 기상청 초단기실황을 자동 적용하고, 여행 중에는 승인 가능한 변경안을 생성합니다.")
+                    + "날씨를 생략하면 현재 위치의 기상청 초단기실황을 적용하고, 혼잡을 생략하면 관광지 집중률 공공데이터 또는 예상값으로 자동 보강하며, "
+                    + "여행 중에는 승인 가능한 변경안을 생성합니다. APP_AI_ENABLED=true가 필요합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "여행 상황 대처 및 변경안 생성 성공",
+                    content = @Content(schema = @Schema(implementation = SituationResponse.class))),
+            @ApiResponse(responseCode = "400", description = "상황 값 검증 실패 또는 외부 처리 미동의",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "로그인 토큰 누락 또는 만료",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "여행 참여자가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "여행을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "상황 대처 Agent 또는 외부 데이터 연동 불가",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public SituationResponse respond(
             @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
@@ -82,6 +105,8 @@ public class TripSituationController {
         recommendation.setTargetAt(request.getTargetAt());
         TravelSituation effectiveSituation = weather.enrich(
                 request.getSituation(), request.getLatitude(), request.getLongitude());
+        effectiveSituation = congestion.enrich(effectiveSituation,
+                request.getRegionCode(), request.getSigunguCode(), request.getTargetAt());
         request.setSituation(effectiveSituation);
         recommendation.setSituation(effectiveSituation);
         recommendation.setExternalProcessingConsent(request.isExternalProcessingConsent());

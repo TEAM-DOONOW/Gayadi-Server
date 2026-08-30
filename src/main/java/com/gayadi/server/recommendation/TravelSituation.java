@@ -126,6 +126,10 @@ public record TravelSituation(
             return new Congestion("", null, "");
         }
 
+        public boolean isEmpty() {
+            return level.isBlank() && occupancyPercent == null && area.isBlank();
+        }
+
         private boolean high() {
             return containsAny(level, "HIGH", "CRITICAL", "심각", "높음", "매우혼잡", "혼잡");
         }
