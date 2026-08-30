@@ -41,8 +41,9 @@ Spring Boot 4.1 기반의 단일 서버입니다.
 - 일정 변경: 일정 버전과 변경 제안 기록으로 동시 수정 충돌 방지
 - Android 연계: 프로필, 9문항 성향검사, 여행, 날짜 조율, 참여자, 공유·개별 초대, 일정, 경로, 경비·공금·정산, 찜, 공지, 문의, 약관 제공
 - API 문서: `/api/docs`, OpenAPI JSON `/api/openapi`
+- Android 연동 명세: [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md)
 
-외부 관광·날씨·혼잡·대중교통 API가 없어도 로컬에서 전체 핵심 흐름을 실행할 수 있습니다.
+외부 관광·날씨·혼잡·대중교통 API가 없어도 로컬에서 전체 핵심 흐름을 실행할 수 있습니다. `.env`는 실행 디렉터리에서 자동으로 읽습니다.
 
 ## 실행 방법
 
@@ -120,6 +121,8 @@ APP_AI_EMBEDDING_ENABLED=false
 | 날씨 | `GET /api/v1/weather/ultra-forecast` | 인증 사용자의 6시간 이내 초단기예보 조회 |
 | 날씨 | `GET /api/v1/weather/forecast` | 인증 사용자의 전체 단기예보 조회 |
 | 날씨 | `GET /api/v1/weather/version` | 인증 사용자의 예보 파일 버전 조회 |
+| 혼잡 | `GET /api/v1/congestion/forecast` | 한국관광공사 30일 관광지 집중률 예측. 자료가 없으면 낮은 신뢰도의 달력 추정값 반환 |
+| 앱 장소 탐색 | `GET /api/v1/tour/discover` | GAYADI 지역명·여행일·카테고리로 관광지와 예상 혼잡도를 통합 조회 |
 | 장소 | `GET /api/v1/places` | 검색·지역·분류·커서 기반 공개 장소 조회 |
 | 찜 | `GET/PUT/DELETE /api/v1/users/current/favorite-places` | 내 장소 찜 관리 |
 | 공지 | `GET /api/v1/notices`, `GET /api/v1/notices/{noticeId}` | 공개 공지 목록·상세 조회 |
@@ -140,6 +143,7 @@ APP_AI_EMBEDDING_ENABLED=false
 - 일정 재생성과 변경 승인은 일정 버전을 비교합니다.
 - 여행 중 AI 상황 추천은 내부 장소로 저장된 후보만 변경안에 포함하며, 같은 일정 버전의 이전 AI 변경안은 만료시킵니다.
 - 여행 상황 요청에서 날씨를 생략하면 현재 위치의 기상청 초단기실황을 자동으로 추천 정책에 반영합니다.
+- 여행 상황 요청에서 혼잡을 생략하면 한국관광공사 관광지 집중률 예측을 반영하며, 키 권한이나 자료가 없으면 `CALENDAR_HEURISTIC`으로 명시한 낮은 신뢰도의 추정값을 사용합니다.
 - 날씨 대안은 승인 시점에도 실내 장소인지 다시 확인하고, 혼잡·교통 대안은 여행 지역의 활성 장소인지 확인합니다.
 - 변경 제안의 `baseRevisionNo`가 현재 일정과 다르면 HTTP 409로 거절합니다.
 - `RETURN` 경로는 항상 멤버별 경로입니다.
@@ -160,7 +164,7 @@ APP_AI_EMBEDDING_ENABLED=false
 ## 아직 운영 연동이 필요한 범위
 
 - OAuth/OIDC 토큰 검증으로 전환 (현재는 로컬 JWT 기반 인증)
-- 혼잡 공급자 연동과 TMAP 운영 키 검증
+- 서울 주요 121장소 실시간 혼잡 공급자 추가와 TMAP 운영 키 검증
 - 공공 API 수집 → 정제 → 검색 자료 저장 작업
 - Redis 기반 경로 후보 TTL 캐시
 - FCM/SSE 알림

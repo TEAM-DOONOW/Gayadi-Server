@@ -78,7 +78,7 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
                       SearchContext context, Map<String, TourPlaceCandidate> byId) {
         paginate(query.maxPages(), cursor -> tourApi.areaBasedList(
                 new TourApiService.AreaBasedListRequest(
-                        PAGE_SIZE, cursor, "E", type,
+                        PAGE_SIZE, cursor, "C", type,
                         query.regionCode(), query.sigunguCode(), null, null, null)),
                 context, byId);
     }

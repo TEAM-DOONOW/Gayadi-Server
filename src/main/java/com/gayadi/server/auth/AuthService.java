@@ -75,18 +75,27 @@ public class AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "사용할 수 없는 계정입니다.");
         }
 
+        String hash = user.get("password_hash") == null ? null : user.get("password_hash").toString();
         LocalDateTime lockedUntil = localDateTime(user.get("login_locked_until"));
         if (lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now())) {
+            if (hash != null && passwordEncoder.matches(password, hash)) {
+                clearFailedLogins(userId);
+                return loginResult(userId);
+            }
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
                     "로그인 시도가 많아 잠시 잠겼습니다. 15분 뒤 다시 시도해 주세요.");
         }
 
-        String hash = user.get("password_hash") == null ? null : user.get("password_hash").toString();
         if (hash == null || !passwordEncoder.matches(password, hash)) {
             recordFailedLogin(userId);
             throw unauthorized();
         }
 
+        clearFailedLogins(userId);
+        return loginResult(userId);
+    }
+
+    private void clearFailedLogins(long userId) {
         jdbc.sql("""
                 UPDATE users
                 SET last_login_at = CURRENT_TIMESTAMP, failed_login_attempts = 0,
@@ -95,7 +104,6 @@ public class AuthService {
                 """)
                 .param(userId)
                 .update();
-        return loginResult(userId);
     }
 
     private void recordFailedLogin(long userId) {

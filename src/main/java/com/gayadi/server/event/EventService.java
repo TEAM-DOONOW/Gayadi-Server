@@ -47,8 +47,9 @@ public class EventService {
 
     @Transactional
     public Map<String, Object> observe(long tripId, Observation command) {
-        Map<String, Object> trip = lockInProgressTrip(tripId);
         validateObservation(command);
+        String normalizedData = ObservationPayloadValidator.validateAndSerialize(command.values(), json);
+        Map<String, Object> trip = lockInProgressTrip(tripId);
         long regionId = RowSupport.longValue(trip, "region_id");
         requirePlaceInRegion(command.placeId(), regionId);
         Map<String, Object> planSnapshot = plans.get(tripId);
@@ -63,7 +64,7 @@ public class EventService {
                 """,
                 command.placeId(), regionId, command.eventType(), command.source(),
                 LocalDateTime.now().plusHours(SITUATION_VALID_HOURS), command.severity().name(),
-                json.write(command.values()));
+                normalizedData);
 
         if (command.severity() == Severity.LOW) {
             return Map.of("eventId", eventId, "impact", false, "message", "일정 변경이 필요하지 않습니다.");

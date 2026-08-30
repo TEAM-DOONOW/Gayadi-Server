@@ -75,7 +75,7 @@ class AuthFlowIntegrationTests {
     }
 
     @Test
-    void temporarilyLocksAccountAfterRepeatedFailures() throws Exception {
+    void correctPasswordClearsAnAttackerTriggeredTemporaryLock() throws Exception {
         post("/api/v1/auth/registrations",
                 "{\"email\":\"locked@example.com\",\"password\":\"password1\",\"nickname\":\"잠금확인\"}");
         for (int attempt = 0; attempt < 5; attempt++) {
@@ -83,11 +83,14 @@ class AuthFlowIntegrationTests {
                     "{\"email\":\"locked@example.com\",\"password\":\"wrong-password\"}");
             Assertions.assertThat(failed.statusCode()).isEqualTo(401);
         }
+        HttpResponse<String> lockedFailure = post("/api/v1/auth/tokens",
+                "{\"email\":\"locked@example.com\",\"password\":\"wrong-password\"}");
+        Assertions.assertThat(lockedFailure.statusCode()).isEqualTo(429);
 
-        HttpResponse<String> locked = post("/api/v1/auth/tokens",
+        HttpResponse<String> recovered = post("/api/v1/auth/tokens",
                 "{\"email\":\"locked@example.com\",\"password\":\"password1\"}");
-        Assertions.assertThat(locked.statusCode()).isEqualTo(429);
-        Assertions.assertThat(locked.body()).contains("잠시 잠겼습니다");
+        Assertions.assertThat(recovered.statusCode()).isEqualTo(200);
+        Assertions.assertThat(recovered.body()).contains("accessToken");
     }
 
     private String extractToken(String body) {

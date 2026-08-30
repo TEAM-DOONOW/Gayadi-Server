@@ -2,6 +2,8 @@ package com.gayadi.server.recommendation;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 @Service
 @ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class PlaceRecommendationAgent {
+
+    private static final Logger log = LoggerFactory.getLogger(PlaceRecommendationAgent.class);
 
     private static final int MAX_MODEL_CANDIDATES = 20;
     private static final int MIN_CANDIDATES_BEFORE_REFINEMENT = 3;
@@ -64,9 +68,13 @@ public class PlaceRecommendationAgent {
 
         if (candidates.size() < Math.min(context.limit(), MIN_CANDIDATES_BEFORE_REFINEMENT)
                 && plan.maxSearchRounds() > 1) {
-            PlaceSearchPlan refined = languageModel.refineSearchPlan(context, plan, candidates);
-            candidates = mergeAndRank(candidates,
-                    searchGateway.search(refined, searchContext(request, context.policy())), context);
+            try {
+                PlaceSearchPlan refined = languageModel.refineSearchPlan(context, plan, candidates);
+                candidates = mergeAndRank(candidates,
+                        searchGateway.search(refined, searchContext(request, context.policy())), context);
+            } catch (RuntimeException exception) {
+                log.warn("추천 검색 계획 개선을 생략합니다: {}", exception.getClass().getSimpleName());
+            }
         }
 
         if (candidates.isEmpty()) {
@@ -74,7 +82,7 @@ public class PlaceRecommendationAgent {
         }
 
         List<TourPlaceCandidate> allowed = candidates.stream().limit(MAX_MODEL_CANDIDATES).toList();
-        RecommendationLanguageModel.CandidateDecision decision = languageModel.decide(context, allowed);
+        RecommendationLanguageModel.CandidateDecision decision = safeDecision(context, allowed);
         Map<String, TourPlaceCandidate> byId = allowed.stream()
                 .collect(Collectors.toMap(TourPlaceCandidate::placeId, value -> value,
                         (first, ignored) -> first, LinkedHashMap::new));
@@ -154,12 +162,27 @@ public class PlaceRecommendationAgent {
     }
 
     private PlaceSearchPlan safePlan(RecommendationLanguageModel.RecommendationContext context) {
-        PlaceSearchPlan plan = languageModel.createSearchPlan(context);
-        if (plan == null || plan.queries().isEmpty()) {
-            return PlaceSearchPlan.fallback(context.destination(), context.regionCode(),
-                    context.sigunguCode(), context.keywords(), context.policy());
+        try {
+            PlaceSearchPlan plan = languageModel.createSearchPlan(context);
+            if (plan != null && !plan.queries().isEmpty()) return plan;
+        } catch (RuntimeException exception) {
+            log.warn("추천 검색 계획 생성에 실패해 기본 계획을 사용합니다: {}",
+                    exception.getClass().getSimpleName());
         }
-        return plan;
+        return PlaceSearchPlan.fallback(context.destination(), context.regionCode(),
+                context.sigunguCode(), context.keywords(), context.policy());
+    }
+
+    private RecommendationLanguageModel.CandidateDecision safeDecision(
+            RecommendationLanguageModel.RecommendationContext context,
+            List<TourPlaceCandidate> candidates) {
+        try {
+            return languageModel.decide(context, candidates);
+        } catch (RuntimeException exception) {
+            log.warn("추천 후보 판정에 실패해 서버 순위를 사용합니다: {}",
+                    exception.getClass().getSimpleName());
+            return null;
+        }
     }
 
     private RecommendationLanguageModel.RecommendationContext context(
