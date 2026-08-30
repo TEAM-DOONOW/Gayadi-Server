@@ -6,7 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -74,8 +74,9 @@ class CongestionForecastServiceTest {
 
         assertThatThrownBy(() -> service.forecast(new CongestionForecastService.Request(
                 "11", "110", "서울", "", "not-a-date")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("ISO-8601");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(CongestionErrorCode.CONGESTION_TARGET_AT_INVALID));
     }
 
     @Test

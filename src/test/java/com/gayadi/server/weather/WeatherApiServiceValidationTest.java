@@ -1,9 +1,10 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class WeatherApiServiceValidationTest {
@@ -14,29 +15,35 @@ class WeatherApiServiceValidationTest {
     @Test
     void requiresOneCompleteLocationPairWithinTheSupportedGrid() {
         assertThatThrownBy(() -> service.ultraSrtNcst(request(37.56, null, null, null)))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("각 쌍");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_LOCATION_PAIR_REQUIRED));
         assertThatThrownBy(() -> service.ultraSrtNcst(request(37.56, 126.98, 60, 127)))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("한 가지 위치 형식");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_LOCATION_TYPE_CONFLICT));
         assertThatThrownBy(() -> service.ultraSrtNcst(request(null, null, 0, 127)))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("nx 1~149");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_GRID_OUT_OF_RANGE));
         assertThatThrownBy(() -> service.ultraSrtNcst(request(0.0, 0.0, null, null)))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("국내 위치");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_LOCATION_UNSUPPORTED));
     }
 
     @Test
     void validatesForecastVersionInputsBeforeCallingTheProvider() {
         assertThatThrownBy(() -> service.fcstVersion(
                 new WeatherApiService.FcstVersionRequest("OTHER", "202608250200")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("ODAM, VSRT, SHRT");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_VERSION_FILE_TYPE_INVALID));
         assertThatThrownBy(() -> service.fcstVersion(
                 new WeatherApiService.FcstVersionRequest("SHRT", "202602300200")))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("유효한 YYYYMMDDHHMM");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_VERSION_DATETIME_INVALID));
     }
 
     private WeatherApiService.WeatherRequest request(

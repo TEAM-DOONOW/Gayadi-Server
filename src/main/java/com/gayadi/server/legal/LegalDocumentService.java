@@ -1,9 +1,8 @@
 package com.gayadi.server.legal;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.RowSupport;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +23,7 @@ public class LegalDocumentService {
 
     public Map<String, Object> get(String documentId) {
         if (documentId == null || !documentId.matches("[a-z0-9-]{1,50}")) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "법적 문서 식별자가 올바르지 않습니다.");
+            throw new BusinessException(LegalErrorCode.LEGAL_DOCUMENT_ID_INVALID);
         }
         Map<String, Object> row = jdbc.sql("""
                 SELECT document_id, title, version, effective_date, publication_status,
@@ -35,7 +34,7 @@ public class LegalDocumentService {
                 .param(documentId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "법적 문서를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(LegalErrorCode.LEGAL_DOCUMENT_NOT_FOUND));
 
         Map<String, Object> document = new LinkedHashMap<>();
         document.put("id", RowSupport.strValue(row, "document_id"));

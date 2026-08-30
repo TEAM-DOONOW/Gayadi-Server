@@ -65,13 +65,14 @@ class AuthFlowIntegrationTests {
     @Test
     void rejectsMissingTokenWith401() throws Exception {
         HttpResponse<String> me = get("/api/v1/users/current", "");
-        Assertions.assertThat(me.statusCode()).isEqualTo(401);
+        assertSecurityError(me, "UNAUTHENTICATED", "/api/v1/users/current");
     }
 
     @Test
     void rejectsInvalidTokenWith401() throws Exception {
         HttpResponse<String> me = get("/api/v1/users/current", "Bearer invalid.token.value");
-        Assertions.assertThat(me.statusCode()).isEqualTo(401);
+        assertSecurityError(me, "UNAUTHENTICATED", "/api/v1/users/current");
+        Assertions.assertThat(me.body()).doesNotContain("invalid.token.value");
     }
 
     @Test
@@ -97,6 +98,20 @@ class AuthFlowIntegrationTests {
         int start = body.indexOf("\"accessToken\":\"") + "\"accessToken\":\"".length();
         int end = body.indexOf("\"", start);
         return body.substring(start, end);
+    }
+
+    private void assertSecurityError(HttpResponse<String> response, String code, String path) {
+        Assertions.assertThat(response.statusCode()).isEqualTo(401);
+        Assertions.assertThat(response.headers().firstValue("Content-Type").orElse(""))
+                .startsWith("application/json");
+        Assertions.assertThat(response.body())
+                .contains("\"status\":401")
+                .contains("\"code\":\"" + code + "\"")
+                .contains("\"path\":\"" + path + "\"")
+                .contains("\"traceId\":")
+                .contains("\"details\":null")
+                .doesNotContain("stackTrace")
+                .doesNotContain("exception");
     }
 
     private HttpResponse<String> post(String path, String body) throws Exception {

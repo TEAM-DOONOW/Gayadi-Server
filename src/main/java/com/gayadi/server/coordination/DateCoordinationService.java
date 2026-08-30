@@ -1,10 +1,10 @@
 package com.gayadi.server.coordination;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.travel.TripErrorCode;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,21 +79,18 @@ public class DateCoordinationService {
         LocalDate start = AppDateFormat.parseDate(startValue, "여행 시작일");
         LocalDate end = AppDateFormat.parseDate(endValue, "여행 종료일");
         if (start == null || end == null || end.isBefore(start)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "여행 종료일은 시작일보다 빠를 수 없습니다.");
+            throw new BusinessException(CoordinationErrorCode.COORDINATION_DATE_RANGE_INVALID);
         }
 
         int memberCount = joinedMemberCount(tripId);
         if (memberCount > 1) {
             if (submittedMemberCount(tripId) != memberCount) {
-                throw new ApiException(HttpStatus.CONFLICT,
-                        "모든 참여자가 가능한 날짜를 제출한 뒤 확정할 수 있습니다.");
+                throw new BusinessException(CoordinationErrorCode.COORDINATION_SUBMISSIONS_INCOMPLETE);
             }
             Set<LocalDate> common = new LinkedHashSet<>(commonDates(tripId, memberCount));
             List<LocalDate> range = start.datesUntil(end.plusDays(1)).toList();
             if (!common.containsAll(range)) {
-                throw new ApiException(HttpStatus.CONFLICT,
-                        "모든 참여자가 가능한 연속 날짜만 여행 기간으로 확정할 수 있습니다.");
+                throw new BusinessException(CoordinationErrorCode.COORDINATION_RANGE_NOT_COMMON);
             }
         }
         trips.finalizeDates(actorId, tripId, start, end);
@@ -135,8 +132,7 @@ public class DateCoordinationService {
 
     private List<LocalDate> normalizeDates(List<String> values) {
         if (values == null || values.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "가능한 날짜를 하나 이상 선택해 주세요.");
+            throw new BusinessException(CoordinationErrorCode.COORDINATION_AVAILABILITY_REQUIRED);
         }
         LocalDate today = LocalDate.now();
         LocalDate maximum = today.plusYears(MAX_FUTURE_YEARS);
@@ -144,8 +140,8 @@ public class DateCoordinationService {
         for (String value : values) {
             LocalDate date = AppDateFormat.parseDate(value, "가능한 날짜");
             if (date.isBefore(today) || date.isAfter(maximum)) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "가능한 날짜는 오늘부터 2년 이내에서 선택해 주세요.");
+                throw new BusinessException(
+                        CoordinationErrorCode.COORDINATION_AVAILABILITY_DATE_OUT_OF_RANGE);
             }
             dates.add(date);
         }
@@ -222,7 +218,7 @@ public class DateCoordinationService {
     private void lockTrip(long tripId) {
         if (jdbc.sql("SELECT id FROM trips WHERE id = ? AND deleted_at IS NULL FOR UPDATE")
                 .param(tripId).query(Long.class).optional().isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다.");
+            throw new BusinessException(TripErrorCode.TRIP_NOT_FOUND);
         }
     }
 

@@ -1,10 +1,9 @@
 package com.gayadi.server.congestion;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -198,8 +197,7 @@ public class CongestionForecastService {
         try {
             return OffsetDateTime.parse(targetAt).atZoneSameInstant(KOREA).toLocalDate();
         } catch (DateTimeParseException exception) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "혼잡 예측 시각은 UTC 오프셋을 포함한 ISO-8601 형식이어야 합니다.");
+            throw new BusinessException(CongestionErrorCode.CONGESTION_TARGET_AT_INVALID);
         }
     }
 
@@ -208,8 +206,7 @@ public class CongestionForecastService {
         try {
             return OffsetDateTime.parse(targetAt).atZoneSameInstant(KOREA).getHour();
         } catch (DateTimeParseException exception) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "혼잡 예측 시각은 UTC 오프셋을 포함한 ISO-8601 형식이어야 합니다.");
+            throw new BusinessException(CongestionErrorCode.CONGESTION_TARGET_AT_INVALID);
         }
     }
 

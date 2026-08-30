@@ -1,7 +1,7 @@
 package com.gayadi.server.recommendation;
 
-import com.gayadi.server.common.ApiException;
-import com.gayadi.server.common.ApiErrorResponse;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.common.response.ApiErrorResponse;
 import com.gayadi.server.event.ChangeProposalType;
 import com.gayadi.server.event.EventService;
 import com.gayadi.server.route.RouteService;
@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -85,8 +84,7 @@ public class TripSituationController {
         trips.requireMember(tripId, userId);
         SituationResponseAgent agent = agentProvider.getIfAvailable();
         if (agent == null) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "상황 대처 Agent가 설정되지 않았습니다.");
+            throw new BusinessException(RecommendationErrorCode.SITUATION_AGENT_UNAVAILABLE);
         }
         Map<String, Object> trip = trips.view(tripId);
         List<?> cities = valueAsList(trip.get("cities"));

@@ -1,6 +1,6 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -56,18 +56,21 @@ class WeatherApiClientTest {
     @Test
     void convertsXmlAuthenticationAndRateLimitResponses() {
         assertThatThrownBy(() -> client("xml", "test-key").call("", Map.of()))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("SERVICE KEY IS NOT REGISTERED");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_AUTH_FAILED));
         assertThatThrownBy(() -> client("limited", "test-key").call("", Map.of()))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("호출 한도");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_RATE_LIMITED));
     }
 
     @Test
     void rejectsMissingServiceKeyBeforeSendingARequest() {
         assertThatThrownBy(() -> client("pages", "").baseParams())
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("WEATHER_API_KEY");
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_NOT_CONFIGURED));
     }
 
     private WeatherApiClient client(String context, String key) {

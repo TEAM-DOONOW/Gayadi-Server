@@ -2,10 +2,14 @@ package com.gayadi.server;
 
 import com.gayadi.server.auth.UserService;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.favorite.FavoriteErrorCode;
 import com.gayadi.server.favorite.FavoritePlaceService;
 import com.gayadi.server.invitation.InvitationService;
+import com.gayadi.server.invitation.InvitationErrorCode;
 import com.gayadi.server.legal.LegalDocumentService;
 import com.gayadi.server.travel.TripService;
+import com.gayadi.server.travel.TripErrorCode;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +49,11 @@ class AndroidResourceIntegrationTests {
         Map<String, Object> invitation = invitations.create(tripId, ownerId, memberId, null);
         String inviteCode = RowSupport.strValue(invitation, "code");
         Assertions.assertThat(inviteCode).matches("[A-Z0-9]{8}");
+        Assertions.assertThatThrownBy(() -> invitations.updateStatus(
+                        tripId, id(invitation), ownerId, InvitationService.InvitationDecision.DECLINED))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(InvitationErrorCode.INVITATION_DECLINE_FORBIDDEN));
 
         Map<String, Object> membership = invitations.join(memberId, inviteCode, null, null);
         Assertions.assertThat(RowSupport.longValue(
@@ -54,6 +63,11 @@ class AndroidResourceIntegrationTests {
         Assertions.assertThat(RowSupport.longValue(
                 (Map<String, Object>) membership.get("participant"), "id")).isEqualTo(memberId);
         Assertions.assertThat(trips.members(tripId)).hasSize(4);
+        Assertions.assertThatThrownBy(() -> invitations.join(
+                        codeMemberId, tripInviteCode, null, null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(TripErrorCode.TRIP_ALREADY_JOINED));
 
         favorites.save(memberId, 1L, "다시 가고 싶은 곳");
         Assertions.assertThat(favorites.list(memberId))
@@ -61,6 +75,10 @@ class AndroidResourceIntegrationTests {
                 .satisfies(place -> Assertions.assertThat(RowSupport.longValue(place, "id")).isEqualTo(1L));
         favorites.delete(memberId, 1L);
         Assertions.assertThat(favorites.list(memberId)).isEmpty();
+        Assertions.assertThatThrownBy(() -> favorites.delete(memberId, 1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(FavoriteErrorCode.FAVORITE_PLACE_NOT_FOUND));
 
         Map<String, Object> terms = legalDocuments.get("terms-of-service");
         Assertions.assertThat(terms.get("title")).isEqualTo("가야디 이용약관");

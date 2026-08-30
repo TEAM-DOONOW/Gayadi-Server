@@ -1,9 +1,8 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -65,34 +64,31 @@ class WeatherApiClient {
             response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 호출이 중단되었습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_INTERRUPTED);
         } catch (IOException e) {
             log.warn("기상청 API 호출 실패: {} - {}", operation, e.getMessage());
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 호출에 실패했습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_FAILED);
         }
 
         if (response.statusCode() == 429) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                    "기상청 API 호출 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_RATE_LIMITED);
         }
 
         String body = response.body();
         if (body == null || body.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 응답이 비어 있습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
         }
 
         String trimmed = body.stripLeading();
         if (trimmed.charAt(0) == '<') {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "기상청 API 호출이 거부되었습니다: " + extractXmlError(body));
+            log.warn("기상청 API XML 오류 응답: {}", extractXmlError(body));
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_AUTH_FAILED);
         }
         if (response.statusCode() == 401 || response.statusCode() == 403) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "기상청 API 인증에 실패했습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_AUTH_FAILED);
         }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "기상청 API가 오류를 반환했습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
         }
 
         JsonNode root;
@@ -100,7 +96,7 @@ class WeatherApiClient {
             root = objectMapper.readTree(body);
         } catch (Exception e) {
             log.warn("기상청 API 응답 파싱 실패: {} - {}", operation, e.getMessage());
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "기상청 API 응답을 해석하지 못했습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
         }
 
         JsonNode header = root.path("response").path("header");
@@ -108,11 +104,10 @@ class WeatherApiClient {
         String resultMsg = header.path("resultMsg").asText("");
         if (!RESULT_CODE_OK.equals(resultCode)) {
             if (RESULT_CODE_NO_DATA.equals(resultCode)) {
-                throw new ApiException(HttpStatus.NOT_FOUND,
-                        "해당 시간의 기상 데이터가 없습니다. 발표 시각을 확인하세요.");
+                throw new BusinessException(WeatherErrorCode.WEATHER_DATA_NOT_FOUND);
             }
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "기상청 API 오류(" + resultCode + "): " + resultMsg);
+            log.warn("기상청 API 업무 오류: code={}, message={}", resultCode, resultMsg);
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
         }
         return root.path("response");
     }
@@ -133,15 +128,13 @@ class WeatherApiClient {
 
             if (result.size() >= totalCount) return List.copyOf(result);
             if (pageItems.isEmpty()) {
-                throw new ApiException(HttpStatus.BAD_GATEWAY,
-                        "기상청 API의 페이지 응답이 완전하지 않습니다.");
+                throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
             }
             page++;
         }
 
         if (result.size() < totalCount) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "기상청 API의 전체 예보 데이터를 가져오지 못했습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
         }
         return List.copyOf(result);
     }
@@ -186,8 +179,7 @@ class WeatherApiClient {
 
     private String ensureServiceKey() {
         if (serviceKey == null || serviceKey.isBlank()) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "기상청 API 키(WEATHER_API_KEY)가 설정되지 않았습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_NOT_CONFIGURED);
         }
         return serviceKey;
     }

@@ -1,10 +1,9 @@
 package com.gayadi.server.recommendation;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.JsonSupport;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -106,13 +105,13 @@ public class GroqRecommendationLanguageModel implements RecommendationLanguageMo
                     .call()
                     .entity(type);
             if (result == null) {
-                throw new ApiException(HttpStatus.BAD_GATEWAY, "Groq가 구조화된 결과를 반환하지 않았습니다.");
+                throw new BusinessException(RecommendationErrorCode.AI_RESPONSE_INVALID);
             }
             return result;
-        } catch (ApiException exception) {
+        } catch (BusinessException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "Groq Agent 호출에 실패했습니다.");
+            throw new BusinessException(RecommendationErrorCode.AI_REQUEST_FAILED);
         }
     }
 }

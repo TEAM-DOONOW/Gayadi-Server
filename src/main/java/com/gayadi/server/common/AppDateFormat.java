@@ -1,6 +1,7 @@
 package com.gayadi.server.common;
 
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.common.exception.CommonErrorCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,8 +25,7 @@ public final class AppDateFormat {
         try {
             return LocalDate.parse(value.replace('.', '-'));
         } catch (DateTimeParseException exception) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "실제로 존재하는 " + label + "를 입력해 주세요.");
+            throw new BusinessException(CommonErrorCode.INVALID_DATE, label);
         }
     }
 
@@ -34,8 +34,7 @@ public final class AppDateFormat {
         try {
             return LocalTime.parse(value, TIME);
         } catch (DateTimeParseException exception) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "실제로 존재하는 " + label + "을 입력해 주세요.");
+            throw new BusinessException(CommonErrorCode.INVALID_TIME, label);
         }
     }
 

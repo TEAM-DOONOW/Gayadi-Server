@@ -1,9 +1,8 @@
 package com.gayadi.server.weather;
 
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -125,8 +124,7 @@ public class WeatherApiService {
             String slot = WeatherApiClient.text(item, "fcstDate")
                     + WeatherApiClient.text(item, "fcstTime");
             if (!slot.matches("\\d{12}")) {
-                throw new ApiException(HttpStatus.BAD_GATEWAY,
-                        "기상청 API가 올바르지 않은 예보시각을 반환했습니다.");
+                throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
             }
             bySlot.computeIfAbsent(slot, k -> new TreeMap<>())
                     .put(WeatherApiClient.text(item, "category"),
@@ -184,18 +182,15 @@ public class WeatherApiService {
         boolean hasAllCoordinates = req.lat() != null && req.lon() != null;
 
         if ((hasAnyGrid && !hasAllGrid) || (hasAnyCoordinate && !hasAllCoordinates)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "lat/lon 또는 nx/ny는 각 쌍을 함께 입력해야 합니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_LOCATION_PAIR_REQUIRED);
         }
         if (hasAllGrid && hasAllCoordinates) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "lat/lon과 nx/ny 중 한 가지 위치 형식만 입력해야 합니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_LOCATION_TYPE_CONFLICT);
         }
         if (hasAllGrid) {
             if (req.nx() < 1 || req.nx() > KmaGridConverter.NX
                     || req.ny() < 1 || req.ny() > KmaGridConverter.NY) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "기상청 격자는 nx 1~149, ny 1~253 범위여야 합니다.");
+                throw new BusinessException(WeatherErrorCode.WEATHER_GRID_OUT_OF_RANGE);
             }
             return new int[]{req.nx(), req.ny()};
         }
@@ -203,31 +198,27 @@ public class WeatherApiService {
             if (!Double.isFinite(req.lat()) || !Double.isFinite(req.lon())
                     || req.lat() < -90 || req.lat() > 90
                     || req.lon() < -180 || req.lon() > 180) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "위도는 -90~90, 경도는 -180~180 범위의 유한한 값이어야 합니다.");
+                throw new BusinessException(WeatherErrorCode.WEATHER_COORDINATE_OUT_OF_RANGE);
             }
             KmaGridConverter.GridPoint gp = KmaGridConverter.toGrid(req.lon(), req.lat());
             if (gp.nx() < 1 || gp.nx() > KmaGridConverter.NX
                     || gp.ny() < 1 || gp.ny() > KmaGridConverter.NY) {
-                throw new ApiException(HttpStatus.BAD_REQUEST,
-                        "기상청 단기예보가 제공되는 국내 위치를 입력해야 합니다.");
+                throw new BusinessException(WeatherErrorCode.WEATHER_LOCATION_UNSUPPORTED);
             }
             return new int[]{gp.nx(), gp.ny()};
         }
-        throw new ApiException(HttpStatus.BAD_REQUEST,
-                "위치 정보가 필요합니다. lat/lon 또는 nx/ny 중 하나를 지정하세요.");
+        throw new BusinessException(WeatherErrorCode.WEATHER_LOCATION_REQUIRED);
     }
 
     private void requireParam(String name, String value) {
         if (value == null || value.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "필수 파라미터 " + name + "이(가) 없습니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_REQUIRED_PARAMETER_MISSING, name);
         }
     }
 
     private void validateVersionRequest(String fileType, String baseDateTime) {
         if (!VERSION_FILE_TYPES.contains(fileType)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "ftype은 ODAM, VSRT, SHRT 중 하나여야 합니다.");
+            throw new BusinessException(WeatherErrorCode.WEATHER_VERSION_FILE_TYPE_INVALID);
         }
         if (!baseDateTime.matches("\\d{12}")) {
             throw invalidVersionDateTime();
@@ -246,9 +237,8 @@ public class WeatherApiService {
         }
     }
 
-    private ApiException invalidVersionDateTime() {
-        return new ApiException(HttpStatus.BAD_REQUEST,
-                "baseDateTime은 유효한 YYYYMMDDHHMM 형식이어야 합니다.");
+    private BusinessException invalidVersionDateTime() {
+        return new BusinessException(WeatherErrorCode.WEATHER_VERSION_DATETIME_INVALID);
     }
 
     // --- DTOs ---

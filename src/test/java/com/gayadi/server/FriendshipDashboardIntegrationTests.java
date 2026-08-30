@@ -1,9 +1,10 @@
 package com.gayadi.server;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.dashboard.DashboardService;
+import com.gayadi.server.friendship.FriendshipErrorCode;
 import com.gayadi.server.friendship.FriendshipService;
 import com.gayadi.server.friendship.FriendshipStatus;
 import com.gayadi.server.schedule.ScheduleItemService;
@@ -12,7 +13,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.LocalDate;
@@ -45,16 +45,18 @@ class FriendshipDashboardIntegrationTests {
         Assertions.assertThat(request.get("status")).isEqualTo("PENDING");
 
         Assertions.assertThatThrownBy(() -> friendships.update(
-                        requesterId, friendshipId, FriendshipStatus.ACCEPTED, 0))
-                .isInstanceOfSatisfying(ApiException.class,
-                        exception -> Assertions.assertThat(exception.getStatus()).isEqualTo(HttpStatus.FORBIDDEN));
+                requesterId, friendshipId, FriendshipStatus.ACCEPTED, 0))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(FriendshipErrorCode.FRIENDSHIP_DECISION_FORBIDDEN));
 
         Map<String, Object> accepted = friendships.update(
                 recipientId, friendshipId, FriendshipStatus.ACCEPTED, 0);
         Assertions.assertThat(accepted.get("status")).isEqualTo("ACCEPTED");
         Assertions.assertThatThrownBy(() -> friendships.create(recipientId, requesterId))
-                .isInstanceOfSatisfying(ApiException.class,
-                        exception -> Assertions.assertThat(exception.getStatus()).isEqualTo(HttpStatus.CONFLICT));
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(FriendshipErrorCode.FRIENDSHIP_ALREADY_ACCEPTED));
 
         List<Map<String, Object>> search = friendships.searchUsers(requesterId, recipientNickname, 10);
         Assertions.assertThat(search).singleElement()
@@ -72,8 +74,9 @@ class FriendshipDashboardIntegrationTests {
         Assertions.assertThat(friendships.list(recipientId, null, 10, 0)).isEmpty();
         Assertions.assertThat(friendships.searchUsers(recipientId, "요청자", 10)).isEmpty();
         Assertions.assertThatThrownBy(() -> friendships.delete(recipientId, friendshipId))
-                .isInstanceOfSatisfying(ApiException.class,
-                        exception -> Assertions.assertThat(exception.getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND));
 
         friendships.delete(requesterId, friendshipId);
         Map<String, Object> reverseRequest = friendships.create(recipientId, requesterId);
@@ -186,8 +189,8 @@ class FriendshipDashboardIntegrationTests {
         try {
             friendships.create(requesterId, targetUserId);
             return true;
-        } catch (ApiException exception) {
-            Assertions.assertThat(exception.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+        } catch (BusinessException exception) {
+            Assertions.assertThat(exception.getErrorCode().status().value()).isEqualTo(409);
             return false;
         }
     }

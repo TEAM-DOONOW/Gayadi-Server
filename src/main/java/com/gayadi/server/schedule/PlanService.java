@@ -1,13 +1,13 @@
 package com.gayadi.server.schedule;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.survey.SurveyService;
 import com.gayadi.server.travel.TripService;
+import com.gayadi.server.travel.TripErrorCode;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +47,7 @@ public class PlanService {
     public Map<String, Object> generate(long tripId) {
         Map<String, Object> trip = lockedTrip(tripId);
         if (!"PLANNING".equals(RowSupport.strValue(trip, "status"))) {
-            throw new ApiException(HttpStatus.CONFLICT, "여행 시작 전 일정만 다시 생성할 수 있습니다.");
+            throw new BusinessException(ScheduleErrorCode.PLAN_GENERATION_TRIP_NOT_PLANNING);
         }
 
         Map<String, Object> profile = surveys.groupProfile(tripId);
@@ -59,10 +59,10 @@ public class PlanService {
         LocalDate endDate = tripDate(trip, "end_date");
         long dayCount = ChronoUnit.DAYS.between(startDate, endDate) + 1;
         if (dayCount <= 0) {
-            throw new ApiException(HttpStatus.CONFLICT, "여행 기간이 올바르지 않습니다.");
+            throw new BusinessException(ScheduleErrorCode.PLAN_TRIP_DATE_INVALID);
         }
         if (dayCount > MAX_GENERATED_DAYS) {
-            throw new ApiException(HttpStatus.CONFLICT, "자동 일정은 최대 366일까지 생성할 수 있습니다.");
+            throw new BusinessException(ScheduleErrorCode.PLAN_GENERATION_RANGE_EXCEEDED);
         }
 
         int candidateLimit = Math.min(1_100,
@@ -70,7 +70,7 @@ public class PlanService {
         List<PlaceCandidate> places = orderedPlaces(
                 tripId, regionId, profileCode, candidateLimit);
         if (places.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT, "해당 지역에 일정으로 추천할 수 있는 장소가 없습니다.");
+            throw new BusinessException(ScheduleErrorCode.PLAN_PLACE_CANDIDATE_NOT_FOUND);
         }
 
         List<Map<String, Object>> existingPlans = jdbc.sql("""
@@ -123,7 +123,7 @@ public class PlanService {
                 items.addAll(itemsForDay(planId, planDate, dayIndex, places, profileCode));
             }
         } catch (DuplicateKeyException exception) {
-            throw new ApiException(HttpStatus.CONFLICT, "일정이 동시에 생성되었습니다. 다시 조회해 주세요.");
+            throw new BusinessException(ScheduleErrorCode.PLAN_GENERATION_CONFLICT);
         }
 
         deletePlansAfterDay(tripId, numberOfDays);
@@ -142,7 +142,7 @@ public class PlanService {
                 .param(tripId)
                 .query().listOfRows();
         if (planRows.isEmpty()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "생성된 일정이 없습니다.");
+            throw new BusinessException(ScheduleErrorCode.PLAN_NOT_FOUND);
         }
 
         List<Long> planIds = planRows.stream()
@@ -187,7 +187,7 @@ public class PlanService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "경로 계산 전에 장소 일정이 필요합니다."));
+                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.PLAN_PLACE_REQUIRED));
     }
 
     private Map<String, Object> lockedTrip(long tripId) {
@@ -200,7 +200,7 @@ public class PlanService {
                 .param(tripId)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private List<PlaceCandidate> orderedPlaces(
@@ -418,7 +418,7 @@ public class PlanService {
         private static ProfileCode from(String code) {
             String normalized = code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
             if (!normalized.matches("[PS][NC][AR]")) {
-                throw new ApiException(HttpStatus.CONFLICT, "일정에 반영할 성향 검사 결과가 올바르지 않습니다.");
+                throw new BusinessException(ScheduleErrorCode.PLAN_PROFILE_INVALID);
             }
             return new ProfileCode(normalized.charAt(0), normalized.charAt(1), normalized.charAt(2));
         }

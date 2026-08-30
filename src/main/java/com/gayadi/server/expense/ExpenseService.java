@@ -1,11 +1,11 @@
 package com.gayadi.server.expense;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.travel.TripService;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.travel.TripErrorCode;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,7 +97,7 @@ public class ExpenseService {
                 .params(expenseId, tripId)
                 .update();
         if (deleted == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "경비 내역을 찾을 수 없습니다.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_NOT_FOUND);
         }
     }
 
@@ -110,10 +110,6 @@ public class ExpenseService {
     public SharedFundSummary contribute(long actorId, long tripId, long amount) {
         lockTrip(tripId);
         trips.requireMember(tripId, actorId);
-        if (amount <= 0 || amount > 1_000_000_000_000L) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "공동 경비는 1원 이상 1조 원 이하로 입력해 주세요.");
-        }
         keyHelper.insert("""
                 INSERT INTO trip_shared_fund_contributions (trip_id, amount, created_by)
                 VALUES (?, ?, ?)
@@ -128,31 +124,30 @@ public class ExpenseService {
         LocalDate start = localDate(RowSupport.value(trip, "start_date"));
         LocalDate end = localDate(RowSupport.value(trip, "end_date"));
         if (date.isBefore(start) || date.isAfter(end)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "지출 날짜는 여행 기간 안에서 선택해 주세요.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_DATE_OUTSIDE_TRIP);
         }
         Set<Long> participantIds = new LinkedHashSet<>(request.participantIds());
         if (participantIds.size() != request.participantIds().size()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "분담 참여자는 중복될 수 없습니다.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_PARTICIPANT_DUPLICATED);
         }
         requireJoinedMembers(tripId, participantIds);
         Long payerId = request.paymentSource() == ExpensePaymentSource.PERSONAL
                 ? request.payerId() : null;
         if (request.paymentSource() == ExpensePaymentSource.PERSONAL && payerId == null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "개인 결제의 결제자를 선택해 주세요.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_PAYER_REQUIRED);
         }
         if (payerId != null) requireJoinedMembers(tripId, Set.of(payerId));
         requireSchedule(tripId, request.scheduleId());
         if (request.paymentSource() == ExpensePaymentSource.SHARED_FUND
                 && availableSharedFund(tripId, excludedExpenseId) < request.amount()) {
-            throw new ApiException(HttpStatus.CONFLICT, "공동 경비 잔액이 부족합니다.");
+            throw new BusinessException(ExpenseErrorCode.SHARED_FUND_BALANCE_INSUFFICIENT);
         }
         return new ValidatedExpense(date, time, payerId, List.copyOf(participantIds));
     }
 
     private void requireJoinedMembers(long tripId, Set<Long> userIds) {
         if (userIds.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "분담 참여자를 한 명 이상 선택해 주세요.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_PARTICIPANT_INVALID);
         }
         String placeholders = String.join(",", Collections.nCopies(userIds.size(), "?"));
         List<Object> params = new ArrayList<>();
@@ -166,8 +161,7 @@ public class ExpenseService {
                 .query(Integer.class)
                 .single();
         if (count != userIds.size()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "현재 여행에 참여 중인 사용자만 경비에 포함할 수 있습니다.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_PARTICIPANT_INVALID);
         }
     }
 
@@ -182,8 +176,7 @@ public class ExpenseService {
                 .query(Long.class)
                 .single();
         if (count == 0) {
-            throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "현재 여행에 속한 일정만 경비와 연결할 수 있습니다.");
+            throw new BusinessException(ExpenseErrorCode.EXPENSE_SCHEDULE_INVALID);
         }
     }
 
@@ -228,7 +221,7 @@ public class ExpenseService {
         List<Map<String, Object>> rows = jdbc.sql("""
                 SELECT * FROM trip_expenses WHERE trip_id = ? AND id = ?
                 """).params(tripId, expenseId).query().listOfRows();
-        if (rows.isEmpty()) throw new ApiException(HttpStatus.NOT_FOUND, "경비 내역을 찾을 수 없습니다.");
+        if (rows.isEmpty()) throw new BusinessException(ExpenseErrorCode.EXPENSE_NOT_FOUND);
         return responses(rows, participantIds(rows)).getFirst();
     }
 
@@ -291,13 +284,13 @@ public class ExpenseService {
     private Map<String, Object> lockTrip(long tripId) {
         return jdbc.sql("SELECT * FROM trips WHERE id = ? AND deleted_at IS NULL FOR UPDATE")
                 .param(tripId).query().listOfRows().stream().findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "여행을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private Map<String, Object> lockedExpense(long tripId, long expenseId) {
         return jdbc.sql("SELECT * FROM trip_expenses WHERE trip_id = ? AND id = ? FOR UPDATE")
                 .params(tripId, expenseId).query().listOfRows().stream().findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "경비 내역을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ExpenseErrorCode.EXPENSE_NOT_FOUND));
     }
 
     private String normalizedMemo(String value) {

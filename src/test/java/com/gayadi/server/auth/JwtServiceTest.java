@@ -1,7 +1,7 @@
 package com.gayadi.server.auth;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
+import com.gayadi.server.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 import tools.jackson.databind.ObjectMapper;
@@ -39,9 +39,9 @@ class JwtServiceTest {
         claims.put("exp", "not-a-number");
 
         assertThatThrownBy(() -> service.parseAndGetUserId(signedToken(claims)))
-                .isInstanceOf(ApiException.class)
-                .satisfies(exception -> assertThat(((ApiException) exception).getStatus().value())
-                        .isEqualTo(401));
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(AuthErrorCode.AUTH_TOKEN_INVALID));
     }
 
     @Test
@@ -51,8 +51,9 @@ class JwtServiceTest {
         claims.put("exp", Instant.now().minusSeconds(1).getEpochSecond());
 
         assertThatThrownBy(() -> service.parseAndGetUserId(signedToken(claims)))
-                .isInstanceOf(ApiException.class)
-                .hasMessage("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(AuthErrorCode.AUTH_TOKEN_EXPIRED));
     }
 
     private String signedToken(Map<String, Object> claims) {

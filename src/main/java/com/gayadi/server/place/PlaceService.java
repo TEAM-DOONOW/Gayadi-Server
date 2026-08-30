@@ -1,8 +1,7 @@
 package com.gayadi.server.place;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.RowSupport;
-import org.springframework.http.HttpStatus;
+import com.gayadi.server.common.exception.BusinessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -33,10 +32,10 @@ public class PlaceService {
         String normalizedRegion = normalizeText(region);
         String normalizedCategory = normalizeCategory(category);
         if (normalizedQuery != null && normalizedQuery.length() > 100) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "장소 검색어는 100자까지 입력할 수 있습니다.");
+            throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_QUERY_TOO_LONG);
         }
         if (normalizedRegion != null && normalizedRegion.length() > 50) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "지역 이름은 50자까지 입력할 수 있습니다.");
+            throw new BusinessException(PlaceErrorCode.PLACE_REGION_TOO_LONG);
         }
 
         StringBuilder sql = new StringBuilder("""
@@ -78,7 +77,7 @@ public class PlaceService {
         }
         if (cursor != null) {
             if (cursor < 1) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "장소 목록 기준값은 1 이상이어야 합니다.");
+                throw new BusinessException(PlaceErrorCode.PLACE_CURSOR_INVALID);
             }
             sql.append(" AND p.id < ?\n");
             parameters.add(cursor);
@@ -114,7 +113,7 @@ public class PlaceService {
                 .param(id)
                 .query().listOfRows().stream()
                 .findFirst()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "공개된 장소를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(PlaceErrorCode.PLACE_NOT_FOUND));
         return toDetail(row);
     }
 
@@ -214,7 +213,7 @@ public class PlaceService {
         if (value == null) return null;
         String normalized = value.toUpperCase(Locale.ROOT);
         if (!CATEGORIES.contains(normalized)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "올바르지 않은 장소 분류입니다.");
+            throw new BusinessException(PlaceErrorCode.PLACE_CATEGORY_INVALID);
         }
         return normalized;
     }

@@ -1,10 +1,9 @@
 package com.gayadi.server.auth;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.KeyHelper;
+import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.survey.SurveyService;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +38,7 @@ public class UserService {
 
     public Map<String, Object> get(long id) {
         return findBy("id", id)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     public Optional<Map<String, Object>> findByEmail(String email) {
@@ -89,7 +88,7 @@ public class UserService {
                 .params(nickname.trim(), trimToNull(introduction), id)
                 .update();
         if (updated == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
         }
         return profile(id);
     }
@@ -106,8 +105,7 @@ public class UserService {
                 .query(Long.class)
                 .single();
         if (ownedTrips > 0) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "진행 중이거나 준비 중인 소유 여행을 먼저 취소해 주세요.");
+            throw new BusinessException(UserErrorCode.USER_ACTIVE_OWNED_TRIP_EXISTS);
         }
         // 다른 사용자 자료가 탈퇴자의 초대·경로를 가리키는 경우도 먼저 끊는다.
         jdbc.sql("""
@@ -215,7 +213,7 @@ public class UserService {
                 .param(id)
                 .update();
         if (updated == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
         }
     }
 
@@ -240,7 +238,7 @@ public class UserService {
                 .optional()
                 .orElse(0L);
         if (count == 0) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
         }
     }
 
@@ -253,7 +251,7 @@ public class UserService {
                 .param(id)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     }
 
     private Optional<Map<String, Object>> findBy(String column, Object value) {

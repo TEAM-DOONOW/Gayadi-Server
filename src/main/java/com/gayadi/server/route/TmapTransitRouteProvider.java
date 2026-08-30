@@ -1,11 +1,10 @@
 package com.gayadi.server.route;
 
-import com.gayadi.server.common.ApiException;
 import com.gayadi.server.common.Location;
+import com.gayadi.server.common.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -68,7 +67,7 @@ public class TmapTransitRouteProvider implements RouteProvider {
                 estimates.add(estimate(stops.get(index), stops.get(index + 1)));
             }
             return List.copyOf(estimates);
-        } catch (ApiException exception) {
+        } catch (BusinessException exception) {
             if (!fallbackToLocal) throw exception;
             return localFallback.estimateSegments(stops, phase);
         }
@@ -76,8 +75,7 @@ public class TmapTransitRouteProvider implements RouteProvider {
 
     private RouteEstimate estimate(Location origin, Location destination) {
         if (appKey == null || appKey.isBlank()) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "TMAP 대중교통 API 키(SKT_APPKEY)가 설정되지 않았습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_NOT_CONFIGURED);
         }
 
         String body = """
@@ -106,31 +104,27 @@ public class TmapTransitRouteProvider implements RouteProvider {
                     .build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "TMAP 대중교통 API 호출이 중단되었습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_REQUEST_FAILED);
         } catch (IOException | IllegalArgumentException exception) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "TMAP 대중교통 API 호출에 실패했습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_REQUEST_FAILED);
         }
 
         if (response.statusCode() == 401 || response.statusCode() == 403) {
-            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "TMAP 대중교통 API 인증에 실패했습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_AUTH_FAILED);
         }
         if (response.statusCode() == 429) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                    "TMAP 대중교통 API 호출 한도를 초과했습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_RATE_LIMITED);
         }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "TMAP 대중교통 API가 오류를 반환했습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_RESPONSE_INVALID);
         }
 
         try {
             return parse(response.body());
-        } catch (ApiException exception) {
+        } catch (BusinessException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "TMAP 대중교통 API 응답을 해석하지 못했습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_RESPONSE_INVALID);
         }
     }
 
@@ -138,15 +132,14 @@ public class TmapTransitRouteProvider implements RouteProvider {
         JsonNode root = objectMapper.readTree(body);
         JsonNode itineraries = root.path("plan").path("itineraries");
         if (!itineraries.isArray() || itineraries.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT, "이동 가능한 TMAP 대중교통 경로가 없습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_ROUTE_UNAVAILABLE);
         }
         JsonNode itinerary = itineraries.get(0);
         int durationMinutes = minutes(itinerary.path("totalTime").asDouble(0));
         int transfers = Math.max(0, itinerary.path("transferCount").asInt(0));
         int fare = itinerary.path("fare").path("regular").path("totalFare").asInt(0);
         if (durationMinutes <= 0) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY,
-                    "TMAP 대중교통 API가 유효한 소요시간을 반환하지 않았습니다.");
+            throw new BusinessException(RouteErrorCode.TMAP_RESPONSE_INVALID);
         }
 
         List<String> legs = new ArrayList<>();

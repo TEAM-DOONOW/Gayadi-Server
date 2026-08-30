@@ -2,9 +2,8 @@ package com.gayadi.server.tourapi;
 
 import com.gayadi.server.congestion.CongestionForecast;
 import com.gayadi.server.congestion.CongestionForecastService;
-import com.gayadi.server.common.ApiException;
+import com.gayadi.server.common.exception.BusinessException;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -69,8 +68,7 @@ public class TourDiscoveryService {
                 cached = placeCache.get(key);
                 if (cached != null && cached.isFresh()) return cached.places();
                 if (!placeLoadBulkhead.tryAcquire()) {
-                    throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
-                            "관광 정보 요청이 많습니다. 잠시 후 다시 시도해주세요.");
+                    throw new BusinessException(TourApiErrorCode.TOUR_REQUEST_BUSY);
                 }
                 try {
                     List<TourApiService.TourPlace> places = loadPlaces(request);
