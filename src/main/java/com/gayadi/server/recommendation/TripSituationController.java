@@ -1,12 +1,23 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.request.TripSituationRequest;
+import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
+import com.gayadi.server.recommendation.dto.response.SituationResponse;
+import com.gayadi.server.recommendation.dto.response.SituationChangeProposalResponse;
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.response.ApiErrorResponse;
-import com.gayadi.server.event.ChangeProposalType;
 import com.gayadi.server.event.EventService;
+import com.gayadi.server.event.command.AiChangeProposalCommand;
+import com.gayadi.server.event.command.AiChangeProposalOption;
+import com.gayadi.server.event.model.ChangeProposalType;
 import com.gayadi.server.route.RouteService;
 import com.gayadi.server.survey.SurveyService;
+import com.gayadi.server.survey.dto.response.GroupPersonalityResponse;
 import com.gayadi.server.travel.TripService;
+import com.gayadi.server.travel.dto.response.TripResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -28,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/** 진행 중 여행의 상황 대응과 변경 제안 생성 요청을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}")
 @Tag(name = "상황 대처")
@@ -86,9 +98,9 @@ public class TripSituationController {
         if (agent == null) {
             throw new BusinessException(RecommendationErrorCode.SITUATION_AGENT_UNAVAILABLE);
         }
-        Map<String, Object> trip = trips.view(tripId);
-        List<?> cities = valueAsList(trip.get("cities"));
-        List<?> members = valueAsList(trip.get("participantIds"));
+        TripResponse trip = trips.view(tripId);
+        List<String> cities = trip.cities();
+        List<Long> members = trip.participantIds();
 
         PlaceRecommendationRequest recommendation = new PlaceRecommendationRequest();
         recommendation.setDestination(cities.isEmpty() ? "" : String.valueOf(cities.getFirst()));
@@ -109,9 +121,11 @@ public class TripSituationController {
         recommendation.setSituation(effectiveSituation);
         recommendation.setExternalProcessingConsent(request.isExternalProcessingConsent());
         SituationResponse response = agent.respond(recommendation);
-        if ("ONGOING".equals(String.valueOf(trip.get("status")))) {
-            Map<String, Object> proposal = createChangeProposal(tripId, request, response);
-            if (!proposal.isEmpty()) response = response.withChangeProposal(proposal);
+        if ("ONGOING".equals(trip.status())) {
+            SituationChangeProposalResponse proposal = createChangeProposal(tripId, request, response);
+            if (proposal.id() != null) {
+                response = response.withChangeProposal(proposal);
+            }
         }
         if (response.routeRecalculationRequired()) {
             routes.expireActiveForTrip(tripId);
@@ -119,39 +133,45 @@ public class TripSituationController {
         return response;
     }
 
-    private Map<String, Object> createChangeProposal(
+    private SituationChangeProposalResponse createChangeProposal(
             long tripId,
             TripSituationRequest request,
             SituationResponse response) {
         TravelSituation.Policy policy = request.getSituation().policy();
         ChangeProposalType proposalType = proposalType(policy);
-        if (proposalType == null) return Map.of();
+        if (proposalType == null) {
+            return SituationChangeProposalResponse.empty();
+        }
 
-        List<EventService.AiOption> options = response.placeRecommendations().recommendations()
+        List<AiChangeProposalOption> options = response.placeRecommendations().recommendations()
                 .stream()
                 .map(place -> aiOption(place, response.placeRecommendations().reasoning()))
                 .filter(Objects::nonNull)
                 .toList();
-        if (options.isEmpty()) return Map.of();
+        if (options.isEmpty()) {
+            return SituationChangeProposalResponse.empty();
+        }
 
         Map<String, Object> situationData = new LinkedHashMap<>();
         situationData.put("summary", response.situationSummary());
         situationData.put("weather", request.getSituation().weather());
         situationData.put("congestion", request.getSituation().congestion());
         situationData.put("transit", request.getSituation().transit());
-        return events.proposeFromAgent(tripId, new EventService.AiProposal(
+        return events.proposeFromAgent(tripId, new AiChangeProposalCommand(
                 proposalType,
                 response.situationSummary() + ": " + response.nextAction(),
                 situationData,
                 options,
-                policy.indoorRequired()));
+                policy.indoorRequired()))
+                .map(SituationChangeProposalResponse::from)
+                .orElseGet(SituationChangeProposalResponse::empty);
     }
 
-    private EventService.AiOption aiOption(RecommendedPlace place, String reasoning) {
+    private AiChangeProposalOption aiOption(RecommendedPlace place, String reasoning) {
         try {
             long placeId = Long.parseLong(place.placeId());
             String description = place.reason().isBlank() ? reasoning : place.reason();
-            return new EventService.AiOption(placeId, description);
+            return new AiChangeProposalOption(placeId, description);
         } catch (NumberFormatException ignored) {
             // 내부 장소 ID로 저장되지 않은 외부 후보는 승인 가능한 제안에서 제외한다.
             return null;
@@ -159,21 +179,22 @@ public class TripSituationController {
     }
 
     private ChangeProposalType proposalType(TravelSituation.Policy policy) {
-        if (policy.transitDisrupted()) return ChangeProposalType.TRANSPORT_CHANGE;
+        if (policy.transitDisrupted()) {
+            return ChangeProposalType.TRANSPORT_CHANGE;
+        }
         if (policy.indoorRequired() || policy.avoidOutdoor()) {
             return ChangeProposalType.WEATHER_CHANGE;
         }
-        if (policy.avoidCrowded()) return ChangeProposalType.CONGESTION_CHANGE;
+        if (policy.avoidCrowded()) {
+            return ChangeProposalType.CONGESTION_CHANGE;
+        }
         return null;
     }
 
     private String groupProfile(long tripId) {
-        Map<String, Object> profile = surveys.groupProfile(tripId);
-        return "그룹 대표 성향: " + profile.getOrDefault("dominantProfile", "UNKNOWN")
-                + ", 성향 분포: " + profile.getOrDefault("distribution", Map.of());
+        GroupPersonalityResponse profile = surveys.groupProfile(tripId);
+        return "그룹 대표 성향: " + profile.dominantProfile()
+                + ", 성향 분포: " + profile.distribution();
     }
 
-    private List<?> valueAsList(Object value) {
-        return value instanceof List<?> list ? list : List.of();
-    }
 }

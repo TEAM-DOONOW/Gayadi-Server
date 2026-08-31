@@ -39,23 +39,35 @@ final class WeatherCodeTranslator {
     }
 
     static String sky(String code) {
-        if (code == null || code.isBlank()) return "";
+        if (code == null || code.isBlank()) {
+            return "";
+        }
         return SKY_CODES.getOrDefault(code, code);
     }
 
     static String precipType(String code, boolean ultra) {
-        if (code == null || code.isBlank()) return "";
+        if (code == null || code.isBlank()) {
+            return "";
+        }
         Map<String, String> table = ultra ? PTY_ULTRA : PTY_VILAGE;
         return table.getOrDefault(code, code);
     }
 
     static String rain(String raw) {
-        if (raw == null || NO_DATA.contains(raw.toLowerCase())) return "강수없음";
+        if (raw == null || NO_DATA.contains(raw.toLowerCase())) {
+            return "강수없음";
+        }
         try {
             double f = Double.parseDouble(raw);
-            if (f < RAIN_LIGHT) return "1mm 미만";
-            if (f < RAIN_HEAVY) return raw + "mm";
-            if (f < RAIN_VERY_HEAVY) return "30.0~50.0mm";
+            if (f < RAIN_LIGHT) {
+                return "1mm 미만";
+            }
+            if (f < RAIN_HEAVY) {
+                return raw + "mm";
+            }
+            if (f < RAIN_VERY_HEAVY) {
+                return "30.0~50.0mm";
+            }
             return "50.0mm 이상";
         } catch (NumberFormatException e) {
             return raw;
@@ -63,11 +75,17 @@ final class WeatherCodeTranslator {
     }
 
     static String snow(String raw) {
-        if (raw == null || NO_DATA.contains(raw.toLowerCase())) return "적설없음";
+        if (raw == null || NO_DATA.contains(raw.toLowerCase())) {
+            return "적설없음";
+        }
         try {
             double f = Double.parseDouble(raw);
-            if (f < SNOW_LIGHT) return "0.5cm 미만";
-            if (f < SNOW_HEAVY) return raw + "cm";
+            if (f < SNOW_LIGHT) {
+                return "0.5cm 미만";
+            }
+            if (f < SNOW_HEAVY) {
+                return raw + "cm";
+            }
             return "5.0cm 이상";
         } catch (NumberFormatException e) {
             return raw;
@@ -75,7 +93,9 @@ final class WeatherCodeTranslator {
     }
 
     static String windDirection(String raw) {
-        if (raw == null || raw.isBlank()) return "";
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
         try {
             int deg = (int) Double.parseDouble(raw);
             int idx = ((int) ((deg + 22.5 * 0.5) / 22.5) % 16 + 16) % 16;
@@ -86,11 +106,17 @@ final class WeatherCodeTranslator {
     }
 
     static String windSpeed(String raw) {
-        if (raw == null || raw.isBlank()) return "";
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
         try {
             double f = Double.parseDouble(raw);
-            if (f < WIND_LIGHT) return "약한 바람";
-            if (f < WIND_STRONG) return "약간 강한 바람";
+            if (f < WIND_LIGHT) {
+                return "약한 바람";
+            }
+            if (f < WIND_STRONG) {
+                return "약간 강한 바람";
+            }
             return "강한 바람";
         } catch (NumberFormatException e) {
             return switch (raw) {

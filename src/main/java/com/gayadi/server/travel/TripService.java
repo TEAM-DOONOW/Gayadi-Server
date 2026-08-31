@@ -2,24 +2,25 @@ package com.gayadi.server.travel;
 
 import com.gayadi.server.auth.UserService;
 import com.gayadi.server.common.AppDateFormat;
-import com.gayadi.server.common.KeyHelper;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.common.exception.BusinessException;
-import com.gayadi.server.survey.SurveyService;
+import com.gayadi.server.travel.model.DepartureMode;
+import com.gayadi.server.travel.model.TripStatus;
+import com.gayadi.server.travel.dto.response.ParticipantResponse;
+import com.gayadi.server.travel.dto.response.TripResponse;
+import com.gayadi.server.travel.query.ParticipantQueryResult;
+import com.gayadi.server.travel.query.TripQueryResult;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/** 여행과 참여자 유스케이스와 업무 규칙을 처리합니다. */
 @Service
 public class TripService {
 
@@ -28,19 +29,18 @@ public class TripService {
     private static final char[] INVITE_CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".toCharArray();
     private static final int INVITE_CODE_ATTEMPTS = 20;
 
-    private final JdbcClient jdbc;
+    private final TripRepository repository;
     private final UserService users;
-    private final KeyHelper keyHelper;
     private final SecureRandom random = new SecureRandom();
 
-    public TripService(JdbcClient jdbc, UserService users, KeyHelper keyHelper) {
-        this.jdbc = jdbc;
+    public TripService(TripRepository repository, UserService users) {
+        this.repository = repository;
         this.users = users;
-        this.keyHelper = keyHelper;
     }
 
+    /** 여행 여행 정보를 등록합니다. */
     @Transactional
-    public Map<String, Object> create(CreateTrip command) {
+    public TripResponse create(CreateTrip command) {
         users.lockActive(command.ownerId());
         validateTitle(command.title());
         validateDates(command.startDate(), command.endDate());
@@ -52,11 +52,12 @@ public class TripService {
                 command.ownerDeparturePlaceId(), command.ownerReturnPlaceId());
         addMemberInternal(tripId, command.ownerId(), "OWNER",
                 command.ownerDeparturePlaceId(), command.ownerReturnPlaceId());
-        return get(tripId);
+        return view(tripId);
     }
 
+    /** 사용자를 소유자와 첫 참여자로 포함해 여행을 생성합니다. */
     @Transactional
-    public Map<String, Object> createForUser(
+    public TripResponse createForUser(
             long ownerId,
             String title,
             LocalDate startDate,
@@ -75,8 +76,9 @@ public class TripService {
         return view(tripId);
     }
 
+    /** 참여자 여행 정보를 등록합니다. */
     @Transactional
-    public Map<String, Object> addMember(long tripId, AddMember command) {
+    public ParticipantResponse addMember(long tripId, AddMember command) {
         users.lockActive(command.userId());
         lockTrip(tripId);
         ensureMemberCanJoin(tripId);
@@ -86,8 +88,9 @@ public class TripService {
         return memberByUser(tripId, command.userId());
     }
 
+    /** 소유자 권한을 확인하고 여행 참여자를 추가합니다. */
     @Transactional
-    public Map<String, Object> addMemberAsOwner(long actorId, long tripId, AddMember command) {
+    public ParticipantResponse addMemberAsOwner(long actorId, long tripId, AddMember command) {
         lockUsersInOrder(actorId, command.userId());
         lockTrip(tripId);
         requireOwnerRow(tripId, actorId);
@@ -98,6 +101,7 @@ public class TripService {
         return memberByUser(tripId, command.userId());
     }
 
+    /** 참여자 여행 정보를 삭제합니다. */
     @Transactional
     public void removeMember(long actorId, long tripId, long userId) {
         lockTrip(tripId);
@@ -105,134 +109,69 @@ public class TripService {
         if (actorId == userId) {
             throw new BusinessException(TripErrorCode.TRIP_OWNER_REMOVAL_FORBIDDEN);
         }
-        int updated = jdbc.sql("""
-                UPDATE trip_participants
-                SET status = 'REMOVED', left_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                WHERE trip_id = ? AND user_id = ? AND role = 'MEMBER' AND status = 'JOINED'
-                """)
-                .params(tripId, userId)
-                .update();
-        if (updated == 0) {
+        if (!repository.removeParticipant(tripId, userId)) {
             throw new BusinessException(TripErrorCode.TRIP_MEMBER_NOT_FOUND);
         }
-        jdbc.sql("DELETE FROM trip_date_availability_submissions WHERE trip_id = ? AND user_id = ?")
-                .params(tripId, userId)
-                .update();
-        jdbc.sql("""
-                UPDATE travel_routes
-                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                WHERE member_id IN (
-                    SELECT id FROM trip_participants
-                    WHERE trip_id = ? AND user_id = ?)
-                  AND status IN ('RECOMMENDED', 'SELECTED')
-                """)
-                .params(tripId, userId)
-                .update();
     }
 
-    public Map<String, Object> get(long tripId) {
-        Map<String, Object> row = tripRow(tripId);
-        Map<String, Object> trip = new LinkedHashMap<>(row);
-        trip.put("members", members(tripId));
-        return trip;
+    /** 여행 상세 정보를 조회합니다. */
+    public TripResponse view(long tripId) {
+        TripQueryResult trip = tripResult(tripId);
+        return toView(trip, repository.findCities(tripId), repository.findJoinedUserIds(tripId));
     }
 
-    public Map<String, Object> view(long tripId) {
-        Map<String, Object> row = tripRow(tripId);
-        return toView(row, cities(tripId), members(tripId));
-    }
-
-    public List<Map<String, Object>> listForUser(long userId, String status, int requestedLimit, int offset) {
+    /** 사용자가 참여한 여행 목록을 상태와 페이지 조건으로 조회합니다. */
+    public List<TripResponse> listForUser(
+            long userId,
+            String status,
+            int requestedLimit,
+            int offset) {
         int limit = Math.max(1, Math.min(requestedLimit, MAX_LIST_SIZE));
         int safeOffset = Math.max(0, offset);
-        List<Map<String, Object>> rows;
-        if (status == null || status.isBlank()) {
-            rows = jdbc.sql("""
-                    SELECT t.id, t.owner_id, t.title, t.start_date, t.end_date, t.departure_mode,
-                           t.region_id, t.status, t.max_members, t.started_at, t.ended_at,
-                           t.created_at, t.updated_at, t.version, t.invite_code
-                    FROM trips t
-                    JOIN trip_participants tp ON tp.trip_id = t.id
-                    WHERE tp.user_id = ? AND tp.status = 'JOINED'
-                      AND t.deleted_at IS NULL AND t.status <> 'CANCELED'
-                    ORDER BY t.start_date DESC, t.id DESC
-                    LIMIT ? OFFSET ?
-                    """)
-                    .params(userId, limit, safeOffset)
-                    .query().listOfRows();
-        } else {
-            String normalizedStatus = normalizeStatus(status).name();
-            rows = jdbc.sql("""
-                    SELECT t.id, t.owner_id, t.title, t.start_date, t.end_date, t.departure_mode,
-                           t.region_id, t.status, t.max_members, t.started_at, t.ended_at,
-                           t.created_at, t.updated_at, t.version, t.invite_code
-                    FROM trips t
-                    JOIN trip_participants tp ON tp.trip_id = t.id
-                    WHERE tp.user_id = ? AND tp.status = 'JOINED'
-                      AND t.status = ? AND t.deleted_at IS NULL AND t.status <> 'CANCELED'
-                    ORDER BY t.start_date DESC, t.id DESC
-                    LIMIT ? OFFSET ?
-                    """)
-                    .params(userId, normalizedStatus, limit, safeOffset)
-                    .query().listOfRows();
-        }
-        if (rows.isEmpty()) return List.of();
 
-        List<Long> tripIds = rows.stream().map(row -> RowSupport.longValue(row, "id")).toList();
-        String placeholders = String.join(",", java.util.Collections.nCopies(tripIds.size(), "?"));
-        List<Map<String, Object>> cityRows = jdbc.sql("""
-                SELECT trip_id, city_name, sequence_no FROM trip_cities
-                WHERE trip_id IN (%s) ORDER BY trip_id, sequence_no
-                """.formatted(placeholders))
-                .params(tripIds.toArray())
-                .query().listOfRows();
-        List<Map<String, Object>> memberRows = jdbc.sql("""
-                SELECT trip_id, user_id FROM trip_participants
-                WHERE trip_id IN (%s) AND status = 'JOINED' ORDER BY trip_id, joined_at
-                """.formatted(placeholders))
-                .params(tripIds.toArray())
-                .query().listOfRows();
-        Map<Long, List<String>> citiesByTrip = new LinkedHashMap<>();
-        cityRows.forEach(row -> citiesByTrip
-                .computeIfAbsent(RowSupport.longValue(row, "trip_id"), ignored -> new ArrayList<>())
-                .add(RowSupport.strValue(row, "city_name")));
-        Map<Long, List<Map<String, Object>>> membersByTrip = new LinkedHashMap<>();
-        memberRows.forEach(row -> membersByTrip
-                .computeIfAbsent(RowSupport.longValue(row, "trip_id"), ignored -> new ArrayList<>())
-                .add(Map.of("userId", RowSupport.longValue(row, "user_id"))));
-        return rows.stream().map(row -> {
-            long id = RowSupport.longValue(row, "id");
-            return toView(row, citiesByTrip.getOrDefault(id, List.of()),
-                    membersByTrip.getOrDefault(id, List.of()));
-        }).toList();
+        TripStatus normalizedStatus = status == null || status.isBlank()
+                ? null
+                : normalizeStatus(status);
+
+        List<TripQueryResult> rows = repository.findAllForUser(
+                userId,
+                normalizedStatus,
+                limit,
+                safeOffset);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        // 목록 전체의 연관 정보를 일괄 조회해 여행별 반복 쿼리를 방지합니다.
+        List<Long> tripIds = rows.stream()
+                .map(TripQueryResult::id)
+                .toList();
+        Map<Long, List<String>> citiesByTrip = repository.findCitiesByTripIds(tripIds);
+        Map<Long, List<Long>> membersByTrip = repository.findJoinedUserIdsByTripIds(tripIds);
+
+        return rows.stream()
+                .map(row -> {
+                    long id = row.id();
+
+                    return toView(
+                            row,
+                            citiesByTrip.getOrDefault(id, List.of()),
+                            membersByTrip.getOrDefault(id, List.of()));
+                })
+                .toList();
     }
 
-    public List<Map<String, Object>> members(long tripId) {
+    /** 여행 참여자 목록을 조회합니다. */
+    public List<ParticipantResponse> members(long tripId) {
         requireTrip(tripId);
-        return jdbc.sql("""
-                SELECT tp.id, tp.user_id, u.nickname,
-                       CASE WHEN a.result_code IS NULL THEN NULL
-                            ELSE CONCAT('character_', LOWER(a.result_code)) END AS character_key,
-                       tp.role, tp.status, tp.departure_place_id, tp.return_place_id,
-                       tp.route_preferences, tp.joined_at
-                FROM trip_participants tp
-                JOIN users u ON u.id = tp.user_id
-                LEFT JOIN survey_attempts a ON a.id = (
-                    SELECT sa.id FROM survey_attempts sa
-                    WHERE sa.user_id = tp.user_id AND sa.survey_id = ? AND sa.status = 'COMPLETED'
-                    ORDER BY sa.completed_at DESC, sa.id DESC LIMIT 1
-                )
-                WHERE tp.trip_id = ? AND tp.status = 'JOINED'
-                ORDER BY CASE tp.role WHEN 'OWNER' THEN 0 ELSE 1 END, tp.joined_at
-                """)
-                .params(SurveyService.PERSONALITY_SURVEY_ID, tripId)
-                .query().listOfRows().stream()
+        return repository.findParticipants(tripId).stream()
                 .map(this::toParticipant)
                 .toList();
     }
 
+    /** 여행 소유자가 여행 기본 정보를 수정합니다. */
     @Transactional
-    public Map<String, Object> update(
+    public TripResponse update(
             long actorId,
             long tripId,
             String title,
@@ -240,32 +179,15 @@ public class TripService {
             LocalDate endDate,
             List<String> cities,
             Integer expectedVersion) {
-        Map<String, Object> trip = lockTrip(tripId);
+        lockTrip(tripId);
         requireOwnerRow(tripId, actorId);
         validateDates(startDate, endDate);
         validateTitle(title);
         requirePlansWithinRange(tripId, startDate, endDate);
         List<String> normalizedCities = normalizeCities(cities);
         long regionId = resolveRegion(normalizedCities.getFirst());
-        int updated;
-        if (expectedVersion == null) {
-            updated = jdbc.sql("""
-                    UPDATE trips SET title = ?, start_date = ?, end_date = ?, region_id = ?,
-                                     version = version + 1, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND deleted_at IS NULL
-                    """)
-                    .params(title.trim(), startDate, endDate, regionId, tripId)
-                    .update();
-        } else {
-            updated = jdbc.sql("""
-                    UPDATE trips SET title = ?, start_date = ?, end_date = ?, region_id = ?,
-                                     version = version + 1, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND version = ? AND deleted_at IS NULL
-                    """)
-                    .params(title.trim(), startDate, endDate, regionId, tripId, expectedVersion)
-                    .update();
-        }
-        if (updated == 0) {
+        if (!repository.updateTrip(
+                tripId, title.trim(), startDate, endDate, regionId, expectedVersion)) {
             throw new BusinessException(TripErrorCode.TRIP_VERSION_CONFLICT);
         }
         replaceCities(tripId, normalizedCities);
@@ -273,143 +195,98 @@ public class TripService {
         return view(tripId);
     }
 
+    /** 날짜 조율 결과를 여행의 최종 기간으로 확정합니다. */
     @Transactional
-    public Map<String, Object> finalizeDates(
+    public TripResponse finalizeDates(
             long actorId, long tripId, LocalDate startDate, LocalDate endDate) {
         lockTrip(tripId);
         requireOwnerRow(tripId, actorId);
         validateDates(startDate, endDate);
         requirePlansWithinRange(tripId, startDate, endDate);
-        jdbc.sql("""
-                UPDATE trips
-                SET start_date = ?, end_date = ?, version = version + 1,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """)
-                .params(startDate, endDate, tripId)
-                .update();
+        repository.updateDates(tripId, startDate, endDate);
         recalculatePlanDays(tripId, startDate);
         return view(tripId);
     }
 
     private void requirePlansWithinRange(long tripId, LocalDate startDate, LocalDate endDate) {
-        long schedulesOutsideRange = jdbc.sql("""
-                SELECT COUNT(*) FROM travel_plans
-                WHERE trip_id = ? AND (plan_date < ? OR plan_date > ?)
-                """)
-                .params(tripId, startDate, endDate)
-                .query(Long.class)
-                .single();
-        if (schedulesOutsideRange > 0) {
+        if (repository.plansExistOutside(tripId, startDate, endDate)) {
             throw new BusinessException(TripErrorCode.TRIP_SCHEDULE_OUTSIDE_DATE_RANGE);
         }
     }
 
+    /** 여행 상태를 검증된 상태 값으로 변경합니다. */
     @Transactional
-    public Map<String, Object> changeStatus(long actorId, long tripId, TripStatus target) {
-        Map<String, Object> trip = lockTrip(tripId);
+    public TripResponse changeStatus(long actorId, long tripId, TripStatus target) {
+        TripQueryResult trip = lockTrip(tripId);
         requireOwnerRow(tripId, actorId);
-        TripStatus current = TripStatus.valueOf(RowSupport.strValue(trip, "status"));
+        TripStatus current = trip.status();
         if (!allowedTransition(current, target)) {
             throw new BusinessException(TripErrorCode.TRIP_STATUS_TRANSITION_INVALID,
                     statusLabel(current), statusLabel(target));
         }
-        String timestamps = switch (target) {
-            case IN_PROGRESS -> ", started_at = CURRENT_TIMESTAMP";
-            case COMPLETED -> ", ended_at = CURRENT_TIMESTAMP";
-            default -> "";
-        };
-        jdbc.sql("UPDATE trips SET status = ?, version = version + 1, updated_at = CURRENT_TIMESTAMP"
-                        + timestamps + " WHERE id = ?")
-                .params(target.name(), tripId)
-                .update();
+        repository.updateStatus(tripId, target);
         return view(tripId);
     }
 
+    /** 문자열 상태 값을 변환하여 여행 상태를 변경합니다. */
     @Transactional
-    public Map<String, Object> changeStatus(long actorId, long tripId, String target) {
+    public TripResponse changeStatus(long actorId, long tripId, String target) {
         return changeStatus(actorId, tripId, normalizeStatus(target));
     }
 
+    /** 여행 소유자가 여행을 삭제 처리합니다. */
     @Transactional
     public void delete(long actorId, long tripId) {
         lockTrip(tripId);
         requireOwnerRow(tripId, actorId);
-        int updated = jdbc.sql("""
-                UPDATE trips SET status = 'CANCELED', deleted_at = CURRENT_TIMESTAMP,
-                                 version = version + 1, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND deleted_at IS NULL
-                """)
-                .param(tripId)
-                .update();
-        if (updated == 0) {
+        if (!repository.cancel(tripId)) {
             throw new BusinessException(TripErrorCode.TRIP_NOT_FOUND);
         }
     }
 
+    /** 여행을 진행 중 상태로 시작합니다. */
     @Transactional
-    public Map<String, Object> start(long tripId) {
+    public TripResponse start(long tripId) {
         return transitionWithoutActor(tripId, TripStatus.PLANNING, TripStatus.IN_PROGRESS);
     }
 
+    /** 여행을 완료 상태로 종료합니다. */
     @Transactional
-    public Map<String, Object> complete(long tripId) {
+    public TripResponse complete(long tripId) {
         return transitionWithoutActor(tripId, TripStatus.IN_PROGRESS, TripStatus.COMPLETED);
     }
 
-    public Map<String, Object> requireTrip(long tripId) {
-        return tripRow(tripId);
+    /** 존재하는 여행인지 확인하고 조회 결과를 반환합니다. */
+    public TripQueryResult requireTrip(long tripId) {
+        return tripResult(tripId);
     }
 
+    /** 사용자가 여행 소유자인지 확인합니다. */
     public void requireOwner(long tripId, long userId) {
         requireTrip(tripId);
-        requireOwnerRow(tripId, userId);
+        if (!repository.isOwner(tripId, userId)) {
+            throw new BusinessException(TripErrorCode.TRIP_OWNER_REQUIRED);
+        }
     }
 
+    /** 사용자가 여행 참여자인지 확인합니다. */
     public void requireMember(long tripId, long userId) {
-        long count = jdbc.sql("""
-                SELECT COUNT(*)
-                FROM trip_participants tp
-                JOIN trips t ON t.id = tp.trip_id
-                WHERE tp.trip_id = ? AND tp.user_id = ? AND tp.status = 'JOINED'
-                  AND t.deleted_at IS NULL
-                """)
-                .params(tripId, userId)
-                .query(Long.class)
-                .optional()
-                .orElse(0L);
-        if (count == 0) {
+        if (!repository.isMember(tripId, userId)) {
             throw new BusinessException(TripErrorCode.TRIP_MEMBER_REQUIRED);
         }
     }
 
-    private Map<String, Object> transitionWithoutActor(long tripId, TripStatus current, TripStatus target) {
-        String timeColumn = target == TripStatus.IN_PROGRESS ? "started_at" : "ended_at";
-        int updated = jdbc.sql("UPDATE trips SET status = ?, " + timeColumn
-                        + " = CURRENT_TIMESTAMP, version = version + 1, updated_at = CURRENT_TIMESTAMP"
-                        + " WHERE id = ? AND status = ? AND deleted_at IS NULL")
-                .params(target.name(), tripId, current.name())
-                .update();
-        if (updated == 0) {
+    private TripResponse transitionWithoutActor(long tripId, TripStatus current, TripStatus target) {
+        if (!repository.transition(tripId, current, target)) {
             throw new BusinessException(TripErrorCode.TRIP_STATUS_CHANGE_CONFLICT);
         }
-        return get(tripId);
+        return view(tripId);
     }
 
     private long insertTrip(CreateTrip command) {
         for (int attempt = 0; attempt < INVITE_CODE_ATTEMPTS; attempt++) {
             String inviteCode = availableTripCode();
-            var inserted = keyHelper.insertOrEmptyOnUniqueViolation("""
-                        INSERT INTO trips (owner_id, title, start_date, end_date, departure_mode,
-                                           meeting_at, meeting_place_id, region_id, trip_preferences,
-                                           status, max_members, invite_code)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PLANNING', ?, ?)
-                        """,
-                    command.ownerId(), command.title(), command.startDate(), command.endDate(),
-                    command.departureMode().name(), command.meetingAt(), command.meetingPlaceId(),
-                    command.regionId(), command.tripPreferences(),
-                    command.maxMembers() == null ? DEFAULT_MAX_MEMBERS : command.maxMembers(),
-                    inviteCode);
+            var inserted = repository.insert(command, DEFAULT_MAX_MEMBERS, inviteCode);
             if (inserted.isPresent()) {
                 return inserted.getAsLong();
             }
@@ -418,56 +295,24 @@ public class TripService {
         throw new BusinessException(TripErrorCode.TRIP_INVITE_CODE_UNAVAILABLE);
     }
 
-    private Map<String, Object> tripRow(long tripId) {
-        return jdbc.sql("""
-                SELECT id, owner_id, title, description, start_date, end_date, departure_mode,
-                       meeting_at, meeting_place_id, region_id, trip_preferences, status, max_members,
-                       started_at, ended_at, created_at, updated_at, version, invite_code
-                FROM trips WHERE id = ? AND deleted_at IS NULL AND status <> 'CANCELED'
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-    }
-
-    private Map<String, Object> lockTrip(long tripId) {
-        return jdbc.sql("SELECT * FROM trips WHERE id = ? AND deleted_at IS NULL AND status <> 'CANCELED' FOR UPDATE")
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
+    private TripQueryResult lockTrip(long tripId) {
+        return repository.lock(tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private void requireOwnerRow(long tripId, long userId) {
-        long count = jdbc.sql("""
-                SELECT COUNT(*) FROM trip_participants
-                WHERE trip_id = ? AND user_id = ? AND role = 'OWNER' AND status = 'JOINED'
-                """)
-                .params(tripId, userId)
-                .query(Long.class)
-                .optional()
-                .orElse(0L);
-        if (count == 0) {
+        if (!repository.isOwner(tripId, userId)) {
             throw new BusinessException(TripErrorCode.TRIP_OWNER_REQUIRED);
         }
     }
 
     private void ensureMemberCanJoin(long tripId) {
-        Map<String, Object> trip = tripRow(tripId);
-        if (!"PLANNING".equals(RowSupport.strValue(trip, "status"))) {
+        TripQueryResult trip = tripResult(tripId);
+        if (trip.status() != TripStatus.PLANNING) {
             throw new BusinessException(TripErrorCode.TRIP_NOT_JOINABLE);
         }
-        Object maxMembersValue = valueOrNull(trip, "max_members");
-        int maxMembers = maxMembersValue == null
-                ? DEFAULT_MAX_MEMBERS
-                : ((Number) maxMembersValue).intValue();
-        Long current = jdbc.sql("""
-                SELECT COUNT(*) FROM trip_participants WHERE trip_id = ? AND status = 'JOINED'
-                """)
-                .param(tripId)
-                .query(Long.class)
-                .single();
+        int maxMembers = trip.maxMembers() == null ? DEFAULT_MAX_MEMBERS : trip.maxMembers();
+        long current = repository.countJoinedMembers(tripId);
         if (current >= maxMembers) {
             throw new BusinessException(TripErrorCode.TRIP_MEMBER_CAPACITY_REACHED);
         }
@@ -475,115 +320,62 @@ public class TripService {
 
     private void addMemberInternal(long tripId, long userId, String role,
                                    Long departurePlaceId, Long returnPlaceId) {
-        int restored = jdbc.sql("""
-                UPDATE trip_participants
-                SET role = ?, status = 'JOINED', departure_place_id = ?, return_place_id = ?,
-                    left_at = NULL, joined_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                WHERE trip_id = ? AND user_id = ? AND status IN ('LEFT', 'REMOVED')
-                """)
-                .params(role, departurePlaceId, returnPlaceId, tripId, userId)
-                .update();
-        if (restored == 1) {
-            jdbc.sql("""
-                    UPDATE travel_routes
-                    SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                    WHERE member_id IN (
-                        SELECT id FROM trip_participants
-                        WHERE trip_id = ? AND user_id = ?)
-                      AND status IN ('RECOMMENDED', 'SELECTED')
-                    """)
-                    .params(tripId, userId)
-                    .update();
+        if (repository.restoreParticipant(
+                tripId, userId, role, departurePlaceId, returnPlaceId)) {
+            repository.expireParticipantRoutes(tripId, userId);
             return;
         }
         try {
-            jdbc.sql("""
-                    INSERT INTO trip_participants
-                        (trip_id, user_id, role, departure_place_id, return_place_id, status)
-                    VALUES (?, ?, ?, ?, ?, 'JOINED')
-                    """)
-                    .params(tripId, userId, role, departurePlaceId, returnPlaceId)
-                    .update();
+            repository.insertParticipant(tripId, userId, role, departurePlaceId, returnPlaceId);
         } catch (DuplicateKeyException exception) {
             throw new BusinessException(TripErrorCode.TRIP_ALREADY_JOINED);
         }
     }
 
-    private Map<String, Object> memberByUser(long tripId, long userId) {
-        return jdbc.sql("""
-                SELECT tp.id, tp.trip_id, tp.user_id, u.nickname,
-                       CAST(NULL AS VARCHAR) AS character_key,
-                       tp.role, tp.status, tp.departure_place_id,
-                       tp.return_place_id, tp.route_preferences, tp.joined_at
-                FROM trip_participants tp
-                JOIN users u ON u.id = tp.user_id
-                WHERE tp.trip_id = ? AND tp.user_id = ?
-                """)
-                .params(tripId, userId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .map(this::toParticipant)
+    private ParticipantResponse memberByUser(long tripId, long userId) {
+        return repository.findParticipant(tripId, userId).map(this::toParticipant)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_MEMBER_NOT_FOUND));
     }
 
-    private List<String> cities(long tripId) {
-        return jdbc.sql("""
-                SELECT city_name FROM trip_cities WHERE trip_id = ? ORDER BY sequence_no
-                """)
-                .param(tripId)
-                .query(String.class)
-                .list();
-    }
-
-    private Map<String, Object> toView(
-            Map<String, Object> row,
+    private TripResponse toView(
+            TripQueryResult row,
             List<String> cities,
-            List<Map<String, Object>> members) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", RowSupport.longValue(row, "id"));
-        result.put("name", RowSupport.strValue(row, "title"));
-        result.put("startDate", AppDateFormat.date(localDate(RowSupport.value(row, "start_date"))));
-        result.put("endDate", AppDateFormat.date(localDate(RowSupport.value(row, "end_date"))));
-        result.put("cities", cities);
-        String status = RowSupport.strValue(row, "status");
-        result.put("status", "IN_PROGRESS".equals(status) ? "ONGOING" : status);
-        result.put("ownerId", RowSupport.longValue(row, "owner_id"));
-        result.put("participantIds", members.stream()
+            List<?> members) {
+        String status = row.status().name();
+        List<Long> participantIds = members.stream()
                 .map(member -> {
-                    Object value = member.get("user_id");
-                    if (value == null) value = member.get("userId");
-                    return ((Number) value).longValue();
+                    if (member instanceof ParticipantResponse participant) {
+                        return participant.userId();
+                    }
+                    if (member instanceof Number number) {
+                        return number.longValue();
+                    }
+                    throw new IllegalArgumentException("지원하지 않는 참여자 조회 타입입니다.");
                 })
-                .toList());
-        Object storedInviteCode = valueOrNull(row, "invite_code");
-        result.put("inviteCode", storedInviteCode == null ? "" : storedInviteCode.toString());
-        result.put("version", RowSupport.intValue(row, "version"));
-        result.put("createdAt", RowSupport.value(row, "created_at"));
-        result.put("updatedAt", RowSupport.value(row, "updated_at"));
-        return result;
+                .toList();
+        return new TripResponse(
+                row.id(), row.title(), AppDateFormat.date(row.startDate()), AppDateFormat.date(row.endDate()), cities,
+                "IN_PROGRESS".equals(status) ? "ONGOING" : status,
+                row.ownerId(), participantIds, row.inviteCode() == null ? "" : row.inviteCode(),
+                row.version(), row.createdAt(), row.updatedAt());
     }
 
-    private Map<String, Object> toParticipant(Map<String, Object> row) {
-        Map<String, Object> value = new LinkedHashMap<>();
-        value.put("id", RowSupport.longValue(row, "user_id"));
-        value.put("userId", RowSupport.longValue(row, "user_id"));
-        value.put("participantId", RowSupport.longValue(row, "id"));
-        value.put("nickname", RowSupport.strValue(row, "nickname"));
-        value.put("characterKey", valueOrNull(row, "character_key"));
-        value.put("role", RowSupport.strValue(row, "role"));
-        value.put("status", RowSupport.strValue(row, "status"));
-        value.put("departurePlaceId", valueOrNull(row, "departure_place_id"));
-        value.put("returnPlaceId", valueOrNull(row, "return_place_id"));
-        return value;
+    private ParticipantResponse toParticipant(ParticipantQueryResult row) {
+        long userId = row.userId();
+        return new ParticipantResponse(
+                userId, userId, row.participantId(), row.nickname(), row.characterKey(),
+                row.role(), row.status(), row.departurePlaceId(), row.returnPlaceId(), row.tripId());
     }
 
-    private Object valueOrNull(Map<String, Object> row, String key) {
-        Object value = row.get(key);
-        return value != null ? value : row.get(key.toUpperCase(Locale.ROOT));
+    private TripQueryResult tripResult(long tripId) {
+        return repository.find(tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private List<String> normalizeCities(List<String> cities) {
-        if (cities == null) throw new BusinessException(TripErrorCode.TRIP_CITY_REQUIRED);
+        if (cities == null) {
+            throw new BusinessException(TripErrorCode.TRIP_CITY_REQUIRED);
+        }
         List<String> normalized = cities.stream()
                 .filter(java.util.Objects::nonNull)
                 .map(String::trim)
@@ -598,71 +390,35 @@ public class TripService {
     }
 
     private long resolveRegion(String name) {
-        Long regionId = jdbc.sql("SELECT region_id FROM regions WHERE name = ?")
-                .param(name)
-                .query(Long.class)
-                .optional()
-                .orElse(null);
-        if (regionId != null) return regionId;
+        Long regionId = repository.findRegionId(name).orElse(null);
+        if (regionId != null) {
+            return regionId;
+        }
 
         // PostgreSQL은 유일 제약 오류가 난 트랜잭션에서 재조회할 수 없으므로
         // 기준 지역 행을 잠가 새로운 지역 등록을 짧게 직렬화한다.
-        jdbc.sql("""
-                SELECT region_id FROM regions
-                WHERE region_id = (SELECT MIN(region_id) FROM regions)
-                FOR UPDATE
-                """)
-                .query(Long.class)
-                .optional();
-        regionId = jdbc.sql("SELECT region_id FROM regions WHERE name = ?")
-                .param(name)
-                .query(Long.class)
-                .optional()
-                .orElse(null);
-        if (regionId != null) return regionId;
+        repository.lockRegionSequence();
+        regionId = repository.findRegionId(name).orElse(null);
+        if (regionId != null) {
+            return regionId;
+        }
 
-        jdbc.sql("INSERT INTO regions (name) VALUES (?)").param(name).update();
-        return jdbc.sql("SELECT region_id FROM regions WHERE name = ?")
-                .param(name)
-                .query(Long.class)
-                .optional()
+        repository.insertRegion(name);
+        return repository.findRegionId(name)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_REGION_CREATION_CONFLICT));
     }
 
     private void replaceCities(long tripId, List<String> cities) {
-        jdbc.sql("DELETE FROM trip_cities WHERE trip_id = ?").param(tripId).update();
-        for (int index = 0; index < cities.size(); index++) {
-            jdbc.sql("INSERT INTO trip_cities (trip_id, city_name, sequence_no) VALUES (?, ?, ?)")
-                    .params(tripId, cities.get(index), index + 1)
-                    .update();
-        }
+        repository.replaceCities(tripId, cities);
     }
 
     private void recalculatePlanDays(long tripId, LocalDate startDate) {
-        List<Map<String, Object>> plans = jdbc.sql("""
-                SELECT id, plan_date FROM travel_plans
-                WHERE trip_id = ? ORDER BY plan_date, id
-                FOR UPDATE
-                """)
-                .param(tripId)
-                .query().listOfRows();
-        if (plans.isEmpty()) return;
+        repository.recalculatePlanDays(tripId, startDate);
+        /* Repository가 잠금과 일차 재계산을 원자적으로 처리한다.
+
 
         // 같은 여행의 일차 유일 제약과 부딪치지 않도록 기존 값을 먼저 임시 범위로 옮긴다.
-        jdbc.sql("UPDATE travel_plans SET day_number = day_number + 10000 WHERE trip_id = ?")
-                .param(tripId)
-                .update();
-        for (Map<String, Object> plan : plans) {
-            LocalDate planDate = localDate(RowSupport.value(plan, "plan_date"));
-            int dayNumber = Math.toIntExact(java.time.temporal.ChronoUnit.DAYS.between(startDate, planDate)) + 1;
-            jdbc.sql("""
-                    UPDATE travel_plans
-                    SET day_number = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND trip_id = ?
-                    """)
-                    .params(dayNumber, RowSupport.longValue(plan, "id"), tripId)
-                    .update();
-        }
+        */
     }
 
     private String availableTripCode() {
@@ -671,21 +427,11 @@ public class TripService {
             for (int index = 1; index < 6; index++) {
                 code.append(INVITE_CODE_CHARACTERS[random.nextInt(INVITE_CODE_CHARACTERS.length)]);
             }
-            long count = jdbc.sql("""
-                    SELECT
-                      (SELECT COUNT(*) FROM trips WHERE invite_code = ?) +
-                      (SELECT COUNT(*) FROM travel_invitations WHERE invite_code = ?)
-                    """)
-                    .params(code.toString(), code.toString())
-                    .query(Long.class)
-                    .single();
-            if (count == 0) return code.toString();
+            if (!repository.codeExists(code.toString())) {
+                return code.toString();
+            }
         }
         throw new BusinessException(TripErrorCode.TRIP_INVITE_CODE_UNAVAILABLE);
-    }
-
-    private LocalDate localDate(Object value) {
-        return AppDateFormat.databaseDate(value);
     }
 
     private void validateDates(LocalDate startDate, LocalDate endDate) {
@@ -710,16 +456,10 @@ public class TripService {
     }
 
     private void requireReachablePlace(long tripId, long userId, Long placeId) {
-        if (placeId == null) return;
-        long count = jdbc.sql("""
-                SELECT COUNT(*) FROM places
-                WHERE id = ? AND status = 'ACTIVE'
-                  AND (visibility = 'PUBLIC' OR owner_user_id = ? OR trip_id = ?)
-                """)
-                .params(placeId, userId, tripId)
-                .query(Long.class)
-                .single();
-        if (count == 0) {
+        if (placeId == null) {
+            return;
+        }
+        if (!repository.isReachablePlace(tripId, userId, placeId)) {
             throw new BusinessException(TripErrorCode.TRIP_PLACE_INVALID);
         }
     }
@@ -749,7 +489,9 @@ public class TripService {
     private TripStatus normalizeStatus(String status) {
         try {
             String normalized = status.trim().toUpperCase(Locale.ROOT);
-            if ("ONGOING".equals(normalized)) normalized = "IN_PROGRESS";
+            if ("ONGOING".equals(normalized)) {
+                normalized = "IN_PROGRESS";
+            }
             if ("CANCELED".equals(normalized)) {
                 throw new IllegalArgumentException("취소 상태는 삭제 API로 처리합니다.");
             }
@@ -789,6 +531,10 @@ public class TripService {
     ) {
     }
 
-    public record AddMember(long userId, Long departurePlaceId, Long returnPlaceId) {
+    public record AddMember(
+            long userId,
+            Long departurePlaceId,
+            Long returnPlaceId
+    ) {
     }
 }

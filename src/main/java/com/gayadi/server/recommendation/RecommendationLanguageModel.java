@@ -1,7 +1,13 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import java.util.List;
 
+/** 검색 계획 수립과 후보 선정을 수행하는 추천 언어 모델 계약입니다. */
 public interface RecommendationLanguageModel {
 
     PlaceSearchPlan createSearchPlan(RecommendationContext context);

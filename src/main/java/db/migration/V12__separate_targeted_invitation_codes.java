@@ -87,10 +87,15 @@ public class V12__separate_targeted_invitation_codes extends BaseJavaMigration {
             for (int index = 1; index < 8; index++) {
                 code.append(CHARACTERS[random.nextInt(CHARACTERS.length)]);
             }
-            if (!used.contains(code.toString())) return code.toString();
+            if (!used.contains(code.toString())) {
+                return code.toString();
+            }
         }
         throw new IllegalStateException("기존 초대 코드를 안전하게 바꾸지 못했습니다.");
     }
 
-    private record InvitationCode(long id, String code) { }
+    private record InvitationCode(
+            long id,
+            String code
+    ) { }
 }

@@ -3,6 +3,7 @@ package com.gayadi.server.expense;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 여행 경비와 정산 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum ExpenseErrorCode implements ErrorCode {
 
     // Expense - 경비 내역 및 여행 기간 검증

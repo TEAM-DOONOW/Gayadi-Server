@@ -35,7 +35,7 @@ class AndroidFeatureDomainHttpIntegrationTests {
                 {"name":"Android 기능 여행","startDate":"%s","endDate":"%s","cities":["서울"]}
                 """.formatted(first, last)), 201);
         long tripId = trip.path("id").asLong();
-        String inviteCode = trip.path("inviteCode").asText();
+        String inviteCode = trip.path("inviteCode").asString();
         body(request("POST", "/api/v1/trip-memberships", member.token(),
                 "{\"inviteCode\":\"" + inviteCode + "\"}"), 201);
 
@@ -75,7 +75,7 @@ class AndroidFeatureDomainHttpIntegrationTests {
                 owner.token(), """
                         {"startDate":"%s","endDate":"%s"}
                         """.formatted(commonStart, commonEnd)), 200);
-        Assertions.assertThat(finalized.path("startDate").asText())
+        Assertions.assertThat(finalized.path("startDate").asString())
                 .isEqualTo(commonStart.toString().replace('-', '.'));
         Assertions.assertThat(finalized.path("participants").size()).isEqualTo(2);
 
@@ -87,8 +87,8 @@ class AndroidFeatureDomainHttpIntegrationTests {
                         }
                         """.formatted(commonStart)), 201);
         long scheduleId = schedule.path("id").asLong();
-        Assertions.assertThat(schedule.path("endTime").asText()).isEqualTo("11:30");
-        Assertions.assertThat(schedule.path("memo").asText()).isEqualTo("정문에서 만나기");
+        Assertions.assertThat(schedule.path("endTime").asString()).isEqualTo("11:30");
+        Assertions.assertThat(schedule.path("memo").asString()).isEqualTo("정문에서 만나기");
 
         JsonNode outsideTripSchedule = body(request("POST",
                 "/api/v1/trips/" + tripId + "/schedules", owner.token(), """
@@ -103,9 +103,9 @@ class AndroidFeatureDomainHttpIntegrationTests {
                 "/api/v1/trips/" + tripId + "/schedules/" + scheduleId, member.token(), """
                         {"time":"10:30","endTime":null,"memo":"입구가 아닌 정문"}
                         """), 200);
-        Assertions.assertThat(updatedSchedule.path("time").asText()).isEqualTo("10:30");
+        Assertions.assertThat(updatedSchedule.path("time").asString()).isEqualTo("10:30");
         Assertions.assertThat(updatedSchedule.path("endTime").isNull()).isTrue();
-        Assertions.assertThat(updatedSchedule.path("memo").asText()).isEqualTo("입구가 아닌 정문");
+        Assertions.assertThat(updatedSchedule.path("memo").asString()).isEqualTo("입구가 아닌 정문");
 
         JsonNode fund = body(request("POST",
                 "/api/v1/trips/" + tripId + "/shared-fund/contributions",
@@ -148,12 +148,12 @@ class AndroidFeatureDomainHttpIntegrationTests {
                 {"category":"bug","title":"화면 문의","message":"재현 내용을 전달합니다.",
                  "contactEmail":"support-user@example.com"}
                 """), 201);
-        Assertions.assertThat(inquiry.path("category").asText()).isEqualTo("bug");
-        Assertions.assertThat(inquiry.path("status").asText()).isEqualTo("RECEIVED");
+        Assertions.assertThat(inquiry.path("category").asString()).isEqualTo("bug");
+        Assertions.assertThat(inquiry.path("status").asString()).isEqualTo("RECEIVED");
 
         JsonNode notices = body(request("GET", "/api/v1/notices", null, null), 200);
         Assertions.assertThat(notices).isNotEmpty();
-        String noticeId = notices.get(0).path("id").asText();
+        String noticeId = notices.get(0).path("id").asString();
         JsonNode notice = body(request("GET", "/api/v1/notices/" + noticeId, null, null), 200);
         Assertions.assertThat(notice.path("sections")).isNotEmpty();
         Assertions.assertThat(notice.has("isPinned")).isTrue();
@@ -219,7 +219,7 @@ class AndroidFeatureDomainHttpIntegrationTests {
                         + "\",\"password\":\"password1\",\"nickname\":\""
                         + nickname + "\"}"), 201);
         return new Account(response.path("user").path("id").asLong(),
-                response.path("accessToken").asText());
+                response.path("accessToken").asString());
     }
 
     private HttpResponse<String> request(String method, String path, String token, String body)
@@ -243,8 +243,8 @@ class AndroidFeatureDomainHttpIntegrationTests {
 
     private void assertError(JsonNode response, int status, String code) {
         Assertions.assertThat(response.path("status").asInt()).isEqualTo(status);
-        Assertions.assertThat(response.path("code").asText()).isEqualTo(code);
-        Assertions.assertThat(response.path("traceId").asText()).isNotBlank();
+        Assertions.assertThat(response.path("code").asString()).isEqualTo(code);
+        Assertions.assertThat(response.path("traceId").asString()).isNotBlank();
         Assertions.assertThat(response.path("details").isNull()).isTrue();
     }
 

@@ -1,5 +1,8 @@
 package com.gayadi.server.expense;
 
+import com.gayadi.server.expense.dto.response.ExpenseResponse;
+import com.gayadi.server.expense.dto.response.SettlementResponse;
+import com.gayadi.server.expense.model.ExpensePaymentSource;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -68,8 +71,12 @@ final class ExpenseSettlementCalculator {
             result.add(new SettlementResponse.Transfer(debtor.id, creditor.id, amount));
             debtor.remaining -= amount;
             creditor.remaining -= amount;
-            if (debtor.remaining == 0) debtorIndex++;
-            if (creditor.remaining == 0) creditorIndex++;
+            if (debtor.remaining == 0) {
+                debtorIndex++;
+            }
+            if (creditor.remaining == 0) {
+                creditorIndex++;
+            }
         }
         return List.copyOf(result);
     }
@@ -88,7 +95,11 @@ final class ExpenseSettlementCalculator {
             this.remaining = remaining;
         }
 
-        private long id() { return id; }
-        private long remaining() { return remaining; }
+        private long id() {
+            return id;
+        }
+        private long remaining() {
+            return remaining;
+        }
     }
 }

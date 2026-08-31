@@ -28,4 +28,8 @@ public class JsonSupport {
             throw new IllegalArgumentException("JSON 파싱에 실패했습니다.", e);
         }
     }
+
+    public <T> T convert(Object value, Class<T> type) {
+        return objectMapper.convertValue(value, type);
+    }
 }

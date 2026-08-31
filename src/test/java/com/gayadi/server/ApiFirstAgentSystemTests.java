@@ -1,17 +1,17 @@
 package com.gayadi.server;
 
 import com.gayadi.server.recommendation.PlaceRecommendationAgent;
-import com.gayadi.server.recommendation.PlaceRecommendationRequest;
-import com.gayadi.server.recommendation.PlaceRecommendationResponse;
-import com.gayadi.server.recommendation.PlaceSearchPlan;
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.response.PlaceRecommendationResponse;
+import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
+import com.gayadi.server.recommendation.dto.response.SituationResponse;
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
+import com.gayadi.server.recommendation.model.TravelSituation;
 import com.gayadi.server.recommendation.PlaceSnapshotWriter;
 import com.gayadi.server.recommendation.RecommendationLanguageModel;
-import com.gayadi.server.recommendation.RecommendedPlace;
-import com.gayadi.server.recommendation.SituationResponse;
 import com.gayadi.server.recommendation.SituationResponseAgent;
-import com.gayadi.server.recommendation.TourPlaceCandidate;
 import com.gayadi.server.recommendation.TourPlaceSearchGateway;
-import com.gayadi.server.recommendation.TravelSituation;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;

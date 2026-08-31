@@ -3,6 +3,7 @@ package com.gayadi.server.auth;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 인증과 사용자 계정 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum AuthErrorCode implements ErrorCode {
 
     // Registration - 회원가입 및 계정 식별자 중복
@@ -33,7 +34,19 @@ public enum AuthErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

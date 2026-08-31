@@ -4,13 +4,18 @@ import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.schedule.ScheduleErrorCode;
 import com.gayadi.server.travel.TripErrorCode;
 import com.gayadi.server.common.JsonSupport;
-import com.gayadi.server.common.KeyHelper;
 import com.gayadi.server.common.Location;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.schedule.PlanService;
-import com.gayadi.server.travel.DepartureMode;
+import com.gayadi.server.schedule.query.PlanPlaceQueryResult;
+import com.gayadi.server.travel.model.DepartureMode;
 import com.gayadi.server.travel.TripService;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import com.gayadi.server.route.dto.response.RouteResponse;
+import com.gayadi.server.route.query.RouteLockQueryResult;
+import com.gayadi.server.route.query.RouteMemberQueryResult;
+import com.gayadi.server.route.query.RouteOptionQueryResult;
+import com.gayadi.server.route.query.RoutePlaceQueryResult;
+import com.gayadi.server.route.query.RouteQueryResult;
+import com.gayadi.server.route.query.RouteTripQueryResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,58 +28,57 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+/** 여행 일정과 참여자 조건을 바탕으로 경로 추천·선택 흐름을 조정합니다. */
 @Service
 public class RouteService {
 
     private static final int MAX_ITINERARY_STOPS = 100;
 
-    private final JdbcClient jdbc;
+    private final RouteRepository repository;
     private final TripService trips;
     private final PlanService plans;
     private final RouteProvider provider;
     private final JsonSupport json;
-    private final KeyHelper keyHelper;
     private final TransactionTemplate transactions;
 
-    public RouteService(JdbcClient jdbc, TripService trips, PlanService plans,
-                        RouteProvider provider, JsonSupport json, KeyHelper keyHelper,
+    public RouteService(RouteRepository repository, TripService trips, PlanService plans,
+                        RouteProvider provider, JsonSupport json,
                         PlatformTransactionManager transactionManager) {
-        this.jdbc = jdbc;
+        this.repository = repository;
         this.trips = trips;
         this.plans = plans;
         this.provider = provider;
         this.json = json;
-        this.keyHelper = keyHelper;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
     /** 인증된 HTTP 요청에서 사용하는 경로 추천입니다. */
-    public Map<String, Object> recommendForUser(
+    public RouteResponse recommendForUser(
             long tripId, long userId, RoutePhase phase, Long requestedUserId) {
         RecommendationPreparation preparation = Objects.requireNonNull(
                 transactions.execute(status -> {
-                    Map<String, Object> trip = lockTrip(tripId);
+                    RouteTripQueryResult trip = lockTrip(tripId);
                     trips.requireMember(tripId, userId);
                     long actorMemberId = participantIdForUser(tripId, userId);
                     Long memberId = resolveMemberId(
                             trip, phase, requestedUserId, userId, actorMemberId);
                     return prepare(tripId, trip, phase, memberId, userId);
                 }));
-        return recommendPrepared(preparation);
+        return routeResponse(recommendPrepared(preparation));
     }
 
     /** 서비스 흐름 테스트와 내부 작업에서 사용하는 기존 진입점입니다. */
-    public Map<String, Object> recommend(long tripId, RoutePhase phase, Long memberId) {
+    public RouteResponse recommend(long tripId, RoutePhase phase, Long memberId) {
         RecommendationPreparation preparation = Objects.requireNonNull(
                 transactions.execute(status -> prepare(
                         tripId, lockTrip(tripId), phase, memberId, null)));
-        return recommendPrepared(preparation);
+        return routeResponse(recommendPrepared(preparation));
     }
 
     private RecommendationPreparation prepare(
-            long tripId, Map<String, Object> trip, RoutePhase phase, Long memberId,
+            long tripId, RouteTripQueryResult trip, RoutePhase phase, Long memberId,
             Long authenticatedUserId) {
-        Map<String, Object> member = memberId == null ? null : member(tripId, memberId);
+        RouteMemberQueryResult member = memberId == null ? null : member(tripId, memberId);
         RouteContext context = routeContext(tripId, trip, phase, member);
         return new RecommendationPreparation(
                 tripId, phase, memberId, authenticatedUserId, context,
@@ -90,7 +94,10 @@ public class RouteService {
     }
 
     private RouteContext routeContext(
-            long tripId, Map<String, Object> trip, RoutePhase phase, Map<String, Object> member) {
+            long tripId,
+            RouteTripQueryResult trip,
+            RoutePhase phase,
+            RouteMemberQueryResult member) {
         return switch (phase) {
             case DEPARTURE -> departureContext(trip, member);
             case RETURN -> returnContext(tripId, member);
@@ -125,8 +132,13 @@ public class RouteService {
                 actualProvider = estimate.providerName();
             }
         }
-        return new RouteCalculation(context, List.copyOf(segments),
-                durationMinutes, transferCount, fare, actualProvider);
+        return new RouteCalculation(
+                context,
+                List.copyOf(segments),
+                durationMinutes,
+                transferCount,
+                fare,
+                actualProvider);
     }
 
     private Map<String, Object> persistRecommendation(
@@ -156,7 +168,12 @@ public class RouteService {
         List<Map<String, Object>> options = new ArrayList<>();
         for (OptionSpec option : optionSpecs(phase)) {
             options.add(persistOption(
-                    tripId, planId, phase, memberId, calculation, option));
+                    tripId,
+                    planId,
+                    phase,
+                    memberId,
+                    calculation,
+                    option));
         }
 
         Map<String, Object> result = new LinkedHashMap<>(options.getFirst());
@@ -173,6 +190,8 @@ public class RouteService {
             OptionSpec option) {
         RouteContext context = calculation.context();
         List<Map<String, Object>> optionSegments = optionSegments(calculation, option);
+
+        // 옵션별 보정이 반영된 구간을 합산해 저장용 요약 값을 계산합니다.
         int durationMinutes = optionSegments.stream()
                 .mapToInt(segment -> ((Number) segment.get("durationMinutes")).intValue())
                 .sum();
@@ -195,14 +214,17 @@ public class RouteService {
         routeData.put("stops", context.stops());
         routeData.put("segments", optionSegments);
 
-        long routeId = keyHelper.insert("""
-                INSERT INTO travel_routes (plan_id, member_id, phase, route_data, transport_mode,
-                                            duration_minutes, transfer_count, fare, status, recommended_at)
-                VALUES (?, ?, ?, ?, 'PUBLIC_TRANSIT', ?, ?, ?, 'RECOMMENDED', CURRENT_TIMESTAMP)
-                """,
-                planId, memberId, phase.name(), json.write(routeData),
-                durationMinutes, transferCount, fare);
+        // 계산 근거 전체를 JSON으로 보존해 조회 응답과 추후 재현에 사용합니다.
+        long routeId = repository.saveRecommendation(
+                planId,
+                memberId,
+                phase,
+                json.write(routeData),
+                durationMinutes,
+                transferCount,
+                fare);
 
+        // 저장 모델과 무관한 API 계약 필드를 조립해 호출자에게 반환합니다.
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", routeId);
         result.put("optionId", option.id());
@@ -230,7 +252,8 @@ public class RouteService {
     }
 
     private List<Map<String, Object>> optionSegments(
-            RouteCalculation calculation, OptionSpec option) {
+            RouteCalculation calculation,
+            OptionSpec option) {
         return calculation.segments().stream()
                 .map(segment -> {
                     int duration = Math.max(1, (int) Math.ceil(
@@ -254,18 +277,21 @@ public class RouteService {
                 .toList();
     }
 
+    /** 추천 경로 번호를 사용해 참여자의 경로를 선택합니다. */
     @Transactional
-    public Map<String, Object> selectForUser(
+    public RouteResponse selectForUser(
             long tripId, long userId, RoutePhase phase, long routeId) {
         return selectForUser(tripId, userId, phase, routeId, null, null);
     }
 
+    /** 경로 번호 또는 추천 선택지로 참여자의 경로를 선택합니다. */
     @Transactional
-    public Map<String, Object> selectForUser(
+    public RouteResponse selectForUser(
             long tripId, long userId, RoutePhase phase, Long requestedRouteId,
             String requestedOptionId, Long requestedUserId) {
         trips.requireMember(tripId, userId);
-        Map<String, Object> trip = trips.requireTrip(tripId);
+        trips.requireTrip(tripId);
+        RouteTripQueryResult trip = lockTrip(tripId);
         long actorMemberId = participantIdForUser(tripId, userId);
         Long expectedMemberId = resolveMemberId(
                 trip, phase, requestedUserId, userId, actorMemberId);
@@ -282,13 +308,13 @@ public class RouteService {
             lockPlan(planId);
             routeId = routeIdForOption(planId, phase, expectedMemberId, optionId);
         }
-        Map<String, Object> route = lockedRoute(routeId, planId);
+        RouteLockQueryResult route = lockedRoute(routeId, planId);
 
-        RoutePhase routePhase = RoutePhase.valueOf(RowSupport.strValue(route, "phase"));
+        RoutePhase routePhase = route.phase();
         if (routePhase != phase) {
             throw new BusinessException(RouteErrorCode.ROUTE_TYPE_MISMATCH);
         }
-        Long routeMemberId = nullableLong(route, "member_id");
+        Long routeMemberId = route.memberId();
         if (requestedRouteId != null && routeMemberId != null && routeMemberId == actorMemberId) {
             // 경로 번호는 이미 참여자 소유권을 식별하므로 TOGETHER 개인 출발안도 선택할 수 있다.
             expectedMemberId = actorMemberId;
@@ -296,93 +322,95 @@ public class RouteService {
         if (!Objects.equals(routeMemberId, expectedMemberId)) {
             throw new BusinessException(RouteErrorCode.ROUTE_SELECTION_FORBIDDEN);
         }
-        String status = RowSupport.strValue(route, "status");
+        String status = route.status();
         if (!"RECOMMENDED".equals(status) && !"SELECTED".equals(status)) {
             throw new BusinessException(RouteErrorCode.ROUTE_NOT_SELECTABLE);
         }
 
         expireSelections(planId, phase, routeMemberId, routeId);
-        jdbc.sql("""
-                UPDATE travel_routes
-                SET status = 'SELECTED', selected_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND status IN ('RECOMMENDED', 'SELECTED')
-                """)
-                .param(routeId)
-                .update();
-        return routeView(routeById(tripId, routeId));
+        repository.select(routeId);
+        return routeResponse(routeView(routeById(tripId, routeId)));
     }
 
     private List<OptionSpec> optionSpecs(RoutePhase phase) {
         return switch (phase) {
             case DEPARTURE -> List.of(
-                    new OptionSpec("fast", "가장 빠른 출발", "FASTEST", 1.0, false,
+                    new OptionSpec(
+                            "fast",
+                            "가장 빠른 출발",
+                            "FASTEST",
+                            1.0,
+                            false,
                             "예상 이동 시간이 가장 짧은 출발안입니다.",
                             "이동 시간을 우선한 예상 구간입니다."),
-                    new OptionSpec("easy", "편안한 출발", "FEWER_TRANSFERS", 1.15, true,
+                    new OptionSpec(
+                            "easy",
+                            "편안한 출발",
+                            "FEWER_TRANSFERS",
+                            1.15,
+                            true,
                             "환승 부담과 대기 상황을 고려한 출발안입니다.",
                             "환승 부담을 줄이고 대기 여유를 둔 예상 구간입니다."));
             case IN_TRIP -> List.of(
-                    new OptionSpec("balanced", "균형 동선", "BALANCED", 1.0, false,
+                    new OptionSpec(
+                            "balanced",
+                            "균형 동선",
+                            "BALANCED",
+                            1.0,
+                            false,
                             "일정 순서에 따라 이동 시간과 환승 횟수를 계산한 동선입니다.",
                             "이동 시간과 환승을 함께 고려한 예상 구간입니다."),
-                    new OptionSpec("crowd", "한적한 동선", "CROWD_BUFFER", 1.15, false,
+                    new OptionSpec(
+                            "crowd",
+                            "한적한 동선",
+                            "CROWD_BUFFER",
+                            1.15,
+                            false,
                             "혼잡 가능성에 대비해 이동 여유 시간을 둔 동선입니다.",
                             "혼잡 가능성에 대비한 여유 시간을 포함한 예상 구간입니다."));
             case RETURN -> List.of(
-                    new OptionSpec("home-fast", "빠른 귀가", "FASTEST", 1.0, false,
+                    new OptionSpec(
+                            "home-fast",
+                            "빠른 귀가",
+                            "FASTEST",
+                            1.0,
+                            false,
                             "마지막 일정 뒤 바로 이동하는 귀가안입니다.",
                             "이동 시간을 우선한 예상 구간입니다."),
-                    new OptionSpec("home-rest", "여유로운 귀가", "REST_BUFFER", 1.2, false,
+                    new OptionSpec(
+                            "home-rest",
+                            "여유로운 귀가",
+                            "REST_BUFFER",
+                            1.2,
+                            false,
                             "휴식과 대기 시간을 고려해 여유를 둔 귀가안입니다.",
                             "휴식과 대기 여유를 포함한 예상 구간입니다."));
         };
     }
 
+    /** 참여자가 선택한 경로를 취소합니다. */
     @Transactional
     public void clearSelectionForUser(
             long tripId, long userId, RoutePhase phase, Long requestedUserId) {
         trips.requireMember(tripId, userId);
-        Map<String, Object> trip = trips.requireTrip(tripId);
+        trips.requireTrip(tripId);
+        RouteTripQueryResult trip = lockTrip(tripId);
         long actorMemberId = participantIdForUser(tripId, userId);
         Long memberId = resolveMemberId(
                 trip, phase, requestedUserId, userId, actorMemberId);
         long planId = getPlanId(tripId, phase);
         lockPlan(planId);
 
-        JdbcClient.StatementSpec statement = jdbc.sql(memberId == null ? """
-                UPDATE travel_routes
-                SET status = 'CANCELED', updated_at = CURRENT_TIMESTAMP
-                WHERE plan_id = ? AND phase = ? AND member_id IS NULL AND status = 'SELECTED'
-                """ : """
-                UPDATE travel_routes
-                SET status = 'CANCELED', updated_at = CURRENT_TIMESTAMP
-                WHERE plan_id = ? AND phase = ? AND member_id = ? AND status = 'SELECTED'
-                """);
-        if (memberId == null) {
-            statement.params(planId, phase.name()).update();
-        } else {
-            statement.params(planId, phase.name(), memberId).update();
-        }
+        repository.clearSelection(planId, phase, memberId);
     }
 
-    public List<Map<String, Object>> selectionsForUser(long tripId, long userId) {
+    /** 참여자가 선택한 여행 경로 목록을 조회합니다. */
+    public List<RouteResponse> selectionsForUser(long tripId, long userId) {
         trips.requireMember(tripId, userId);
         long actorMemberId = participantIdForUser(tripId, userId);
-        return jdbc.sql("""
-                SELECT r.id, r.plan_id, p.trip_id, r.member_id, r.phase, r.route_data,
-                       r.transport_mode, r.duration_minutes, r.distance_meters,
-                       r.transfer_count, r.fare, r.status, r.recommended_at, r.selected_at,
-                       participant.user_id AS member_user_id
-                FROM travel_routes r
-                JOIN travel_plans p ON p.id = r.plan_id
-                LEFT JOIN trip_participants participant ON participant.id = r.member_id
-                WHERE p.trip_id = ? AND r.status = 'SELECTED'
-                  AND (r.member_id IS NULL OR r.member_id = ?)
-                ORDER BY r.selected_at DESC, r.id DESC
-                """)
-                .params(tripId, actorMemberId)
-                .query().listOfRows().stream()
+        return repository.findSelections(tripId, actorMemberId).stream()
                 .map(this::routeView)
+                .map(this::routeResponse)
                 .toList();
     }
 
@@ -390,16 +418,10 @@ public class RouteService {
     @Transactional
     public int expireActiveForTrip(long tripId) {
         trips.requireTrip(tripId);
-        return jdbc.sql("""
-                UPDATE travel_routes
-                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                WHERE plan_id IN (SELECT id FROM travel_plans WHERE trip_id = ?)
-                  AND status IN ('RECOMMENDED', 'SELECTED')
-                """)
-                .param(tripId)
-                .update();
+        return repository.expireActiveForTrip(tripId);
     }
 
+    /** API 경로 유형 문자열을 내부 경로 단계로 변환합니다. */
     public RoutePhase routePhase(String type) {
         if (type == null || type.isBlank()) {
             throw new BusinessException(RouteErrorCode.ROUTE_TYPE_REQUIRED);
@@ -412,13 +434,15 @@ public class RouteService {
         };
     }
 
-    private RouteContext departureContext(Map<String, Object> trip, Map<String, Object> member) {
-        DepartureMode mode = DepartureMode.valueOf(RowSupport.strValue(trip, "departure_mode"));
-        long tripId = RowSupport.longValue(trip, "id");
+    private RouteContext departureContext(
+            RouteTripQueryResult trip,
+            RouteMemberQueryResult member) {
+        DepartureMode mode = trip.departureMode();
+        long tripId = trip.id();
         Location firstPlace = placeLocation(plans.firstPlace(tripId));
 
         if (mode == DepartureMode.TOGETHER && member == null) {
-            Long meetingPlaceId = nullableLong(trip, "meeting_place_id");
+            Long meetingPlaceId = trip.meetingPlaceId();
             if (meetingPlaceId == null) {
                 throw new BusinessException(RouteErrorCode.ROUTE_MEETING_PLACE_REQUIRED);
             }
@@ -428,14 +452,14 @@ public class RouteService {
         if (member == null) {
             throw new BusinessException(RouteErrorCode.ROUTE_MEMBER_REQUIRED);
         }
-        Long departurePlaceId = nullableLong(member, "departure_place_id");
+        Long departurePlaceId = member.departurePlaceId();
         if (departurePlaceId == null) {
             throw new BusinessException(RouteErrorCode.ROUTE_DEPARTURE_PLACE_REQUIRED);
         }
         Location origin = placeLocation(getPlace(departurePlaceId));
         Location destination;
         if (mode == DepartureMode.TOGETHER) {
-            Long meetingPlaceId = nullableLong(trip, "meeting_place_id");
+            Long meetingPlaceId = trip.meetingPlaceId();
             if (meetingPlaceId == null) {
                 throw new BusinessException(RouteErrorCode.ROUTE_MEETING_PLACE_REQUIRED);
             }
@@ -446,11 +470,11 @@ public class RouteService {
         return RouteContext.of(origin, destination, "MEMBER");
     }
 
-    private RouteContext returnContext(long tripId, Map<String, Object> member) {
+    private RouteContext returnContext(long tripId, RouteMemberQueryResult member) {
         if (member == null) {
             throw new BusinessException(RouteErrorCode.ROUTE_MEMBER_REQUIRED);
         }
-        Long returnPlaceId = nullableLong(member, "return_place_id");
+        Long returnPlaceId = member.returnPlaceId();
         if (returnPlaceId == null) {
             throw new BusinessException(RouteErrorCode.ROUTE_RETURN_PLACE_REQUIRED);
         }
@@ -470,74 +494,28 @@ public class RouteService {
     }
 
     private List<Location> itineraryStops(long tripId) {
-        List<Map<String, Object>> rows = jdbc.sql("""
-                SELECT p.name, p.latitude, p.longitude
-                FROM travel_plans tp
-                JOIN travel_plan_items i ON i.plan_id = tp.id
-                JOIN places p ON p.id = i.place_id AND p.status = 'ACTIVE'
-                WHERE tp.trip_id = ? AND tp.status != 'CANCELED'
-                ORDER BY tp.day_number, i.sequence_no, i.id
-                LIMIT ?
-                """)
-                .params(tripId, MAX_ITINERARY_STOPS + 1)
-                .query().listOfRows();
+        List<RoutePlaceQueryResult> rows = repository.findItineraryStops(
+                tripId,
+                MAX_ITINERARY_STOPS + 1);
         if (rows.size() > MAX_ITINERARY_STOPS) {
             throw new BusinessException(RouteErrorCode.ROUTE_ITINERARY_TOO_LARGE);
         }
         List<Location> stops = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
+        for (RoutePlaceQueryResult row : rows) {
             stops.add(placeLocation(row));
         }
         return List.copyOf(stops);
     }
 
     private String routeRevision(long tripId, Long memberId) {
-        String schedule = jdbc.sql("""
-                SELECT p.id AS plan_id, p.version, p.day_number,
-                       i.id AS item_id, i.place_id, i.sequence_no,
-                       place.name AS place_name, place.latitude, place.longitude,
-                       place.updated_at AS place_updated_at
-                FROM travel_plans p
-                LEFT JOIN travel_plan_items i ON i.plan_id = p.id
-                LEFT JOIN places place ON place.id = i.place_id
-                WHERE p.trip_id = ? AND p.status != 'CANCELED'
-                ORDER BY p.day_number, p.id, i.sequence_no, i.id
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .map(row -> RowSupport.longValue(row, "plan_id") + ":"
-                        + RowSupport.intValue(row, "version") + ":"
-                        + RowSupport.intValue(row, "day_number") + ":"
-                        + String.valueOf(nullableValue(row, "item_id")) + ":"
-                        + String.valueOf(nullableValue(row, "place_id")) + ":"
-                        + String.valueOf(nullableValue(row, "sequence_no")) + ":"
-                        + String.valueOf(nullableValue(row, "place_name")) + ":"
-                        + String.valueOf(nullableValue(row, "latitude")) + ":"
-                        + String.valueOf(nullableValue(row, "longitude")) + ":"
-                        + String.valueOf(nullableValue(row, "place_updated_at")))
-                .collect(java.util.stream.Collectors.joining("|"));
-        String trip = jdbc.sql("""
-                SELECT departure_mode, meeting_place_id, version
-                FROM trips WHERE id = ? AND deleted_at IS NULL
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .map(row -> RowSupport.strValue(row, "departure_mode") + ":"
-                        + String.valueOf(nullableValue(row, "meeting_place_id")) + ":"
-                        + RowSupport.intValue(row, "version"))
-                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-        String member = memberId == null ? "GROUP" : jdbc.sql("""
-                SELECT departure_place_id, return_place_id, updated_at
-                FROM trip_participants WHERE id = ? AND status = 'JOINED'
-                """)
-                .param(memberId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .map(row -> String.valueOf(nullableValue(row, "departure_place_id")) + ":"
-                        + String.valueOf(nullableValue(row, "return_place_id")) + ":"
-                        + String.valueOf(nullableValue(row, "updated_at")))
-                .orElse("MISSING");
+        String schedule = repository.findScheduleRevision(tripId);
+        String trip = repository.findTripRevision(tripId);
+        if (trip == null) {
+            throw new BusinessException(TripErrorCode.TRIP_NOT_FOUND);
+        }
+        String member = memberId == null
+                ? "GROUP"
+                : repository.findMemberRevision(memberId);
         return trip + "|" + member + "|" + schedule;
     }
 
@@ -560,32 +538,23 @@ public class RouteService {
     @SuppressWarnings("unchecked")
     private long routeIdForOption(
             long planId, RoutePhase phase, Long memberId, String optionId) {
-        JdbcClient.StatementSpec statement = jdbc.sql(memberId == null ? """
-                SELECT id, route_data FROM travel_routes
-                WHERE plan_id = ? AND phase = ? AND member_id IS NULL
-                  AND status IN ('RECOMMENDED', 'SELECTED')
-                ORDER BY id DESC
-                """ : """
-                SELECT id, route_data FROM travel_routes
-                WHERE plan_id = ? AND phase = ? AND member_id = ?
-                  AND status IN ('RECOMMENDED', 'SELECTED')
-                ORDER BY id DESC
-                """);
-        List<Map<String, Object>> candidates = memberId == null
-                ? statement.params(planId, phase.name()).query().listOfRows()
-                : statement.params(planId, phase.name(), memberId).query().listOfRows();
-        for (Map<String, Object> candidate : candidates) {
-            Object rawData = nullableValue(candidate, "route_data");
-            if (rawData == null) continue;
-            Map<String, Object> data = json.read(rawData.toString(), Map.class);
+        List<RouteOptionQueryResult> candidates = repository.findOptionCandidates(
+                planId,
+                phase,
+                memberId);
+        for (RouteOptionQueryResult candidate : candidates) {
+            if (candidate.routeData() == null) {
+                continue;
+            }
+            Map<String, Object> data = json.read(candidate.routeData(), Map.class);
             if (optionId.equals(data.get("optionId"))) {
-                return RowSupport.longValue(candidate, "id");
+                return candidate.id();
             }
         }
         throw new BusinessException(RouteErrorCode.ROUTE_SELECTABLE_NOT_FOUND);
     }
 
-    private Long resolveMemberId(Map<String, Object> trip, RoutePhase phase,
+    private Long resolveMemberId(RouteTripQueryResult trip, RoutePhase phase,
                                  Long requestedUserId, long actorUserId, long actorMemberId) {
         if (requestedUserId != null && requestedUserId != actorUserId) {
             throw new BusinessException(RouteErrorCode.ROUTE_ACCESS_FORBIDDEN);
@@ -596,194 +565,121 @@ public class RouteService {
             }
             return actorMemberId;
         }
-        if (phase == RoutePhase.RETURN) return actorMemberId;
+        if (phase == RoutePhase.RETURN) {
+            return actorMemberId;
+        }
         if (phase == RoutePhase.DEPARTURE
-                && DepartureMode.SEPARATE.name().equals(RowSupport.strValue(trip, "departure_mode"))) {
+                && trip.departureMode() == DepartureMode.SEPARATE) {
             return actorMemberId;
         }
         return null;
     }
 
     private long getPlanId(long tripId, RoutePhase phase) {
-        String order = phase == RoutePhase.RETURN ? "DESC" : "ASC";
-        return jdbc.sql("""
-                SELECT id FROM travel_plans
-                WHERE trip_id = ? AND status != 'CANCELED'
-                ORDER BY day_number %s LIMIT 1
-                """.formatted(order))
-                .param(tripId)
-                .query(Long.class)
-                .optional()
+        return java.util.Optional.ofNullable(repository.findPlanId(tripId, phase))
                 .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_PLAN_REQUIRED));
     }
 
-    private Map<String, Object> lockTrip(long tripId) {
-        return jdbc.sql("""
-                SELECT * FROM trips
-                WHERE id = ? AND deleted_at IS NULL
-                FOR UPDATE
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+    private RouteTripQueryResult lockTrip(long tripId) {
+        RouteTripQueryResult trip = repository.lockTrip(tripId);
+        if (trip == null) {
+            throw new BusinessException(TripErrorCode.TRIP_NOT_FOUND);
+        }
+        return trip;
     }
 
     private void lockPlan(long planId) {
-        jdbc.sql("SELECT id FROM travel_plans WHERE id = ? FOR UPDATE")
-                .param(planId)
-                .query(Long.class)
-                .optional()
-                .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+        if (!repository.lockPlan(planId)) {
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND);
+        }
     }
 
     private long routePlanId(long tripId, long routeId) {
-        return jdbc.sql("""
-                SELECT r.plan_id
-                FROM travel_routes r
-                JOIN travel_plans p ON p.id = r.plan_id
-                WHERE r.id = ? AND p.trip_id = ?
-                """)
-                .params(routeId, tripId)
-                .query(Long.class)
-                .optional()
+        return java.util.Optional.ofNullable(repository.findRoutePlanId(tripId, routeId))
                 .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND));
     }
 
-    private Map<String, Object> lockedRoute(long routeId, long planId) {
-        return jdbc.sql("""
-                SELECT id, plan_id, member_id, phase, status
-                FROM travel_routes WHERE id = ? AND plan_id = ? FOR UPDATE
-                """)
-                .params(routeId, planId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND));
+    private RouteLockQueryResult lockedRoute(long routeId, long planId) {
+        RouteLockQueryResult route = repository.lockRoute(routeId, planId);
+        if (route == null) {
+            throw new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND);
+        }
+        return route;
     }
 
-    private Map<String, Object> routeById(long tripId, long routeId) {
-        return jdbc.sql("""
-                SELECT r.id, r.plan_id, p.trip_id, r.member_id, r.phase, r.route_data,
-                       r.transport_mode, r.duration_minutes, r.distance_meters,
-                       r.transfer_count, r.fare, r.status, r.recommended_at, r.selected_at,
-                       participant.user_id AS member_user_id
-                FROM travel_routes r
-                JOIN travel_plans p ON p.id = r.plan_id
-                LEFT JOIN trip_participants participant ON participant.id = r.member_id
-                WHERE r.id = ? AND p.trip_id = ?
-                """)
-                .params(routeId, tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND));
+    private RouteQueryResult routeById(long tripId, long routeId) {
+        RouteQueryResult route = repository.findRoute(tripId, routeId);
+        if (route == null) {
+            throw new BusinessException(RouteErrorCode.ROUTE_RECOMMENDATION_NOT_FOUND);
+        }
+        return route;
     }
 
     private void expireActiveRoutes(long planId, RoutePhase phase, Long memberId) {
-        if (memberId == null) {
-            jdbc.sql("""
-                    UPDATE travel_routes SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                    WHERE plan_id = ? AND phase = ? AND member_id IS NULL
-                      AND status IN ('RECOMMENDED', 'SELECTED')
-                    """)
-                    .params(planId, phase.name())
-                    .update();
-        } else {
-            jdbc.sql("""
-                    UPDATE travel_routes SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                    WHERE plan_id = ? AND phase = ? AND member_id = ?
-                      AND status IN ('RECOMMENDED', 'SELECTED')
-                    """)
-                    .params(planId, phase.name(), memberId)
-                    .update();
-        }
+        repository.expireActive(planId, phase, memberId);
     }
 
     private void expireSelections(long planId, RoutePhase phase, Long memberId, long exceptRouteId) {
-        if (memberId == null) {
-            jdbc.sql("""
-                    UPDATE travel_routes SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                    WHERE plan_id = ? AND phase = ? AND member_id IS NULL
-                      AND status = 'SELECTED' AND id != ?
-                    """)
-                    .params(planId, phase.name(), exceptRouteId)
-                    .update();
-        } else {
-            jdbc.sql("""
-                    UPDATE travel_routes SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                    WHERE plan_id = ? AND phase = ? AND member_id = ?
-                      AND status = 'SELECTED' AND id != ?
-                    """)
-                    .params(planId, phase.name(), memberId, exceptRouteId)
-                    .update();
-        }
+        repository.expireSelections(planId, phase, memberId, exceptRouteId);
     }
 
     private long participantIdForUser(long tripId, long userId) {
-        return jdbc.sql("""
-                SELECT id FROM trip_participants
-                WHERE trip_id = ? AND user_id = ? AND status = 'JOINED'
-                """)
-                .params(tripId, userId)
-                .query(Long.class)
-                .optional()
+        return java.util.Optional.ofNullable(repository.findParticipantId(tripId, userId))
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_MEMBER_REQUIRED));
     }
 
-    private Map<String, Object> member(long tripId, long memberId) {
-        return jdbc.sql("""
-                SELECT id, user_id, departure_place_id, return_place_id
-                FROM trip_participants
-                WHERE trip_id = ? AND id = ? AND status = 'JOINED'
-                """)
-                .params(tripId, memberId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_MEMBER_NOT_FOUND));
+    private RouteMemberQueryResult member(long tripId, long memberId) {
+        RouteMemberQueryResult member = repository.findMember(tripId, memberId);
+        if (member == null) {
+            throw new BusinessException(RouteErrorCode.ROUTE_MEMBER_NOT_FOUND);
+        }
+        return member;
     }
 
-    private Map<String, Object> getPlace(long placeId) {
-        return jdbc.sql("""
-                SELECT id, name, latitude, longitude
-                FROM places WHERE id = ? AND status = 'ACTIVE'
-                """)
-                .param(placeId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_PLACE_NOT_FOUND));
+    private RoutePlaceQueryResult getPlace(long placeId) {
+        RoutePlaceQueryResult place = repository.findPlace(placeId);
+        if (place == null) {
+            throw new BusinessException(RouteErrorCode.ROUTE_PLACE_NOT_FOUND);
+        }
+        return place;
     }
 
-    private Location placeLocation(Map<String, Object> place) {
+    private Location placeLocation(RoutePlaceQueryResult place) {
         return new Location(
-                RowSupport.strValue(place, "name"),
-                ((Number) RowSupport.value(place, "latitude")).doubleValue(),
-                ((Number) RowSupport.value(place, "longitude")).doubleValue()
+                place.name(),
+                place.latitude(),
+                place.longitude()
         );
     }
 
+    private Location placeLocation(PlanPlaceQueryResult place) {
+        return new Location(place.name(), place.latitude(), place.longitude());
+    }
+
     @SuppressWarnings("unchecked")
-    private Map<String, Object> routeView(Map<String, Object> row) {
+    private Map<String, Object> routeView(RouteQueryResult row) {
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", RowSupport.longValue(row, "id"));
-        result.put("tripId", RowSupport.longValue(row, "trip_id"));
-        result.put("planId", RowSupport.longValue(row, "plan_id"));
+        result.put("id", row.id());
+        result.put("tripId", row.tripId());
+        result.put("planId", row.planId());
         putMemberContract(
                 result,
-                nullableLong(row, "member_id"),
-                nullableLong(row, "member_user_id"));
-        RoutePhase phase = RoutePhase.valueOf(RowSupport.strValue(row, "phase"));
+                row.memberId(),
+                row.memberUserId());
+        RoutePhase phase = row.phase();
         result.put("type", apiType(phase));
         result.put("phase", phase.name());
-        result.put("transportMode", RowSupport.strValue(row, "transport_mode"));
-        putIfPresent(result, "durationMinutes", row, "duration_minutes");
-        putIfPresent(result, "distanceMeters", row, "distance_meters");
-        putIfPresent(result, "transferCount", row, "transfer_count");
-        putIfPresent(result, "fare", row, "fare");
-        result.put("status", RowSupport.strValue(row, "status"));
-        putIfPresent(result, "recommendedAt", row, "recommended_at");
-        putIfPresent(result, "selectedAt", row, "selected_at");
-        Object routeData = nullableValue(row, "route_data");
+        result.put("transportMode", row.transportMode());
+        putIfPresent(result, "durationMinutes", row.durationMinutes());
+        putIfPresent(result, "distanceMeters", row.distanceMeters());
+        putIfPresent(result, "transferCount", row.transferCount());
+        putIfPresent(result, "fare", row.fare());
+        result.put("status", row.status());
+        putIfPresent(result, "recommendedAt", row.recommendedAt());
+        putIfPresent(result, "selectedAt", row.selectedAt());
+        String routeData = row.routeData();
         if (routeData != null) {
-            Map<String, Object> data = json.read(routeData.toString(), Map.class);
+            Map<String, Object> data = json.read(routeData, Map.class);
             result.put("routeData", data);
             putRouteDataIfPresent(result, data, "provider", "provider");
             putRouteDataIfPresent(result, data, "configuredProvider", "configuredProvider");
@@ -801,7 +697,9 @@ public class RouteService {
             Map<String, Object> target, Map<String, Object> routeData,
             String targetKey, String sourceKey) {
         Object value = routeData.get(sourceKey);
-        if (value != null) target.put(targetKey, value);
+        if (value != null) {
+            target.put(targetKey, value);
+        }
     }
 
     private void putMemberContract(Map<String, Object> target, Long participantId) {
@@ -825,10 +723,7 @@ public class RouteService {
     }
 
     private long userIdForParticipant(long participantId) {
-        return jdbc.sql("SELECT user_id FROM trip_participants WHERE id = ?")
-                .param(participantId)
-                .query(Long.class)
-                .optional()
+        return java.util.Optional.ofNullable(repository.findUserId(participantId))
                 .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_MEMBER_DATA_MISSING));
     }
 
@@ -840,25 +735,20 @@ public class RouteService {
         };
     }
 
-    private void putIfPresent(Map<String, Object> target, String targetKey,
-                              Map<String, Object> row, String rowKey) {
-        Object value = nullableValue(row, rowKey);
-        if (value != null) target.put(targetKey, value);
+    private RouteResponse routeResponse(Map<String, Object> value) {
+        return json.convert(value, RouteResponse.class);
     }
 
-    private Object nullableValue(Map<String, Object> row, String key) {
-        Object value = row.get(key);
-        return value != null ? value : row.get(key.toUpperCase(Locale.ROOT));
+    private void putIfPresent(Map<String, Object> target, String targetKey, Object value) {
+        if (value != null) {
+            target.put(targetKey, value);
+        }
     }
 
-    private Long nullableLong(Map<String, Object> row, String key) {
-        Object value = nullableValue(row, key);
-        if (value == null) return null;
-        if (value instanceof Number number) return number.longValue();
-        return Long.parseLong(value.toString());
-    }
-
-    private record RouteContext(List<Location> stops, String scope) {
+    private record RouteContext(
+            List<Location> stops,
+            String scope
+    ) {
         private RouteContext {
             stops = List.copyOf(stops);
             if (stops.size() < 2) {
@@ -867,13 +757,13 @@ public class RouteService {
         }
 
         private static RouteContext of(Location origin, Location destination, String scope) {
-            return new RouteContext(List.of(origin, destination), scope);
-        }
 
+            return new RouteContext(List.of(origin, destination), scope);
+
+        }
         private Location origin() {
             return stops.getFirst();
         }
-
         private Location destination() {
             return stops.getLast();
         }
@@ -883,7 +773,8 @@ public class RouteService {
             int order,
             Location origin,
             Location destination,
-            RouteProvider.RouteEstimate estimate) {
+            RouteProvider.RouteEstimate estimate
+    ) {
     }
 
     private record RecommendationPreparation(
@@ -892,7 +783,8 @@ public class RouteService {
             Long memberId,
             Long authenticatedUserId,
             RouteContext context,
-            String routeRevision) {
+            String routeRevision
+    ) {
     }
 
     private record OptionSpec(
@@ -902,7 +794,8 @@ public class RouteService {
             double durationFactor,
             boolean fewerTransfers,
             String summary,
-            String segmentSummary) {
+            String segmentSummary
+    ) {
     }
 
     private record RouteCalculation(
@@ -911,6 +804,7 @@ public class RouteService {
             int durationMinutes,
             int transferCount,
             int fare,
-            String providerName) {
+            String providerName
+    ) {
     }
 }

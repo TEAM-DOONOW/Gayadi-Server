@@ -3,6 +3,7 @@ package com.gayadi.server.friendship;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 친구 관계 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum FriendshipErrorCode implements ErrorCode {
 
     // Friendship Request - 친구 요청 생성 및 기존 관계 충돌
@@ -47,7 +48,19 @@ public enum FriendshipErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

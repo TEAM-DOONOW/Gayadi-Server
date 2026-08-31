@@ -1,5 +1,9 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.model.TravelSituation;
+import com.gayadi.server.weather.dto.request.WeatherRequest;
+import com.gayadi.server.weather.dto.response.UltraShortNowcastResponse;
+
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.weather.WeatherApiService;
 import org.slf4j.Logger;
@@ -20,11 +24,13 @@ public class WeatherSituationEnricher {
 
     public TravelSituation enrich(TravelSituation situation, double latitude, double longitude) {
         TravelSituation current = situation == null ? TravelSituation.empty() : situation;
-        if (!current.weather().isEmpty()) return current;
+        if (!current.weather().isEmpty()) {
+            return current;
+        }
 
         try {
-            WeatherApiService.UltraSrtNcstResponse observation = weather.ultraSrtNcst(
-                    new WeatherApiService.WeatherRequest(
+            UltraShortNowcastResponse observation = weather.ultraSrtNcst(
+                    new WeatherRequest(
                             latitude, longitude, null, null, null, null));
             TravelSituation.Weather observed = new TravelSituation.Weather(
                     observation.precipitationTypeName(),
@@ -42,7 +48,9 @@ public class WeatherSituationEnricher {
     }
 
     private Double decimal(String value) {
-        if (value == null || value.isBlank()) return null;
+        if (value == null || value.isBlank()) {
+            return null;
+        }
         try {
             return Double.parseDouble(value.trim());
         } catch (NumberFormatException ignored) {

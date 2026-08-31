@@ -1,5 +1,7 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

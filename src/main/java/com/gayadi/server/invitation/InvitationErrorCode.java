@@ -3,6 +3,7 @@ package com.gayadi.server.invitation;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 여행 초대 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum InvitationErrorCode implements ErrorCode {
 
     // Invitation Creation - 초대 발급 조건과 코드 생성
@@ -47,7 +48,19 @@ public enum InvitationErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

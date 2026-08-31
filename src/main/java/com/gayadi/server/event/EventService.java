@@ -1,26 +1,36 @@
 package com.gayadi.server.event;
 
 import com.gayadi.server.common.JsonSupport;
-import com.gayadi.server.common.KeyHelper;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.common.exception.BusinessException;
-import com.gayadi.server.travel.TripErrorCode;
+import com.gayadi.server.event.dto.response.ChangeProposalOptionResponse;
+import com.gayadi.server.event.dto.response.ChangeProposalResponse;
+import com.gayadi.server.event.dto.response.EventObservationResponse;
+import com.gayadi.server.event.dto.response.EventObservationResult;
+import com.gayadi.server.event.command.AiChangeProposalCommand;
+import com.gayadi.server.event.command.AiChangeProposalOption;
+import com.gayadi.server.event.command.ChangeProposalDecision;
+import com.gayadi.server.event.command.EventObservationCommand;
+import com.gayadi.server.event.model.ChangeProposalStatus;
+import com.gayadi.server.event.model.ChangeProposalType;
+import com.gayadi.server.event.model.Severity;
+import com.gayadi.server.event.query.AlternativePlaceQueryResult;
+import com.gayadi.server.event.query.ChangeProposalOptionQueryResult;
+import com.gayadi.server.event.query.ChangeProposalQueryResult;
+import com.gayadi.server.event.query.EventPlanQueryResult;
+import com.gayadi.server.event.query.EventTripQueryResult;
 import com.gayadi.server.schedule.PlanService;
 import com.gayadi.server.travel.TripService;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
+/** 현장 상황의 영향도를 판단하고 일정 변경 제안의 생성·승인 규칙을 수행합니다. */
 @Service
 public class EventService {
 
@@ -31,514 +41,355 @@ public class EventService {
     private static final int MAX_PROPOSAL_OPTIONS = 5;
     private static final int SITUATION_VALID_HOURS = 2;
 
-    private final JdbcClient jdbc;
+    private final EventRepository repository;
     private final TripService trips;
     private final PlanService plans;
     private final JsonSupport json;
-    private final KeyHelper keyHelper;
 
-    public EventService(JdbcClient jdbc, TripService trips, PlanService plans, JsonSupport json, KeyHelper keyHelper) {
-        this.jdbc = jdbc;
+    public EventService(
+            EventRepository repository,
+            TripService trips,
+            PlanService plans,
+            JsonSupport json) {
+        this.repository = repository;
         this.trips = trips;
         this.plans = plans;
         this.json = json;
-        this.keyHelper = keyHelper;
     }
 
+    /** 여행 중 상황을 기록하고 필요한 변경 제안을 생성합니다. */
     @Transactional
-    public Map<String, Object> observe(long tripId, Observation command) {
+    public EventObservationResult observe(long tripId, EventObservationCommand command) {
         validateObservation(command);
-        String normalizedData = ObservationPayloadValidator.validateAndSerialize(command.values(), json);
-        Map<String, Object> trip = lockInProgressTrip(tripId);
-        long regionId = RowSupport.longValue(trip, "region_id");
-        requirePlaceInRegion(command.placeId(), regionId);
-        Map<String, Object> planSnapshot = plans.get(tripId);
-        Map<String, Object> targetPlan = currentPlan(tripId);
-        long planId = RowSupport.longValue(targetPlan, "id");
-        int baseRevision = RowSupport.intValue(targetPlan, "version");
+        String normalizedData = ObservationPayloadValidator.validateAndSerialize(
+                command.values(),
+                json);
+        EventTripQueryResult trip = repository.lockInProgressTrip(tripId);
+        requirePlaceInRegion(command.placeId(), trip.regionId());
+        Object planSnapshot = plans.get(tripId);
+        EventPlanQueryResult targetPlan = repository.findCurrentPlan(tripId);
 
-        long eventId = keyHelper.insert("""
-                INSERT INTO event_observations (place_id, region_id, event_type, source,
-                                                 observed_at, valid_to, severity, normalized_data)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
-                """,
-                command.placeId(), regionId, command.eventType(), command.source(),
-                LocalDateTime.now().plusHours(SITUATION_VALID_HOURS), command.severity().name(),
+        long eventId = repository.insertObservation(
+                command.placeId(),
+                trip.regionId(),
+                command.eventType().name(),
+                command.source(),
+                LocalDateTime.now().plusHours(SITUATION_VALID_HOURS),
+                command.severity().name(),
                 normalizedData);
 
         if (command.severity() == Severity.LOW) {
-            return Map.of("eventId", eventId, "impact", false, "message", "일정 변경이 필요하지 않습니다.");
+            return new EventObservationResponse(
+                    eventId,
+                    false,
+                    "일정 변경이 필요하지 않습니다.");
         }
 
-        List<Map<String, Object>> options = shelterOptions(tripId, regionId, command.placeId());
+        List<ChangeProposalOptionQueryResult> options = shelterOptions(
+                tripId,
+                trip.regionId(),
+                command.placeId());
         if (options.isEmpty()) {
             throw new BusinessException(EventErrorCode.EVENT_INDOOR_ALTERNATIVE_NOT_FOUND);
         }
 
-        long proposalId = keyHelper.insert("""
-                INSERT INTO ai_schedule_change_proposals
-                       (trip_id, plan_id, event_id, proposal_type, reason,
-                        before_snapshot, after_snapshot, status, generated_at,
-                        base_revision_no, options_snapshot)
-                VALUES (?, ?, ?, ?, ?, ?, NULL, 'PENDING', CURRENT_TIMESTAMP, ?, ?)
-                """,
-                tripId, planId, eventId,
-                ChangeProposalType.fromEventType(command.eventType()).name(),
-                reason(command), json.write(planSnapshot), baseRevision, json.write(options));
-
+        long proposalId = repository.insertProposal(
+                tripId,
+                targetPlan.id(),
+                eventId,
+                ChangeProposalType.fromEventType(command.eventType().name()).name(),
+                reason(command),
+                planSnapshot,
+                null,
+                targetPlan.version(),
+                options);
         return proposal(proposalId);
     }
 
-    /**
-     * 상황 대처 Agent가 고른 내부 장소 후보를 승인 가능한 일정 변경 제안으로 저장합니다.
-     * 같은 일정 버전에서 Agent가 다시 판단하면 이전 Agent 제안은 만료시킵니다.
-     */
+    /** AI 추천 결과를 검증해 일정 변경 제안으로 저장합니다. */
     @Transactional
-    public Map<String, Object> proposeFromAgent(long tripId, AiProposal command) {
-        Map<String, Object> trip = lockInProgressTrip(tripId);
+    public Optional<ChangeProposalResponse> proposeFromAgent(
+            long tripId,
+            AiChangeProposalCommand command) {
+        EventTripQueryResult trip = repository.lockInProgressTrip(tripId);
+        List<ChangeProposalOptionQueryResult> options = agentOptions(
+                tripId,
+                trip.regionId(),
+                command.options(),
+                command.requireIndoor());
+        if (options.isEmpty()) {
+            return Optional.empty();
+        }
 
-        long regionId = RowSupport.longValue(trip, "region_id");
-        List<Map<String, Object>> options = agentOptions(
-                tripId, regionId, command.options(), command.requireIndoor());
-        if (options.isEmpty()) return Map.of();
-
-        Map<String, Object> planSnapshot = plans.get(tripId);
-        Map<String, Object> targetPlan = currentPlan(tripId);
-        long planId = RowSupport.longValue(targetPlan, "id");
-        int baseRevision = RowSupport.intValue(targetPlan, "version");
-
-        long eventId = keyHelper.insert("""
-                INSERT INTO event_observations (place_id, region_id, event_type, source,
-                                                 observed_at, valid_to, severity, normalized_data)
-                VALUES (NULL, ?, ?, ?, CURRENT_TIMESTAMP, ?, 'HIGH', ?)
-                """,
-                regionId, command.proposalType().eventType(), AI_SITUATION_SOURCE,
+        Object planSnapshot = plans.get(tripId);
+        EventPlanQueryResult targetPlan = repository.findCurrentPlan(tripId);
+        long eventId = repository.insertObservation(
+                null,
+                trip.regionId(),
+                command.proposalType().eventType(),
+                AI_SITUATION_SOURCE,
                 LocalDateTime.now().plusHours(SITUATION_VALID_HOURS),
+                Severity.HIGH.name(),
                 json.write(command.situationData()));
 
-        jdbc.sql("""
-                UPDATE ai_schedule_change_proposals
-                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                WHERE trip_id = ? AND plan_id = ? AND base_revision_no = ?
-                  AND status = 'PENDING'
-                  AND event_id IN (
-                    SELECT id FROM event_observations WHERE source = ?
-                  )
-                """)
-                .params(tripId, planId, baseRevision, AI_SITUATION_SOURCE)
-                .update();
+        repository.expirePendingAgentProposals(
+                tripId,
+                targetPlan.id(),
+                targetPlan.version(),
+                AI_SITUATION_SOURCE);
 
-        long proposalId = keyHelper.insert("""
-                INSERT INTO ai_schedule_change_proposals
-                       (trip_id, plan_id, event_id, proposal_type, reason,
-                        before_snapshot, after_snapshot, status, generated_at, expires_at,
-                        base_revision_no, options_snapshot)
-                VALUES (?, ?, ?, ?, ?, ?, NULL, 'PENDING', CURRENT_TIMESTAMP, ?, ?, ?)
-                """,
-                tripId, planId, eventId, command.proposalType().name(),
+        long proposalId = repository.insertProposal(
+                tripId,
+                targetPlan.id(),
+                eventId,
+                command.proposalType().name(),
                 limit(command.reason(), MAX_PROPOSAL_REASON_LENGTH),
-                json.write(planSnapshot), LocalDateTime.now().plusHours(SITUATION_VALID_HOURS),
-                baseRevision, json.write(options));
-        return proposal(proposalId);
+                planSnapshot,
+                LocalDateTime.now().plusHours(SITUATION_VALID_HOURS),
+                targetPlan.version(),
+                options);
+        return Optional.of(proposal(proposalId));
     }
 
-    public List<Map<String, Object>> proposals(long tripId) {
+    /** 여행의 변경 제안 목록을 기본 페이지 조건으로 조회합니다. */
+    public List<ChangeProposalResponse> proposals(long tripId) {
         return proposals(tripId, 100, 0);
     }
 
-    public List<Map<String, Object>> proposals(long tripId, int requestedLimit, int requestedOffset) {
+    /** 여행의 변경 제안 목록을 페이지 조건에 맞춰 조회합니다. */
+    public List<ChangeProposalResponse> proposals(
+            long tripId,
+            int requestedLimit,
+            int requestedOffset) {
         trips.requireTrip(tripId);
         int limit = Math.max(1, Math.min(requestedLimit, 100));
         int offset = Math.max(0, requestedOffset);
-        return jdbc.sql("""
-                SELECT *
-                FROM ai_schedule_change_proposals
-                WHERE trip_id = ?
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-                """)
-                .params(tripId, limit, offset)
-                .query().listOfRows().stream()
-                .map(this::withOptions)
+        return repository.findAll(tripId, limit, offset)
+                .stream()
+                .map(this::toResponse)
                 .toList();
     }
 
-    public List<Map<String, Object>> pendingProposals(long tripId, int requestedLimit) {
+    /** 여행에서 아직 결정되지 않은 변경 제안을 조회합니다. */
+    public List<ChangeProposalResponse> pendingProposals(long tripId, int requestedLimit) {
         trips.requireTrip(tripId);
         int limit = Math.max(1, Math.min(requestedLimit, 100));
-        return jdbc.sql("""
-                SELECT id, proposal_type, reason, status, base_revision_no,
-                       options_snapshot, generated_at
-                FROM ai_schedule_change_proposals
-                WHERE trip_id = ? AND status = 'PENDING'
-                ORDER BY created_at DESC, id DESC
-                LIMIT ?
-                """)
-                .params(tripId, limit)
-                .query().listOfRows().stream()
-                .map(this::withOptions)
+        return repository.findPending(tripId, limit)
+                .stream()
+                .map(this::toResponse)
                 .toList();
     }
 
+    /** 변경 제안에 대한 참여자의 결정을 반영합니다. */
     @Transactional
-    public Map<String, Object> decide(long tripId, long proposalId, Decision command) {
+    public ChangeProposalResponse decide(
+            long tripId,
+            long proposalId,
+            ChangeProposalDecision command) {
         trips.requireMember(tripId, command.decidedBy());
-        lockInProgressTrip(tripId);
-        Map<String, Object> proposal = lockedProposal(tripId, proposalId);
-        if (!"PENDING".equals(RowSupport.strValue(proposal, "status"))) {
+        repository.lockInProgressTrip(tripId);
+        ChangeProposalQueryResult proposal = repository.lockProposal(tripId, proposalId);
+        if (!ChangeProposalStatus.PENDING.name().equals(proposal.status())) {
             throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_ALREADY_DECIDED);
         }
-
-        int proposalRevision = RowSupport.intValue(proposal, "base_revision_no");
-        if (command.baseRevisionNo() != proposalRevision) {
+        if (proposal.baseRevisionNo() == null
+                || command.baseRevisionNo() != proposal.baseRevisionNo()) {
             throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_REVISION_MISMATCH);
         }
 
+        // 거절은 일정 데이터를 변경하지 않고 제안 상태만 원자적으로 확정합니다.
         if (!command.approve()) {
-            int rejected = jdbc.sql("""
-                    UPDATE ai_schedule_change_proposals
-                    SET status = 'REJECTED', decided_by = ?, decided_at = CURRENT_TIMESTAMP,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND trip_id = ? AND status = 'PENDING'
-                    """)
-                    .params(command.decidedBy(), proposalId, tripId)
-                    .update();
-            if (rejected == 0) {
+            if (!repository.reject(tripId, proposalId, command.decidedBy())) {
                 throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_ALREADY_DECIDED);
             }
             return proposal(proposalId);
         }
 
-        SelectedOption selected = selectedOption(proposal, command.selectedOptionKey());
-        ensureActiveAlternative(tripId, selected.placeId(), selected.requireIndoor());
+        ChangeProposalOptionQueryResult selected = selectedOption(
+                proposal,
+                command.selectedOptionKey());
 
-        long planId = RowSupport.longValue(proposal, "plan_id");
-        Map<String, Object> currentPlan = lockedPlan(tripId, planId);
-        int currentVersion = RowSupport.intValue(currentPlan, "version");
-        if (currentVersion != proposalRevision) {
+        // 제안 생성 이후 장소나 일정이 바뀌었을 수 있으므로 적용 직전에 다시 검증합니다.
+        ensureActiveAlternative(
+                tripId,
+                selected.placeId(),
+                selected.requireIndoor());
+
+        if (proposal.planId() == null) {
+            throw new BusinessException(EventErrorCode.EVENT_PLAN_NOT_FOUND);
+        }
+        EventPlanQueryResult currentPlan = repository.lockPlan(tripId, proposal.planId());
+        if (currentPlan.version() != proposal.baseRevisionNo()) {
             throw new BusinessException(EventErrorCode.EVENT_PLAN_ALREADY_CHANGED);
         }
-
-        int planUpdated = jdbc.sql("""
-                UPDATE travel_plans
-                SET version = version + 1, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND trip_id = ? AND version = ?
-                """)
-                .params(planId, tripId, proposalRevision)
-                .update();
-        if (planUpdated == 0) {
+        if (!repository.incrementPlanVersion(
+                tripId,
+                proposal.planId(),
+                proposal.baseRevisionNo())) {
             throw new BusinessException(EventErrorCode.EVENT_PLAN_ALREADY_CHANGED);
         }
-
-        int itemUpdated = jdbc.sql("""
-                UPDATE travel_plan_items
-                SET place_id = ?, title = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = (
-                    SELECT id
-                    FROM travel_plan_items
-                    WHERE plan_id = ? AND status = 'PLANNED'
-                      AND (planned_start IS NULL OR planned_start >= CURRENT_TIMESTAMP)
-                    ORDER BY sequence_no
-                    LIMIT 1
-                )
-                """)
-                .params(selected.placeId(), selected.placeName(), planId)
-                .update();
-        if (itemUpdated == 0) {
-            throw new BusinessException(EventErrorCode.EVENT_SCHEDULE_CHANGE_TARGET_NOT_FOUND);
+        if (!repository.updateNextPlanItem(
+                proposal.planId(),
+                selected.placeId(),
+                selected.placeName())) {
+            throw new BusinessException(
+                    EventErrorCode.EVENT_SCHEDULE_CHANGE_TARGET_NOT_FOUND);
         }
 
-        // 하나의 제안을 적용하면 같은 구버전 일정을 기준으로 만든 나머지 제안은 선택할 수 없다.
-        jdbc.sql("""
-                UPDATE ai_schedule_change_proposals
-                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                WHERE trip_id = ? AND plan_id = ? AND base_revision_no = ?
-                  AND id <> ? AND status = 'PENDING'
-                """)
-                .params(tripId, planId, proposalRevision, proposalId)
-                .update();
+        // 기존 제안과 경로는 이전 일정 버전을 기준으로 하므로 함께 만료시킵니다.
+        repository.expireSiblingProposals(
+                tripId,
+                proposal.planId(),
+                proposal.baseRevisionNo(),
+                proposalId);
+        repository.expireActiveRoutes(tripId);
 
-        // 장소가 바뀐 뒤에는 이전 동선과 선택 경로를 더 이상 사용할 수 없다.
-        jdbc.sql("""
-                UPDATE travel_routes
-                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                WHERE plan_id IN (SELECT id FROM travel_plans WHERE trip_id = ?)
-                  AND status IN ('RECOMMENDED', 'SELECTED')
-                """)
-                .param(tripId)
-                .update();
-
-        Map<String, Object> after = plans.get(tripId);
-        int proposalUpdated = jdbc.sql("""
-                UPDATE ai_schedule_change_proposals
-                SET status = 'APPROVED', after_snapshot = ?, selected_option_key = ?,
-                    decided_by = ?, decided_at = CURRENT_TIMESTAMP,
-                    applied_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND trip_id = ? AND status = 'PENDING'
-                """)
-                .params(json.write(after), selected.key(), command.decidedBy(), proposalId, tripId)
-                .update();
-        if (proposalUpdated == 0) {
+        Object after = plans.get(tripId);
+        if (!repository.approve(
+                tripId,
+                proposalId,
+                selected.key(),
+                command.decidedBy(),
+                after)) {
             throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_ALREADY_DECIDED);
         }
-
         return proposal(proposalId);
     }
 
-    private Map<String, Object> currentPlan(long tripId) {
-        return jdbc.sql("""
-                SELECT id, version, plan_date, day_number
-                FROM travel_plans
-                WHERE trip_id = ?
-                ORDER BY CASE
-                           WHEN plan_date = CURRENT_DATE THEN 0
-                           WHEN plan_date > CURRENT_DATE THEN 1
-                           ELSE 2
-                         END,
-                         CASE WHEN plan_date >= CURRENT_DATE THEN plan_date END ASC,
-                         plan_date DESC,
-                         day_number
-                LIMIT 1
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(EventErrorCode.CHANGE_PROPOSAL_TARGET_PLAN_NOT_FOUND));
-    }
-
-    private Map<String, Object> lockInProgressTrip(long tripId) {
-        Map<String, Object> trip = jdbc.sql("""
-                SELECT * FROM trips
-                WHERE id = ? AND deleted_at IS NULL
-                FOR UPDATE
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-        if (!"IN_PROGRESS".equals(RowSupport.strValue(trip, "status"))) {
-            throw new BusinessException(EventErrorCode.EVENT_TRIP_NOT_IN_PROGRESS);
-        }
-        return trip;
-    }
-
-    private List<Map<String, Object>> shelterOptions(long tripId, long regionId, Long observedPlaceId) {
-        List<Map<String, Object>> places = jdbc.sql("""
-                SELECT candidate.id, candidate.name, candidate.category
-                FROM places candidate
-                LEFT JOIN places observed ON observed.id = ? AND observed.region_id = candidate.region_id
-                WHERE candidate.region_id = ? AND candidate.status = 'ACTIVE'
-                  AND (candidate.category = 'SHELTER' OR candidate.indoor = TRUE)
-                  AND (candidate.visibility = 'PUBLIC' OR candidate.trip_id = ?)
-                ORDER BY
-                  CASE WHEN candidate.category = 'SHELTER' THEN 0 ELSE 1 END,
-                  CASE WHEN observed.id IS NULL THEN 0 ELSE
-                    ((candidate.latitude - observed.latitude) * (candidate.latitude - observed.latitude)
-                    + (candidate.longitude - observed.longitude) * (candidate.longitude - observed.longitude))
-                  END,
-                  candidate.id
-                LIMIT 5
-                """)
-                .params(observedPlaceId, regionId, tripId)
-                .query().listOfRows();
-
-        List<Map<String, Object>> options = new ArrayList<>();
+    private List<ChangeProposalOptionQueryResult> shelterOptions(
+            long tripId,
+            long regionId,
+            Long observedPlaceId) {
+        List<AlternativePlaceQueryResult> places = repository.findShelterAlternatives(
+                tripId,
+                regionId,
+                observedPlaceId);
+        List<ChangeProposalOptionQueryResult> options = new ArrayList<>();
         for (int index = 0; index < places.size(); index++) {
-            Map<String, Object> place = places.get(index);
-            long placeId = RowSupport.longValue(place, "id");
-            String placeName = RowSupport.strValue(place, "name");
-            Map<String, Object> option = new LinkedHashMap<>();
-            option.put("key", index == 0 ? PRIMARY_SHELTER_OPTION : PRIMARY_SHELTER_OPTION + "_" + placeId);
-            option.put("placeId", placeId);
-            option.put("placeName", placeName);
-            option.put("description", placeName + "으로 다음 일정을 변경합니다.");
-            option.put("requireIndoor", true);
-            options.add(option);
+            AlternativePlaceQueryResult place = places.get(index);
+            options.add(new ChangeProposalOptionQueryResult(
+                    index == 0
+                            ? PRIMARY_SHELTER_OPTION
+                            : PRIMARY_SHELTER_OPTION + "_" + place.id(),
+                    place.id(),
+                    place.name(),
+                    place.name() + "으로 다음 일정을 변경합니다.",
+                    true));
         }
         return options;
     }
 
-    private List<Map<String, Object>> agentOptions(
+    private List<ChangeProposalOptionQueryResult> agentOptions(
             long tripId,
             long regionId,
-            List<AiOption> requested,
+            List<AiChangeProposalOption> requested,
             boolean requireIndoor) {
-        if (requested == null || requested.isEmpty()) return List.of();
-        List<Map<String, Object>> result = new ArrayList<>();
+        if (requested == null || requested.isEmpty()) {
+            return List.of();
+        }
+        List<ChangeProposalOptionQueryResult> result = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
-        for (AiOption option : requested) {
-            if (option == null || !seen.add(option.placeId())) continue;
-            String indoorCondition = requireIndoor
-                    ? " AND (p.category = 'SHELTER' OR p.indoor = TRUE)" : "";
-            List<Map<String, Object>> places = jdbc.sql("""
-                    SELECT p.id, p.name
-                    FROM places p
-                    WHERE p.id = ? AND p.region_id = ? AND p.status = 'ACTIVE'
-                      AND (p.visibility = 'PUBLIC' OR p.trip_id = ?)
-                    """ + indoorCondition)
-                    .params(option.placeId(), regionId, tripId)
-                    .query().listOfRows();
-            if (places.isEmpty()) continue;
-
-            Map<String, Object> place = places.getFirst();
-            long placeId = RowSupport.longValue(place, "id");
-            String placeName = RowSupport.strValue(place, "name");
-            Map<String, Object> value = new LinkedHashMap<>();
-            value.put("key", "AI_RECOMMENDATION_" + placeId);
-            value.put("placeId", placeId);
-            value.put("placeName", placeName);
-            value.put("description", limit(option.description(), MAX_OPTION_DESCRIPTION_LENGTH));
-            value.put("requireIndoor", requireIndoor);
-            result.add(value);
-            if (result.size() >= MAX_PROPOSAL_OPTIONS) break;
+        for (AiChangeProposalOption option : requested) {
+            if (option == null || !seen.add(option.placeId())) {
+                continue;
+            }
+            AlternativePlaceQueryResult place = repository.findAvailablePlace(
+                    tripId,
+                    regionId,
+                    option.placeId(),
+                    requireIndoor);
+            if (place == null) {
+                continue;
+            }
+            result.add(new ChangeProposalOptionQueryResult(
+                    "AI_RECOMMENDATION_" + place.id(),
+                    place.id(),
+                    place.name(),
+                    limit(option.description(), MAX_OPTION_DESCRIPTION_LENGTH),
+                    requireIndoor));
+            if (result.size() >= MAX_PROPOSAL_OPTIONS) {
+                break;
+            }
         }
         return result;
     }
 
-    private Map<String, Object> lockedProposal(long tripId, long proposalId) {
-        return jdbc.sql("""
-                SELECT *
-                FROM ai_schedule_change_proposals
-                WHERE id = ? AND trip_id = ?
-                FOR UPDATE
-                """)
-                .params(proposalId, tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(EventErrorCode.CHANGE_PROPOSAL_NOT_FOUND));
-    }
-
-    private Map<String, Object> lockedPlan(long tripId, long planId) {
-        return jdbc.sql("""
-                SELECT id, version
-                FROM travel_plans
-                WHERE id = ? AND trip_id = ?
-                FOR UPDATE
-                """)
-                .params(planId, tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(EventErrorCode.EVENT_PLAN_NOT_FOUND));
-    }
-
-    private void ensureActiveAlternative(long tripId, long placeId, boolean requireIndoor) {
-        String indoorCondition = requireIndoor
-                ? " AND (p.category = 'SHELTER' OR p.indoor = TRUE)" : "";
-        long count = jdbc.sql("""
-                SELECT COUNT(*)
-                FROM places p
-                JOIN trips t ON t.region_id = p.region_id
-                WHERE t.id = ? AND t.deleted_at IS NULL
-                  AND p.id = ? AND p.status = 'ACTIVE'
-                  AND (p.visibility = 'PUBLIC' OR p.trip_id = t.id)
-                """ + indoorCondition)
-                .params(tripId, placeId)
-                .query(Long.class)
-                .optional()
-                .orElse(0L);
-        if (count == 0) {
+    private void ensureActiveAlternative(
+            long tripId,
+            long placeId,
+            boolean requireIndoor) {
+        if (!repository.isActiveAlternative(tripId, placeId, requireIndoor)) {
             String label = requireIndoor ? "실내 대체 장소" : "대체 장소";
-            throw new BusinessException(EventErrorCode.EVENT_ALTERNATIVE_PLACE_UNAVAILABLE, label);
+            throw new BusinessException(
+                    EventErrorCode.EVENT_ALTERNATIVE_PLACE_UNAVAILABLE,
+                    label);
         }
     }
 
     private void requirePlaceInRegion(Long placeId, long regionId) {
-        if (placeId == null) return;
-        long count = jdbc.sql("SELECT COUNT(*) FROM places WHERE id = ? AND region_id = ?")
-                .params(placeId, regionId)
-                .query(Long.class)
-                .optional()
-                .orElse(0L);
-        if (count == 0) {
+        if (placeId != null && !repository.isPlaceInRegion(placeId, regionId)) {
             throw new BusinessException(EventErrorCode.OBSERVATION_PLACE_OUTSIDE_REGION);
         }
     }
 
-    private SelectedOption selectedOption(Map<String, Object> proposal, String selectedKey) {
+    private ChangeProposalOptionQueryResult selectedOption(
+            ChangeProposalQueryResult proposal,
+            String selectedKey) {
         if (selectedKey == null || selectedKey.isBlank()) {
             throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTION_REQUIRED);
         }
-        Object rawOptions = valueOrNull(proposal, "options_snapshot");
-        if (rawOptions == null || rawOptions.toString().isBlank()) {
+        if (proposal.options() == null || proposal.options().isEmpty()) {
             throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTIONS_MISSING);
         }
-
-        Object parsed = json.read(rawOptions.toString(), Object.class);
-        if (!(parsed instanceof List<?> options)) {
-            throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTIONS_INVALID);
-        }
-        for (Object value : options) {
-            if (!(value instanceof Map<?, ?> option)) continue;
-            Object key = option.get("key");
-            if (key == null || !selectedKey.equals(key.toString())) continue;
-            Object placeId = option.get("placeId");
-            Object placeName = option.get("placeName");
-            if (placeId == null || placeName == null) {
-                throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTIONS_INVALID);
-            }
-            Object requireIndoor = option.get("requireIndoor");
-            boolean indoor = requireIndoor == null || Boolean.parseBoolean(requireIndoor.toString());
-            return new SelectedOption(
-                    selectedKey, number(placeId).longValue(), placeName.toString(), indoor);
-        }
-        throw new BusinessException(EventErrorCode.CHANGE_PROPOSAL_OPTION_NOT_ALLOWED);
-    }
-
-    private Map<String, Object> proposal(long id) {
-        Map<String, Object> row = jdbc.sql("SELECT * FROM ai_schedule_change_proposals WHERE id = ?")
-                .param(id)
-                .query().listOfRows().stream()
+        return proposal.options()
+                .stream()
+                .filter(option -> selectedKey.equals(option.key()))
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(EventErrorCode.CHANGE_PROPOSAL_NOT_FOUND));
-        return withOptions(row);
+                .orElseThrow(() -> new BusinessException(
+                        EventErrorCode.CHANGE_PROPOSAL_OPTION_NOT_ALLOWED));
     }
 
-    private Map<String, Object> withOptions(Map<String, Object> row) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", RowSupport.longValue(row, "id"));
-        putIfPresent(result, "tripId", row, "trip_id");
-        putIfPresent(result, "planId", row, "plan_id");
-        putIfPresent(result, "eventId", row, "event_id");
-        putIfPresent(result, "type", row, "proposal_type");
-        putIfPresent(result, "reason", row, "reason");
-        putIfPresent(result, "status", row, "status");
-        putIfPresent(result, "baseRevisionNo", row, "base_revision_no");
-        putIfPresent(result, "selectedOptionKey", row, "selected_option_key");
-        putIfPresent(result, "decidedBy", row, "decided_by");
-        putIfPresent(result, "generatedAt", row, "generated_at");
-        putIfPresent(result, "decidedAt", row, "decided_at");
-        putIfPresent(result, "appliedAt", row, "applied_at");
-        putJsonIfPresent(result, "before", row, "before_snapshot");
-        putJsonIfPresent(result, "after", row, "after_snapshot");
-        Object raw = valueOrNull(row, "options_snapshot");
-        result.put("options", raw == null || raw.toString().isBlank()
-                ? List.of()
-                : json.read(raw.toString(), Object.class));
-        return result;
+    private ChangeProposalResponse proposal(long id) {
+        return toResponse(repository.findProposal(id));
     }
 
-    private void putIfPresent(
-            Map<String, Object> target, String targetKey,
-            Map<String, Object> row, String rowKey) {
-        Object value = valueOrNull(row, rowKey);
-        if (value != null) target.put(targetKey, value);
+    private ChangeProposalResponse toResponse(ChangeProposalQueryResult proposal) {
+        List<ChangeProposalOptionResponse> options = proposal.options()
+                .stream()
+                .map(option -> new ChangeProposalOptionResponse(
+                        option.key(),
+                        option.placeId(),
+                        option.placeName(),
+                        option.description(),
+                        option.requireIndoor()))
+                .toList();
+        return new ChangeProposalResponse(
+                proposal.id(),
+                proposal.tripId(),
+                proposal.planId(),
+                proposal.eventId(),
+                proposal.type(),
+                proposal.reason(),
+                proposal.status(),
+                proposal.baseRevisionNo(),
+                options,
+                proposal.selectedOptionKey(),
+                proposal.decidedBy(),
+                proposal.generatedAt(),
+                proposal.decidedAt(),
+                proposal.appliedAt(),
+                proposal.before(),
+                proposal.after());
     }
 
-    private void putJsonIfPresent(
-            Map<String, Object> target, String targetKey,
-            Map<String, Object> row, String rowKey) {
-        Object value = valueOrNull(row, rowKey);
-        if (value != null && !value.toString().isBlank()) {
-            target.put(targetKey, json.read(value.toString(), Object.class));
-        }
+    private String reason(EventObservationCommand command) {
+        return command.eventType().label()
+                + " 상황이 "
+                + command.severity().label()
+                + " 단계로 확인되었습니다.";
     }
 
-    private String reason(Observation command) {
-        return eventLabel(command.eventType()) + " 상황이 " + severityLabel(command.severity()) + " 단계로 확인되었습니다.";
-    }
-
-    private void validateObservation(Observation command) {
-        ChangeProposalType.fromEventType(command.eventType());
+    private void validateObservation(EventObservationCommand command) {
         if (command.source().length() > 50) {
             throw new BusinessException(EventErrorCode.OBSERVATION_SOURCE_TOO_LONG);
         }
@@ -550,74 +401,7 @@ public class EventService {
         }
         String normalized = value.trim();
         return normalized.length() <= maxLength
-                ? normalized : normalized.substring(0, maxLength);
-    }
-
-    private String eventLabel(String eventType) {
-        return switch (eventType) {
-            case "WEATHER" -> "날씨";
-            case "CONGESTION" -> "혼잡";
-            case "TRANSPORT" -> "교통";
-            case "CLOSURE" -> "운영 중단";
-            case "DISASTER" -> "재난";
-            default -> "현장";
-        };
-    }
-
-    private String severityLabel(Severity severity) {
-        return switch (severity) {
-            case LOW -> "낮음";
-            case MEDIUM -> "보통";
-            case HIGH -> "높음";
-            case CRITICAL -> "매우 높음";
-        };
-    }
-
-    private static Object valueOrNull(Map<String, Object> row, String key) {
-        if (row.containsKey(key)) return row.get(key);
-        return row.get(key.toUpperCase(Locale.ROOT));
-    }
-
-    private static Number number(Object value) {
-        if (value instanceof Number number) return number;
-        return Long.parseLong(value.toString());
-    }
-
-    private record SelectedOption(
-            String key, long placeId, String placeName, boolean requireIndoor) {
-    }
-
-    public record AiOption(long placeId, String description) {
-    }
-
-    public record AiProposal(
-            ChangeProposalType proposalType,
-            String reason,
-            Map<String, Object> situationData,
-            List<AiOption> options,
-            boolean requireIndoor
-    ) {
-        public AiProposal {
-            Objects.requireNonNull(proposalType, "proposalType");
-            situationData = situationData == null ? Map.of() : situationData;
-            options = options == null ? List.of() : List.copyOf(options);
-        }
-    }
-
-    public record Observation(
-            Long placeId,
-            String eventType,
-            String source,
-            Severity severity,
-            Map<String, Object> values
-    ) {
-    }
-
-    public record Decision(
-            boolean approve,
-            String selectedOptionKey,
-            int baseRevisionNo,
-            long decidedBy
-    ) {
+                ? normalized
+                : normalized.substring(0, maxLength);
     }
 }

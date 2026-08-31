@@ -393,10 +393,28 @@ public class V8__strengthen_data_constraints extends BaseJavaMigration {
         }
     }
 
-    private record TripRange(LocalDate start, LocalDate end) { }
-    private record PlanDate(long tripId, LocalDate date) { }
-    private record PlanMerge(long sourceId, long targetId) { }
-    private record SequenceValue(long id, int sequence) { }
-    private record ResponseKey(long attemptId, long questionId) { }
-    private record RegionMerge(long sourceId, long targetId) { }
+    private record TripRange(
+            LocalDate start,
+            LocalDate end
+    ) { }
+    private record PlanDate(
+            long tripId,
+            LocalDate date
+    ) { }
+    private record PlanMerge(
+            long sourceId,
+            long targetId
+    ) { }
+    private record SequenceValue(
+            long id,
+            int sequence
+    ) { }
+    private record ResponseKey(
+            long attemptId,
+            long questionId
+    ) { }
+    private record RegionMerge(
+            long sourceId,
+            long targetId
+    ) { }
 }

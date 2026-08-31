@@ -3,6 +3,7 @@ package com.gayadi.server.tourapi;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 관광정보 외부 API 요청과 응답 오류 코드를 정의합니다. */
 public enum TourApiErrorCode implements ErrorCode {
 
     // Request & Region - 요청 파라미터와 여행 지역 매핑
@@ -37,7 +38,19 @@ public enum TourApiErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

@@ -3,6 +3,7 @@ package com.gayadi.server.legal;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 법률 문서 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum LegalErrorCode implements ErrorCode {
 
     // Document - 법적 문서 식별자 및 조회
@@ -21,7 +22,19 @@ public enum LegalErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

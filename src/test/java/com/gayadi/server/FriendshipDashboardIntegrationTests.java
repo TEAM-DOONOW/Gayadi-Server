@@ -1,13 +1,17 @@
 package com.gayadi.server;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.dashboard.DashboardService;
+import com.gayadi.server.dashboard.dto.response.DashboardResponse;
 import com.gayadi.server.friendship.FriendshipErrorCode;
 import com.gayadi.server.friendship.FriendshipService;
-import com.gayadi.server.friendship.FriendshipStatus;
+import com.gayadi.server.friendship.model.FriendshipStatus;
+import com.gayadi.server.friendship.dto.response.FriendshipResponse;
+import com.gayadi.server.friendship.dto.response.UserSearchResponse;
 import com.gayadi.server.schedule.ScheduleItemService;
+import com.gayadi.server.schedule.model.ScheduleType;
+import com.gayadi.server.schedule.dto.response.ScheduleResponse;
 import com.gayadi.server.travel.TripService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -18,7 +22,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -36,13 +39,13 @@ class FriendshipDashboardIntegrationTests {
     @Test
     void friendshipPermissionsBlockingAndPrivateFieldsAreEnforced() {
         String suffix = Long.toString(System.nanoTime() % 1_000_000);
-        long requesterId = id(users.create("요청자" + suffix));
+        long requesterId = users.create("요청자" + suffix).id();
         String recipientNickname = "수신자" + suffix;
-        long recipientId = id(users.create(recipientNickname));
+        long recipientId = users.create(recipientNickname).id();
 
-        Map<String, Object> request = friendships.create(requesterId, recipientId);
-        long friendshipId = id(request);
-        Assertions.assertThat(request.get("status")).isEqualTo("PENDING");
+        FriendshipResponse request = friendships.create(requesterId, recipientId);
+        long friendshipId = request.id();
+        Assertions.assertThat(request.status()).isEqualTo(FriendshipStatus.PENDING);
 
         Assertions.assertThatThrownBy(() -> friendships.update(
                 requesterId, friendshipId, FriendshipStatus.ACCEPTED, 0))
@@ -50,26 +53,25 @@ class FriendshipDashboardIntegrationTests {
                         exception -> Assertions.assertThat(exception.getErrorCode())
                                 .isEqualTo(FriendshipErrorCode.FRIENDSHIP_DECISION_FORBIDDEN));
 
-        Map<String, Object> accepted = friendships.update(
+        FriendshipResponse accepted = friendships.update(
                 recipientId, friendshipId, FriendshipStatus.ACCEPTED, 0);
-        Assertions.assertThat(accepted.get("status")).isEqualTo("ACCEPTED");
+        Assertions.assertThat(accepted.status()).isEqualTo(FriendshipStatus.ACCEPTED);
         Assertions.assertThatThrownBy(() -> friendships.create(recipientId, requesterId))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> Assertions.assertThat(exception.getErrorCode())
                                 .isEqualTo(FriendshipErrorCode.FRIENDSHIP_ALREADY_ACCEPTED));
 
-        List<Map<String, Object>> search = friendships.searchUsers(requesterId, recipientNickname, 10);
+        List<UserSearchResponse> search = friendships.searchUsers(requesterId, recipientNickname, 10);
         Assertions.assertThat(search).singleElement()
                 .satisfies(result -> {
-                    Assertions.assertThat(result.get("id")).isEqualTo(recipientId);
-                    Assertions.assertThat(result).doesNotContainKeys("email", "password", "passwordHash");
+                    Assertions.assertThat(result.id()).isEqualTo(recipientId);
                 });
         Assertions.assertThat(search.toString()).doesNotContainIgnoringCase("email", "password");
 
-        Map<String, Object> blocked = friendships.update(
+        FriendshipResponse blocked = friendships.update(
                 requesterId, friendshipId, FriendshipStatus.BLOCKED,
-                RowSupport.intValue(accepted, "version"));
-        Assertions.assertThat(blocked.get("blockedByMe")).isEqualTo(true);
+                accepted.version());
+        Assertions.assertThat(blocked.blockedByMe()).isTrue();
         Assertions.assertThat(friendships.list(requesterId, "BLOCKED", 10, 0)).hasSize(1);
         Assertions.assertThat(friendships.list(recipientId, null, 10, 0)).isEmpty();
         Assertions.assertThat(friendships.searchUsers(recipientId, "요청자", 10)).isEmpty();
@@ -79,15 +81,15 @@ class FriendshipDashboardIntegrationTests {
                                 .isEqualTo(FriendshipErrorCode.FRIENDSHIP_NOT_FOUND));
 
         friendships.delete(requesterId, friendshipId);
-        Map<String, Object> reverseRequest = friendships.create(recipientId, requesterId);
-        Assertions.assertThat(reverseRequest.get("status")).isEqualTo("PENDING");
+        FriendshipResponse reverseRequest = friendships.create(recipientId, requesterId);
+        Assertions.assertThat(reverseRequest.status()).isEqualTo(FriendshipStatus.PENDING);
     }
 
     @Test
     void oppositeRequestsCreateOnlyOneDatabaseRow() throws Exception {
         String suffix = Long.toString(System.nanoTime() % 1_000_000);
-        long firstUserId = id(users.create("동시요청가" + suffix));
-        long secondUserId = id(users.create("동시요청나" + suffix));
+        long firstUserId = users.create("동시요청가" + suffix).id();
+        long secondUserId = users.create("동시요청나" + suffix).id();
         CountDownLatch start = new CountDownLatch(1);
 
         try (var executor = Executors.newFixedThreadPool(2)) {
@@ -113,62 +115,60 @@ class FriendshipDashboardIntegrationTests {
     @Test
     void dashboardUsesStoredSchedulesWithoutInventedConditions() {
         String suffix = Long.toString(System.nanoTime() % 1_000_000);
-        long ownerId = id(users.create("여행홈" + suffix));
+        long ownerId = users.create("여행홈" + suffix).id();
         LocalDate today = LocalDate.now();
-        long tripId = id(trips.createForUser(
-                ownerId, "여행 홈 확인", today, today.plusDays(1), List.of("서울")));
+        long tripId = trips.createForUser(
+                ownerId, "여행 홈 확인", today, today.plusDays(1), List.of("서울")).id();
 
         ScheduleItemService.ScheduleCommand morning = new ScheduleItemService.ScheduleCommand(
-                "오전 일정", today, LocalTime.of(10, 0), ScheduleItemService.ScheduleType.MAIN, null);
-        Map<String, Object> first = schedules.create(ownerId, tripId, morning);
+                "오전 일정", today, LocalTime.of(10, 0), ScheduleType.MAIN, null);
+        ScheduleResponse first = schedules.create(ownerId, tripId, morning);
         schedules.create(ownerId, tripId, new ScheduleItemService.ScheduleCommand(
-                "오후 일정", today, LocalTime.of(15, 0), ScheduleItemService.ScheduleType.MAIN, null));
-        schedules.update(ownerId, tripId, id(first), morning, true);
+                "오후 일정", today, LocalTime.of(15, 0), ScheduleType.MAIN, null));
+        schedules.update(ownerId, tripId, first.id(), morning, true);
 
-        Map<String, Object> dashboard = dashboards.dashboard(ownerId, tripId);
-        Assertions.assertThat(dashboard.get("participantCount")).isEqualTo(1);
-        Assertions.assertThat((List<?>) dashboard.get("schedules")).hasSize(2);
-        Assertions.assertThat((List<?>) dashboard.get("tripDays")).hasSize(2);
-        Assertions.assertThat(((Map<?, ?>) ((List<?>) dashboard.get("tripDays")).getFirst()).get("date"))
+        DashboardResponse dashboard = dashboards.dashboard(ownerId, tripId);
+        Assertions.assertThat(dashboard.participantCount()).isEqualTo(1);
+        Assertions.assertThat(dashboard.schedules()).hasSize(2);
+        Assertions.assertThat(dashboard.tripDays()).hasSize(2);
+        Assertions.assertThat(dashboard.tripDays().getFirst().date())
                 .isEqualTo(today.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")));
-        Assertions.assertThat((List<?>) dashboard.get("pendingChangeProposals")).isEmpty();
-        Map<?, ?> progress = (Map<?, ?>) dashboard.get("progress");
-        Assertions.assertThat(progress.get("scheduleCount")).isEqualTo(2);
-        Assertions.assertThat(progress.get("visitedCount")).isEqualTo(1L);
-        Assertions.assertThat(progress.get("percentage")).isEqualTo(50);
-        Assertions.assertThat(dashboard).doesNotContainKeys("weather", "crowd", "congestion");
+        Assertions.assertThat(dashboard.pendingChangeProposals()).isEmpty();
+        Assertions.assertThat(dashboard.progress().scheduleCount()).isEqualTo(2);
+        Assertions.assertThat(dashboard.progress().visitedCount()).isEqualTo(1L);
+        Assertions.assertThat(dashboard.progress().percentage()).isEqualTo(50);
     }
 
     @Test
     void schedulePatchCanChangeOnlyVisitedState() {
-        long ownerId = id(users.create("부분수정" + System.nanoTime() % 1_000_000));
+        long ownerId = users.create("부분수정" + System.nanoTime() % 1_000_000).id();
         LocalDate today = LocalDate.now();
-        long tripId = id(trips.createForUser(
-                ownerId, "일정 부분 수정", today, today, List.of("서울")));
-        Map<String, Object> created = schedules.create(ownerId, tripId,
+        long tripId = trips.createForUser(
+                ownerId, "일정 부분 수정", today, today, List.of("서울")).id();
+        ScheduleResponse created = schedules.create(ownerId, tripId,
                 new ScheduleItemService.ScheduleCommand(
                         "그대로 둘 일정", today, LocalTime.of(11, 30),
-                        ScheduleItemService.ScheduleType.MAIN, null));
+                        ScheduleType.MAIN, null));
 
-        Map<String, Object> updated = schedules.update(ownerId, tripId, id(created),
+        ScheduleResponse updated = schedules.update(ownerId, tripId, created.id(),
                 new ScheduleItemService.SchedulePatch(
                         null, null, null, null, null, false, true));
 
-        Assertions.assertThat(updated.get("title")).isEqualTo("그대로 둘 일정");
-        Assertions.assertThat(updated.get("time")).isEqualTo("11:30");
-        Assertions.assertThat(updated.get("isVisited")).isEqualTo(true);
+        Assertions.assertThat(updated.title()).isEqualTo("그대로 둘 일정");
+        Assertions.assertThat(updated.time()).isEqualTo("11:30");
+        Assertions.assertThat(updated.isVisited()).isTrue();
     }
 
     @Test
     void changingTripStartDateRecalculatesExistingScheduleDay() {
-        long ownerId = id(users.create("일차재계산" + System.nanoTime() % 1_000_000));
+        long ownerId = users.create("일차재계산" + System.nanoTime() % 1_000_000).id();
         LocalDate tomorrow = LocalDate.now().plusDays(1);
-        long tripId = id(trips.createForUser(
-                ownerId, "일차 재계산", tomorrow, tomorrow.plusDays(2), List.of("서울")));
+        long tripId = trips.createForUser(
+                ownerId, "일차 재계산", tomorrow, tomorrow.plusDays(2), List.of("서울")).id();
         schedules.create(ownerId, tripId, new ScheduleItemService.ScheduleCommand(
                 "기존 일정", tomorrow.plusDays(1), LocalTime.NOON,
-                ScheduleItemService.ScheduleType.MAIN, null));
-        int version = RowSupport.intValue(trips.view(tripId), "version");
+                ScheduleType.MAIN, null));
+        int version = trips.view(tripId).version();
 
         trips.update(ownerId, tripId, "일차 재계산", tomorrow.minusDays(1),
                 tomorrow.plusDays(2), List.of("서울"), version);
@@ -195,7 +195,4 @@ class FriendshipDashboardIntegrationTests {
         }
     }
 
-    private long id(Map<String, Object> row) {
-        return RowSupport.longValue(row, "id");
-    }
 }

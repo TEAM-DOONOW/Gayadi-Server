@@ -1,6 +1,10 @@
 package com.gayadi.server.invitation;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.invitation.dto.request.InvitationCreateRequest;
+import com.gayadi.server.invitation.dto.request.InvitationStatusUpdateRequest;
+import com.gayadi.server.invitation.dto.request.TripMembershipCreateRequest;
+import com.gayadi.server.invitation.dto.response.InvitationResponse;
+import com.gayadi.server.travel.dto.response.MembershipResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -9,18 +13,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
+/** 여행 초대 관련 HTTP 요청과 응답을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1")
 @Tag(name = "초대", description = "여행 초대 코드와 초대를 통한 참여를 관리합니다.")
@@ -37,8 +36,8 @@ public class InvitationController {
     @Operation(summary = "여행 초대 목록")
     @ApiResponse(responseCode = "200", description = "여행에서 발급한 초대 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Invitation.class))))
-    public List<Map<String, Object>> invitations(
+                    schema = @Schema(implementation = InvitationResponse.class))))
+    public List<InvitationResponse> invitations(
             @PathVariable long tripId,
             @AuthenticationPrincipal Long userId,
             @RequestParam(defaultValue = "30") int limit,
@@ -50,74 +49,38 @@ public class InvitationController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "여행 초대 발급")
     @ApiResponse(responseCode = "201", description = "발급한 초대입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Invitation.class)))
-    public Map<String, Object> invitation(
+            content = @Content(schema = @Schema(implementation = InvitationResponse.class)))
+    public InvitationResponse invitation(
             @PathVariable long tripId,
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody CreateInvitationRequest request) {
-        return service.create(tripId, userId, request.getInviteeUserId(), request.getExpiresAt());
+            @Valid @RequestBody InvitationCreateRequest request) {
+        return service.create(tripId, userId, request.inviteeUserId(), request.expiresAt());
     }
 
     @PatchMapping("/trips/{tripId}/invitations/{invitationId}")
     @Operation(summary = "여행 초대 상태 변경")
     @ApiResponse(responseCode = "200", description = "상태를 바꾼 초대입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Invitation.class)))
-    public Map<String, Object> invitationStatus(
+            content = @Content(schema = @Schema(implementation = InvitationResponse.class)))
+    public InvitationResponse invitationStatus(
             @PathVariable long tripId,
             @PathVariable long invitationId,
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody UpdateInvitationRequest request) {
-        return service.updateStatus(tripId, invitationId, userId, request.getStatus());
+            @Valid @RequestBody InvitationStatusUpdateRequest request) {
+        return service.updateStatus(tripId, invitationId, userId, request.status());
     }
 
     @PostMapping("/trip-memberships")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "초대 코드로 여행 참여")
     @ApiResponse(responseCode = "201", description = "여행 참여 결과입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Membership.class)))
-    public Map<String, Object> membership(
+            content = @Content(schema = @Schema(implementation = MembershipResponse.class)))
+    public MembershipResponse membership(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody JoinTripRequest request) {
+            @Valid @RequestBody TripMembershipCreateRequest request) {
         return service.join(
                 userId,
-                request.getInviteCode(),
-                request.getDeparturePlaceId(),
-                request.getReturnPlaceId());
-    }
-
-    public static class CreateInvitationRequest {
-        @NotNull(message = "초대할 사용자 번호가 필요합니다.")
-        private Long inviteeUserId;
-        @Future(message = "초대 만료 시각은 현재보다 뒤여야 합니다.")
-        private LocalDateTime expiresAt;
-
-        public Long getInviteeUserId() { return inviteeUserId; }
-        public void setInviteeUserId(Long inviteeUserId) { this.inviteeUserId = inviteeUserId; }
-        public LocalDateTime getExpiresAt() { return expiresAt; }
-        public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
-    }
-
-    public static class UpdateInvitationRequest {
-        @NotNull(message = "바꿀 초대 상태가 필요합니다.")
-        private InvitationService.InvitationDecision status;
-
-        public InvitationService.InvitationDecision getStatus() { return status; }
-        public void setStatus(InvitationService.InvitationDecision status) { this.status = status; }
-    }
-
-    public static class JoinTripRequest {
-        @NotBlank(message = "초대 코드가 필요합니다.")
-        @Pattern(regexp = "(?i)^(?:[A-Z0-9]{6}|[A-Z0-9]{8})$",
-                message = "여행 공유 코드는 6자리, 특정 사용자 초대 코드는 8자리여야 합니다.")
-        private String inviteCode;
-        private Long departurePlaceId;
-        private Long returnPlaceId;
-
-        public String getInviteCode() { return inviteCode; }
-        public void setInviteCode(String inviteCode) { this.inviteCode = inviteCode; }
-        public Long getDeparturePlaceId() { return departurePlaceId; }
-        public void setDeparturePlaceId(Long departurePlaceId) { this.departurePlaceId = departurePlaceId; }
-        public Long getReturnPlaceId() { return returnPlaceId; }
-        public void setReturnPlaceId(Long returnPlaceId) { this.returnPlaceId = returnPlaceId; }
+                request.inviteCode(),
+                request.departurePlaceId(),
+                request.returnPlaceId());
     }
 }
