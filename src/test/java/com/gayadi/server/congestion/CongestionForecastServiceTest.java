@@ -1,5 +1,8 @@
 package com.gayadi.server.congestion;
 
+import com.gayadi.server.congestion.dto.request.CongestionForecastRequest;
+import com.gayadi.server.congestion.dto.response.CongestionForecastResponse;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -44,7 +47,7 @@ class CongestionForecastServiceTest {
     void averagesProviderRatesForTheRequestedDateAndNormalizesDistrictCode() {
         CongestionForecastService service = service("forecast", "test-key");
 
-        CongestionForecast result = service.forecast(new CongestionForecastService.Request(
+        CongestionForecastResponse result = service.forecast(new CongestionForecastRequest(
                 "11", "110", "서울", "", "2026-09-01T14:00:00+09:00"));
 
         assertThat(result.source()).isEqualTo("KTO_DISTRICT_CONCENTRATION_FORECAST");
@@ -58,7 +61,7 @@ class CongestionForecastServiceTest {
     void labelsCalendarFallbackWhenProviderIsUnavailable() {
         CongestionForecastService service = service("denied", "test-key");
 
-        CongestionForecast result = service.forecast(new CongestionForecastService.Request(
+        CongestionForecastResponse result = service.forecast(new CongestionForecastRequest(
                 "11", "110", "서울", "경복궁", "2026-08-30T14:00:00+09:00"));
 
         assertThat(result.source()).isEqualTo("CALENDAR_HEURISTIC");
@@ -72,7 +75,7 @@ class CongestionForecastServiceTest {
     void rejectsInvalidTargetDateInsteadOfReturningServerError() {
         CongestionForecastService service = service("forecast", "");
 
-        assertThatThrownBy(() -> service.forecast(new CongestionForecastService.Request(
+        assertThatThrownBy(() -> service.forecast(new CongestionForecastRequest(
                 "11", "110", "서울", "", "not-a-date")))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
@@ -83,10 +86,10 @@ class CongestionForecastServiceTest {
     void batchUsesOneDistrictRequestAndDistinguishesExactFromDistrictAverage() {
         CongestionForecastService service = service("forecast", "test-key");
 
-        List<CongestionForecast> results = service.forecastAll(List.of(
-                new CongestionForecastService.Request(
+        List<CongestionForecastResponse> results = service.forecastAll(List.of(
+                new CongestionForecastRequest(
                         "11", "110", "서울", "경복궁", "2026-09-01T14:00:00+09:00"),
-                new CongestionForecastService.Request(
+                new CongestionForecastRequest(
                         "11", "110", "서울", "알 수 없는 장소", "2026-09-01T14:00:00+09:00")));
 
         assertThat(requestCount.get()).isEqualTo(1);
@@ -99,7 +102,7 @@ class CongestionForecastServiceTest {
     @Test
     void reusesTheSameDistrictAndDateSnapshotAcrossCalls() {
         CongestionForecastService service = service("forecast", "test-key");
-        CongestionForecastService.Request request = new CongestionForecastService.Request(
+        CongestionForecastRequest request = new CongestionForecastRequest(
                 "11", "110", "서울", "경복궁", "2026-09-01T14:00:00+09:00");
 
         service.forecast(request);

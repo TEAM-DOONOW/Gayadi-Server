@@ -32,7 +32,6 @@ final class KmaGridConverter {
     static {
         double slat1 = SLAT1 * DEGRAD;
         double slat2 = SLAT2 * DEGRAD;
-        double olon = OLON * DEGRAD;
         double olat = OLAT * DEGRAD;
 
         double sn = Math.tan(PI * 0.25 + slat2 * 0.5) / Math.tan(PI * 0.25 + slat1 * 0.5);
@@ -62,8 +61,12 @@ final class KmaGridConverter {
         double ra = Math.tan(PI * 0.25 + lat * DEGRAD * 0.5);
         ra = RE_GRID * SF / Math.pow(ra, SN);
         double theta = lon * DEGRAD - OLON * DEGRAD;
-        if (theta > PI) theta -= 2.0 * PI;
-        if (theta < -PI) theta += 2.0 * PI;
+        if (theta > PI) {
+            theta -= 2.0 * PI;
+        }
+        if (theta < -PI) {
+            theta += 2.0 * PI;
+        }
         theta *= SN;
         double x = ra * Math.sin(theta) + XO;
         double y = RO - ra * Math.cos(theta) + YO;
@@ -81,7 +84,9 @@ final class KmaGridConverter {
         double xn = (nx - 1) - XO;
         double yn = RO - (ny - 1) + YO;
         double ra = Math.sqrt(xn * xn + yn * yn);
-        if (SN < 0.0) ra = -ra;
+        if (SN < 0.0) {
+            ra = -ra;
+        }
         double alat = Math.pow(RE_GRID * SF / ra, 1.0 / SN);
         alat = 2.0 * Math.atan(alat) - PI * 0.5;
 
@@ -90,7 +95,9 @@ final class KmaGridConverter {
             theta = 0.0;
         } else if (yn == 0.0) {
             theta = PI * 0.5;
-            if (xn < 0.0) theta = -theta;
+            if (xn < 0.0) {
+                theta = -theta;
+            }
         } else {
             theta = Math.atan2(xn, yn);
         }
@@ -98,9 +105,15 @@ final class KmaGridConverter {
         return new LatLon(alon * RADDEG, alat * RADDEG);
     }
 
-    record GridPoint(int nx, int ny) {
+    record GridPoint(
+            int nx,
+            int ny
+    ) {
     }
 
-    record LatLon(double lon, double lat) {
+    record LatLon(
+            double lon,
+            double lat
+    ) {
     }
 }

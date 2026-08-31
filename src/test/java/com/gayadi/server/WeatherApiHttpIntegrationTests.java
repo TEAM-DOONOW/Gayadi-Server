@@ -60,8 +60,8 @@ class WeatherApiHttpIntegrationTests {
                         + "&baseDate=20260825&baseTime=1400", token), 200);
         Assertions.assertThat(now.path("nx").asInt()).isEqualTo(60);
         Assertions.assertThat(now.path("ny").asInt()).isEqualTo(127);
-        Assertions.assertThat(now.path("temperature").asText()).isEqualTo("27.1");
-        Assertions.assertThat(now.path("precipitationTypeName").asText()).isEqualTo("없음");
+        Assertions.assertThat(now.path("temperature").asString()).isEqualTo("27.1");
+        Assertions.assertThat(now.path("precipitationTypeName").asString()).isEqualTo("없음");
 
         Assertions.assertThat(get(
                 "/api/v1/weather/now?nx=0&ny=127&baseDate=20260825&baseTime=1400", token)
@@ -75,7 +75,7 @@ class WeatherApiHttpIntegrationTests {
                 "/api/v1/weather/forecast?nx=60&ny=127"
                         + "&baseDate=20260825&baseTime=1400", token), 200);
         Assertions.assertThat(forecast.path("forecast").size()).isEqualTo(2);
-        Assertions.assertThat(forecast.path("forecast").get(0).path("skyName").asText())
+        Assertions.assertThat(forecast.path("forecast").get(0).path("skyName").asString())
                 .isEqualTo("구름많음");
         Assertions.assertThat(forecastRequests).hasValue(2);
     }
@@ -104,13 +104,13 @@ class WeatherApiHttpIntegrationTests {
                     .path("maximum").asInt()).isEqualTo(253);
         }
         Assertions.assertThat(paths.path("/api/v1/trips/{tripId}/situation-responses")
-                .path("post").path("description").asText())
+                .path("post").path("description").asString())
                 .contains("기상청 초단기실황");
     }
 
     private JsonNode findParameter(JsonNode parameters, String name) {
         for (JsonNode parameter : parameters) {
-            if (name.equals(parameter.path("name").asText())) return parameter;
+            if (name.equals(parameter.path("name").asString())) return parameter;
         }
         throw new AssertionError("OpenAPI parameter not found: " + name);
     }
@@ -124,7 +124,7 @@ class WeatherApiHttpIntegrationTests {
                                 + "\",\"password\":\"password1\",\"nickname\":\"날씨사용자\"}"))
                 .build();
         return body(client.send(request, HttpResponse.BodyHandlers.ofString()), 201)
-                .path("accessToken").asText();
+                .path("accessToken").asString();
     }
 
     private HttpResponse<String> get(String path, String token) throws Exception {

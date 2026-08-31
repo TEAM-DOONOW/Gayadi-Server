@@ -1,5 +1,6 @@
 package com.gayadi.server.notice;
 
+import com.gayadi.server.notice.dto.response.NoticeResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/** 서비스 공지 관련 HTTP 요청과 응답을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/notices")

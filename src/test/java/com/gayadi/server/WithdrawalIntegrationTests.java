@@ -1,13 +1,13 @@
 package com.gayadi.server;
 
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.favorite.FavoritePlaceService;
 import com.gayadi.server.friendship.FriendshipService;
 import com.gayadi.server.invitation.InvitationService;
 import com.gayadi.server.schedule.ScheduleItemService;
-import com.gayadi.server.survey.SurveyController;
+import com.gayadi.server.schedule.model.ScheduleType;
 import com.gayadi.server.survey.SurveyService;
+import com.gayadi.server.survey.dto.request.SurveyResponseItem;
 import com.gayadi.server.travel.TripService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 @SpringBootTest
 class WithdrawalIntegrationTests {
@@ -34,19 +33,18 @@ class WithdrawalIntegrationTests {
 
     @Test
     void withdrawalRemovesOrAnonymizesPersonalRows() {
-        long ownerId = id(users.create("탈퇴여행장"));
-        long userId = id(users.create("탈퇴대상"));
-        long friendId = id(users.create("탈퇴친구"));
+        long ownerId = users.create("탈퇴여행장").id();
+        long userId = users.create("탈퇴대상").id();
+        long friendId = users.create("탈퇴친구").id();
         LocalDate tomorrow = LocalDate.now().plusDays(1);
-        long tripId = id(trips.createForUser(
-                ownerId, "탈퇴 확인 여행", tomorrow, tomorrow, List.of("서울")));
+        long tripId = trips.createForUser(
+                ownerId, "탈퇴 확인 여행", tomorrow, tomorrow, List.of("서울")).id();
 
-        String code = RowSupport.strValue(
-                invitations.create(tripId, ownerId, userId, null), "code");
+        String code = invitations.create(tripId, ownerId, userId, null).code();
         invitations.join(userId, code, null, null);
         schedules.create(userId, tripId, new ScheduleItemService.ScheduleCommand(
                 "탈퇴자가 만든 일정", tomorrow, LocalTime.NOON,
-                ScheduleItemService.ScheduleType.MAIN, null));
+                ScheduleType.MAIN, null));
         surveys.respond(null, userId, List.of(
                 answer("q01"), answer("q02"), answer("q03"),
                 answer("q04"), answer("q05"), answer("q06"),
@@ -118,14 +116,11 @@ class WithdrawalIntegrationTests {
                 .param(userId).query(Long.class).single();
     }
 
-    private SurveyController.ResponseItem answer(String questionId) {
-        SurveyController.ResponseItem item = new SurveyController.ResponseItem();
+    private SurveyResponseItem answer(String questionId) {
+        SurveyResponseItem item = new SurveyResponseItem();
         item.setQuestionId(questionId);
         item.setOptionId("a");
         return item;
     }
 
-    private long id(Map<String, Object> value) {
-        return RowSupport.longValue(value, "id");
-    }
 }

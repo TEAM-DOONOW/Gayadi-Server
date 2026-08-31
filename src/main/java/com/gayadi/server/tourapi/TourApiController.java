@@ -1,6 +1,13 @@
 package com.gayadi.server.tourapi;
 
 import com.gayadi.server.common.response.ApiErrorResponse;
+import com.gayadi.server.tourapi.dto.request.FestivalSearchRequest;
+import com.gayadi.server.tourapi.dto.request.KeywordSearchRequest;
+import com.gayadi.server.tourapi.dto.request.LocationBasedListRequest;
+import com.gayadi.server.tourapi.dto.request.StaySearchRequest;
+import com.gayadi.server.tourapi.dto.request.TourDiscoveryRequest;
+import com.gayadi.server.tourapi.dto.response.TourDiscoveryResponse;
+import com.gayadi.server.tourapi.dto.response.TourListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 
+/** 관광정보 목록·검색·통합 조회 HTTP 요청을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/tour")
@@ -35,7 +43,7 @@ public class TourApiController {
     @GetMapping("/discover")
     @Operation(summary = "GAYADI 앱용 지역 장소·혼잡 예측 통합 조회",
             description = "앱의 지역 이름을 법정동 코드로 변환하고 관광정보와 여행일 기준 예상 혼잡도를 함께 반환합니다.")
-    public TourDiscoveryService.DiscoveryResponse discover(
+    public TourDiscoveryResponse discover(
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int pageSize,
             @RequestParam String regionName,
             @RequestParam(required = false) LocalDate targetDate,
@@ -43,7 +51,7 @@ public class TourApiController {
             @RequestParam(required = false) String lclsSystm1,
             @RequestParam(required = false) String lclsSystm2,
             @RequestParam(required = false) String lclsSystm3) {
-        return discovery.discover(new TourDiscoveryService.Request(pageSize, regionName, targetDate,
+        return discovery.discover(new TourDiscoveryRequest(pageSize, regionName, targetDate,
                 contentTypeId, lclsSystm1, lclsSystm2, lclsSystm3));
     }
 
@@ -56,7 +64,7 @@ public class TourApiController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "관광지와 혼잡도 조회 성공",
                     content = @Content(schema = @Schema(
-                            implementation = TourDiscoveryService.DiscoveryResponse.class))),
+                            implementation = TourDiscoveryResponse.class))),
             @ApiResponse(responseCode = "400", description = "지원하지 않는 지역명 또는 잘못된 요청값",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "429", description = "공공데이터 API 요청 한도 초과",
@@ -66,7 +74,7 @@ public class TourApiController {
             @ApiResponse(responseCode = "503", description = "관광정보 요청 과부하 또는 외부 연동 불가",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-    public TourDiscoveryService.DiscoveryResponse areas(
+    public TourDiscoveryResponse areas(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int pageSize,
             @Parameter(description = "이전 Android 호환용. 현재는 사용하지 않음")
@@ -91,7 +99,7 @@ public class TourApiController {
             @RequestParam(required = false) String lclsSystm2,
             @Parameter(description = "분류체계 소분류", example = "NA040500")
             @RequestParam(required = false) String lclsSystm3) {
-        return discovery.discover(new TourDiscoveryService.Request(pageSize, regionName, targetDate,
+        return discovery.discover(new TourDiscoveryRequest(pageSize, regionName, targetDate,
                 contentTypeId, lclsSystm1, lclsSystm2, lclsSystm3));
     }
 
@@ -100,7 +108,7 @@ public class TourApiController {
             description = "좌표(mapX/mapY)와 반경(radius, m, 최대 20000)으로 주변 관광정보 목록을 조회한다. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순, E 거리순. "
                     + "응답 항목에 중심 좌표로부터 거리(dist, m)가 추가된다.")
-    public TourApiService.TourListResponse locations(
+    public TourListResponse locations(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
@@ -127,7 +135,7 @@ public class TourApiController {
             @RequestParam(required = false) String lclsSystm2,
             @Parameter(description = "분류체계 소분류")
             @RequestParam(required = false) String lclsSystm3) {
-        return service.locationBasedList(new TourApiService.LocationBasedListRequest(
+        return service.locationBasedList(new LocationBasedListRequest(
                 pageSize, cursor, arrange, mapX, mapY, radius, contentTypeId, modifiedtime,
                 lDongRegnCd, lDongSignguCd, lclsSystm1, lclsSystm2, lclsSystm3));
     }
@@ -136,7 +144,7 @@ public class TourApiController {
     @Operation(summary = "키워드 검색 조회",
             description = "키워드로 관광정보를 검색한다. 키워드는 필수이며 한국어 인코딩은 서버가 처리한다. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
-    public TourApiService.TourListResponse keywords(
+    public TourListResponse keywords(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
@@ -155,7 +163,7 @@ public class TourApiController {
             @RequestParam(required = false) String lclsSystm2,
             @Parameter(description = "분류체계 소분류")
             @RequestParam(required = false) String lclsSystm3) {
-        return service.searchKeyword(new TourApiService.SearchKeywordRequest(
+        return service.searchKeyword(new KeywordSearchRequest(
                 pageSize, cursor, arrange, keyword,
                 lDongRegnCd, lDongSignguCd, lclsSystm1, lclsSystm2, lclsSystm3));
     }
@@ -166,7 +174,7 @@ public class TourApiController {
                     + "응답 항목에 행사 시작일(eventStartDate)/종료일(eventEndDate)/"
                     + "진행상태(progressType)/축제유형(festivalType)이 추가된다. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
-    public TourApiService.TourListResponse festivals(
+    public TourListResponse festivals(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
@@ -189,7 +197,7 @@ public class TourApiController {
             @RequestParam(required = false) String lclsSystm2,
             @Parameter(description = "분류체계 소분류")
             @RequestParam(required = false) String lclsSystm3) {
-        return service.searchFestival(new TourApiService.SearchFestivalRequest(
+        return service.searchFestival(new FestivalSearchRequest(
                 pageSize, cursor, arrange, eventStartDate, eventEndDate, modifiedtime,
                 lDongRegnCd, lDongSignguCd, lclsSystm1, lclsSystm2, lclsSystm3));
     }
@@ -198,7 +206,7 @@ public class TourApiController {
     @Operation(summary = "숙박정보 조회",
             description = "숙박 정보 목록을 조회한다(관광 타입 32). "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
-    public TourApiService.TourListResponse stays(
+    public TourListResponse stays(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
@@ -217,7 +225,7 @@ public class TourApiController {
             @RequestParam(required = false) String lclsSystm2,
             @Parameter(description = "분류체계 소분류")
             @RequestParam(required = false) String lclsSystm3) {
-        return service.searchStay(new TourApiService.SearchStayRequest(
+        return service.searchStay(new StaySearchRequest(
                 pageSize, cursor, arrange, modifiedtime,
                 lDongRegnCd, lDongSignguCd, lclsSystm1, lclsSystm2, lclsSystm3));
     }

@@ -1,9 +1,10 @@
 package com.gayadi.server;
 
-import com.gayadi.server.event.EventController;
-import com.gayadi.server.invitation.InvitationController;
-import com.gayadi.server.recommendation.PlaceRecommendationRequest;
-import com.gayadi.server.schedule.ScheduleItemController;
+import com.gayadi.server.event.dto.request.ChangeProposalDecisionRequest;
+import com.gayadi.server.invitation.dto.request.InvitationCreateRequest;
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.schedule.dto.request.CreateScheduleRequest;
+import com.gayadi.server.schedule.model.ScheduleType;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -23,17 +24,20 @@ class ControllerRequestValidationTests {
 
     @Test
     void acceptsInitialPlanRevisionWhenDecidingProposal() {
-        EventController.DecisionRequest request = new EventController.DecisionRequest();
-        request.setApprove(false);
-        request.setBaseRevisionNo(0);
+        ChangeProposalDecisionRequest request = new ChangeProposalDecisionRequest(
+                false,
+                null,
+                0);
 
         Assertions.assertThat(VALIDATOR.validate(request)).isEmpty();
     }
 
     @Test
     void rejectsProposalDecisionWithoutRevision() {
-        EventController.DecisionRequest request = new EventController.DecisionRequest();
-        request.setApprove(true);
+        ChangeProposalDecisionRequest request = new ChangeProposalDecisionRequest(
+                true,
+                null,
+                null);
 
         Assertions.assertThat(VALIDATOR.validate(request))
                 .extracting(error -> error.getPropertyPath().toString())
@@ -55,8 +59,7 @@ class ControllerRequestValidationTests {
 
     @Test
     void requiresTargetUserForIndividualInvitation() {
-        InvitationController.CreateInvitationRequest request =
-                new InvitationController.CreateInvitationRequest();
+        InvitationCreateRequest request = new InvitationCreateRequest(null, null);
 
         Assertions.assertThat(VALIDATOR.validate(request))
                 .extracting(error -> error.getPropertyPath().toString())
@@ -65,12 +68,11 @@ class ControllerRequestValidationTests {
 
     @Test
     void rejectsScheduleTimeWithSeconds() {
-        ScheduleItemController.CreateScheduleRequest request =
-                new ScheduleItemController.CreateScheduleRequest();
+        CreateScheduleRequest request = new CreateScheduleRequest();
         request.setTitle("일정");
         request.setDate("2026.08.20");
         request.setTime("10:30:45");
-        request.setType(com.gayadi.server.schedule.ScheduleItemService.ScheduleType.MAIN);
+        request.setType(ScheduleType.MAIN);
 
         Assertions.assertThat(VALIDATOR.validate(request))
                 .extracting(error -> error.getPropertyPath().toString())

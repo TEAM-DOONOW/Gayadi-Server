@@ -1,21 +1,25 @@
 package com.gayadi.server.dashboard;
 
 import com.gayadi.server.common.AppDateFormat;
-import com.gayadi.server.common.RowSupport;
+import com.gayadi.server.dashboard.dto.response.DashboardProgressResponse;
+import com.gayadi.server.dashboard.dto.response.DashboardResponse;
+import com.gayadi.server.dashboard.dto.response.TripDayResponse;
 import com.gayadi.server.event.EventService;
+import com.gayadi.server.event.dto.response.ChangeProposalResponse;
 import com.gayadi.server.schedule.ScheduleItemService;
+import com.gayadi.server.schedule.dto.response.ScheduleResponse;
 import com.gayadi.server.travel.TripService;
+import com.gayadi.server.travel.dto.response.ParticipantResponse;
+import com.gayadi.server.travel.dto.response.TripResponse;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
+/** 여행 홈에 필요한 여러 도메인의 조회 결과를 조합합니다. */
 @Service
 public class DashboardService {
 
@@ -34,70 +38,50 @@ public class DashboardService {
         this.events = events;
     }
 
-    public Map<String, Object> dashboard(long userId, long tripId) {
+    /** 일정과 진행 상태를 조합해 여행 대시보드를 구성합니다. */
+    public DashboardResponse dashboard(long userId, long tripId) {
         trips.requireMember(tripId, userId);
-        Map<String, Object> trip = trips.view(tripId);
-        List<Map<String, Object>> participants = trips.members(tripId);
-        List<Map<String, Object>> scheduleItems = schedules.list(userId, tripId);
-        List<Map<String, Object>> pendingProposals = events.pendingProposals(
-                        tripId, MAX_VISIBLE_PROPOSALS).stream()
-                .map(this::proposalSummary)
-                .toList();
+        TripResponse trip = trips.view(tripId);
+        List<ParticipantResponse> participants = trips.members(tripId);
+        List<ScheduleResponse> scheduleItems = schedules.list(userId, tripId);
+        List<ChangeProposalResponse> pendingProposals = events.pendingProposals(
+                tripId, MAX_VISIBLE_PROPOSALS);
 
         LocalDate today = LocalDate.now();
-        LocalDate startDate = localDate(trip.get("startDate"));
-        LocalDate endDate = localDate(trip.get("endDate"));
+        LocalDate startDate = localDate(trip.startDate());
+        LocalDate endDate = localDate(trip.endDate());
         long visitedCount = scheduleItems.stream()
-                .filter(item -> Boolean.TRUE.equals(item.get("isVisited")))
+                .filter(ScheduleResponse::isVisited)
                 .count();
         int progress = scheduleItems.isEmpty()
                 ? 0
                 : Math.toIntExact(visitedCount * 100 / scheduleItems.size());
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("trip", trip);
-        result.put("tripDays", tripDays(startDate, endDate));
-        result.put("daysUntilStart", ChronoUnit.DAYS.between(today, startDate));
-        result.put("participants", participants);
-        result.put("participantCount", participants.size());
-        result.put("schedules", scheduleItems);
-        result.put("todaySchedules", scheduleItems.stream()
-                .filter(item -> today.equals(localDate(item.get("date"))))
-                .toList());
-        result.put("progress", Map.of(
-                "scheduleCount", scheduleItems.size(),
-                "visitedCount", visitedCount,
-                "percentage", progress));
-        result.put("pendingChangeProposals", pendingProposals);
-        result.put("generatedAt", LocalDateTime.now());
-        return result;
+        return new DashboardResponse(
+                trip,
+                tripDays(startDate, endDate),
+                ChronoUnit.DAYS.between(today, startDate),
+                participants,
+                participants.size(),
+                scheduleItems,
+                scheduleItems.stream()
+                        .filter(item -> today.equals(localDate(item.date())))
+                        .toList(),
+                new DashboardProgressResponse(scheduleItems.size(), visitedCount, progress),
+                pendingProposals,
+                LocalDateTime.now());
     }
 
-    private List<Map<String, Object>> tripDays(LocalDate startDate, LocalDate endDate) {
+    private List<TripDayResponse> tripDays(LocalDate startDate, LocalDate endDate) {
         long days = ChronoUnit.DAYS.between(startDate, endDate);
         return java.util.stream.LongStream.rangeClosed(0, days)
                 .mapToObj(offset -> startDate.plusDays(offset))
-                .map(date -> {
-                    Map<String, Object> day = new LinkedHashMap<>();
-                    day.put("dayNumber", Math.toIntExact(ChronoUnit.DAYS.between(startDate, date)) + 1);
-                    day.put("date", AppDateFormat.date(date));
-                    day.put("dateLabel", date.getMonthValue() + "." + date.getDayOfMonth()
-                            + "/" + weekday(date.getDayOfWeek()));
-                    return day;
-                })
+                .map(date -> new TripDayResponse(
+                        Math.toIntExact(ChronoUnit.DAYS.between(startDate, date)) + 1,
+                        AppDateFormat.date(date),
+                        date.getMonthValue() + "." + date.getDayOfMonth()
+                                + "/" + weekday(date.getDayOfWeek())))
                 .toList();
-    }
-
-    private Map<String, Object> proposalSummary(Map<String, Object> row) {
-        Map<String, Object> proposal = new LinkedHashMap<>();
-        proposal.put("id", RowSupport.longValue(row, "id"));
-        proposal.put("type", nullable(row, "type"));
-        proposal.put("reason", nullable(row, "reason"));
-        proposal.put("status", RowSupport.strValue(row, "status"));
-        proposal.put("baseRevisionNo", nullable(row, "baseRevisionNo"));
-        proposal.put("options", row.getOrDefault("options", List.of()));
-        proposal.put("generatedAt", nullable(row, "generatedAt"));
-        return proposal;
     }
 
     private String weekday(DayOfWeek dayOfWeek) {
@@ -114,10 +98,5 @@ public class DashboardService {
 
     private LocalDate localDate(Object value) {
         return AppDateFormat.databaseDate(value);
-    }
-
-    private Object nullable(Map<String, Object> row, String key) {
-        if (row.containsKey(key)) return row.get(key);
-        return row.get(key.toUpperCase(Locale.ROOT));
     }
 }

@@ -1,5 +1,7 @@
 package com.gayadi.server.tourapi;
 
+import com.gayadi.server.tourapi.model.LegalDistrict;
+
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 

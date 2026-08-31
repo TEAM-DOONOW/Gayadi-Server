@@ -1,5 +1,7 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import com.gayadi.server.congestion.CongestionForecastService;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;

@@ -24,6 +24,7 @@ public class InquiryService {
         this.keyHelper = keyHelper;
     }
 
+    /** 사용자의 문의를 접수하고 접수 결과를 반환합니다. */
     @Transactional
     public InquiryReceipt submit(long userId, InquiryRequest request) {
         users.lockActive(userId);

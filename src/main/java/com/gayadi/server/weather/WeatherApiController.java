@@ -1,5 +1,10 @@
 package com.gayadi.server.weather;
 
+import com.gayadi.server.weather.dto.request.ForecastVersionRequest;
+import com.gayadi.server.weather.dto.response.ForecastVersionResponse;
+import com.gayadi.server.weather.dto.response.UltraShortNowcastResponse;
+import com.gayadi.server.weather.dto.response.WeatherForecastResponse;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 실황·예보·파일 버전 조회 HTTP 요청을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/weather")
@@ -37,8 +43,8 @@ public class WeatherApiController {
                     + "습도(REH), 강수형태(PTY), 풍향(VEC), 풍속(WSD).")
     @ApiResponse(responseCode = "200", description = "현재 관측값",
             content = @Content(schema = @Schema(
-                    implementation = WeatherApiService.UltraSrtNcstResponse.class)))
-    public WeatherApiService.UltraSrtNcstResponse now(
+                    implementation = UltraShortNowcastResponse.class)))
+    public UltraShortNowcastResponse now(
             @Valid @ParameterObject WeatherQuery query) {
         return service.ultraSrtNcst(query.toRequest());
     }
@@ -51,8 +57,8 @@ public class WeatherApiController {
                     + "습도(REH), 강수형태(PTY), 강수확률(POP), 낙뢰(LGT), 풍향(VEC), 풍속(WSD).")
     @ApiResponse(responseCode = "200", description = "6시간 이내 초단기예보",
             content = @Content(schema = @Schema(
-                    implementation = WeatherApiService.ForecastResponse.class)))
-    public WeatherApiService.ForecastResponse ultraForecast(
+                    implementation = WeatherForecastResponse.class)))
+    public WeatherForecastResponse ultraForecast(
             @Valid @ParameterObject WeatherQuery query) {
         return service.ultraSrtFcst(query.toRequest());
     }
@@ -67,8 +73,8 @@ public class WeatherApiController {
                     + "발표시각(02,05,08,11,14시)은 3일차부터 3시간 간격, (17,20,23시)은 4일차부터 3시간 간격으로 제공한다.")
     @ApiResponse(responseCode = "200", description = "전체 단기예보 페이지를 합친 결과",
             content = @Content(schema = @Schema(
-                    implementation = WeatherApiService.ForecastResponse.class)))
-    public WeatherApiService.ForecastResponse forecast(
+                    implementation = WeatherForecastResponse.class)))
+    public WeatherForecastResponse forecast(
             @Valid @ParameterObject WeatherQuery query) {
         return service.vilageFcst(query.toRequest());
     }
@@ -80,14 +86,14 @@ public class WeatherApiController {
                     + "baseDateTime: YYYYMMDDHHMM 형식(예: 202608210200).")
     @ApiResponse(responseCode = "200", description = "예보 파일 버전",
             content = @Content(schema = @Schema(
-                    implementation = WeatherApiService.FcstVersionResponse.class)))
-    public WeatherApiService.FcstVersionResponse version(
+                    implementation = ForecastVersionResponse.class)))
+    public ForecastVersionResponse version(
             @Parameter(description = "파일구분", example = "SHRT", required = true)
             @Pattern(regexp = "ODAM|VSRT|SHRT", message = "ftype은 ODAM, VSRT, SHRT 중 하나여야 합니다.")
             @RequestParam String ftype,
             @Parameter(description = "발표일시분(YYYYMMDDHHMM)", example = "202608210200", required = true)
             @Pattern(regexp = "\\d{12}", message = "baseDateTime은 YYYYMMDDHHMM 형식이어야 합니다.")
             @RequestParam String baseDateTime) {
-        return service.fcstVersion(new WeatherApiService.FcstVersionRequest(ftype, baseDateTime));
+        return service.fcstVersion(new ForecastVersionRequest(ftype, baseDateTime));
     }
 }

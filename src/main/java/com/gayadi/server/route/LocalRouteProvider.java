@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
+/** 외부 연동 없이 직선거리로 예상 경로를 계산하는 기본 공급자입니다. */
 @Component
 @Profile("!external-route")
 @ConditionalOnProperty(name = "route.provider", havingValue = "local", matchIfMissing = true)

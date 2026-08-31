@@ -48,7 +48,7 @@ class WeatherApiClientTest {
         WeatherApiClient client = client("pages", "test-key");
         List<tools.jackson.databind.JsonNode> items = client.allItems("", client.baseParams());
 
-        assertThat(items).extracting(item -> item.path("category").asText())
+        assertThat(items).extracting(item -> item.path("category").asString())
                 .containsExactly("TMP", "SKY", "PTY");
         assertThat(pageRequests).hasValue(2);
     }

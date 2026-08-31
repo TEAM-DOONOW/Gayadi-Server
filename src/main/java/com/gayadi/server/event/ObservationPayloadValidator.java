@@ -31,14 +31,22 @@ final class ObservationPayloadValidator {
     }
 
     private static void validate(Object value, int depth, Counter counter) {
-        if (depth > MAX_DEPTH || ++counter.nodes > MAX_NODES) throw invalid();
-        if (value == null || value instanceof Boolean || value instanceof Number) return;
+        if (depth > MAX_DEPTH || ++counter.nodes > MAX_NODES) {
+            throw invalid();
+        }
+        if (value == null || value instanceof Boolean || value instanceof Number) {
+            return;
+        }
         if (value instanceof String text) {
-            if (text.length() > MAX_STRING_LENGTH) throw invalid();
+            if (text.length() > MAX_STRING_LENGTH) {
+                throw invalid();
+            }
             return;
         }
         if (value instanceof Map<?, ?> map) {
-            if (map.size() > MAX_MAP_ENTRIES) throw invalid();
+            if (map.size() > MAX_MAP_ENTRIES) {
+                throw invalid();
+            }
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 if (!(entry.getKey() instanceof String key)
                         || key.isBlank() || key.length() > MAX_KEY_LENGTH) throw invalid();
@@ -47,7 +55,9 @@ final class ObservationPayloadValidator {
             return;
         }
         if (value instanceof List<?> list) {
-            if (list.size() > MAX_LIST_ITEMS) throw invalid();
+            if (list.size() > MAX_LIST_ITEMS) {
+                throw invalid();
+            }
             for (Object item : list) validate(item, depth + 1, counter);
             return;
         }

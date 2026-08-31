@@ -1,5 +1,9 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.response.PlaceRecommendationResponse;
+import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
+
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -12,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/** 벡터 검색 결과를 기반으로 기존 추천 응답을 생성합니다. */
 @Service
 @ConditionalOnProperty(name = "app.ai.embedding.enabled", havingValue = "true")
 public class RecommendationService {
@@ -24,6 +29,8 @@ public class RecommendationService {
         this.vectorStore = vectorStore;
     }
 
+    /** 여행 조건과 벡터 검색 결과를 조합해 맞춤 장소를 추천합니다. */
+    /** 성향과 현재 위치를 바탕으로 공개 장소 후보를 검색하고 추천 결과를 생성합니다. */
     public PlaceRecommendationResponse recommendPlaces(PlaceRecommendationRequest request) {
         StringBuilder queryBuilder = new StringBuilder(request.getProfile());
         if (request.getKeywords() != null && !request.getKeywords().isEmpty()) {
@@ -31,6 +38,7 @@ public class RecommendationService {
         }
         String query = queryBuilder.toString();
 
+        // 먼저 성향과 키워드가 가까운 후보를 찾고 실제 좌표 거리를 기준으로 재정렬합니다.
         List<Document> searchResults = vectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(query)
@@ -57,6 +65,7 @@ public class RecommendationService {
         String keywordsStr = (request.getKeywords() == null || request.getKeywords().isEmpty())
                 ? "없음" : String.join(", ", request.getKeywords());
 
+        // 언어 모델에는 검색으로 검증된 공개 장소만 전달합니다.
         PlaceRecommendationResponse generated = chatClient.prompt()
                 .user("""
                         사용자 성향: %s
@@ -73,6 +82,7 @@ public class RecommendationService {
             return new PlaceRecommendationResponse(List.of(), "추천할 수 있는 공개 장소가 없습니다.");
         }
 
+        // 모델이 후보에 없던 장소를 생성하더라도 API 응답에는 포함하지 않습니다.
         Set<String> candidateIds = searchResults.stream()
                 .map(document -> document.getMetadata().get("placeId"))
                 .filter(java.util.Objects::nonNull)

@@ -3,6 +3,7 @@ package com.gayadi.server.route;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 경로 계산·선택·외부 공급자 오류 코드를 정의합니다. */
 public enum RouteErrorCode implements ErrorCode {
 
     // Calculation - 경로 계산 입력과 선행 일정
@@ -79,7 +80,19 @@ public enum RouteErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

@@ -18,6 +18,7 @@ public class FirestoreService {
         this.firestore = firestore;
     }
 
+    /** Firestore 문서 정보를 등록합니다. */
     public void save(String collection, long id, Map<String, Object> data) {
         try {
             firestore.collection(collection).document(String.valueOf(id)).set(data).get(10, TimeUnit.SECONDS);
@@ -26,6 +27,7 @@ public class FirestoreService {
         }
     }
 
+    /** Firestore 문서 정보를 조회합니다. */
     public Map<String, Object> find(String collection, long id) {
         try {
             DocumentSnapshot doc = firestore.collection(collection)
@@ -36,6 +38,7 @@ public class FirestoreService {
         }
     }
 
+    /** Firestore 문서 정보를 삭제합니다. */
     public void delete(String collection, long id) {
         try {
             firestore.collection(collection).document(String.valueOf(id)).delete().get(10, TimeUnit.SECONDS);

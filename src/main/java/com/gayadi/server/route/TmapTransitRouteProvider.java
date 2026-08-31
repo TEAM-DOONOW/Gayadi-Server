@@ -60,7 +60,9 @@ public class TmapTransitRouteProvider implements RouteProvider {
 
     @Override
     public List<RouteEstimate> estimateSegments(List<Location> stops, String phase) {
-        if (stops == null || stops.size() < 2) return List.of();
+        if (stops == null || stops.size() < 2) {
+            return List.of();
+        }
         try {
             List<RouteEstimate> estimates = new ArrayList<>(stops.size() - 1);
             for (int index = 0; index < stops.size() - 1; index++) {
@@ -68,7 +70,9 @@ public class TmapTransitRouteProvider implements RouteProvider {
             }
             return List.copyOf(estimates);
         } catch (BusinessException exception) {
-            if (!fallbackToLocal) throw exception;
+            if (!fallbackToLocal) {
+                throw exception;
+            }
             return localFallback.estimateSegments(stops, phase);
         }
     }
@@ -146,18 +150,31 @@ public class TmapTransitRouteProvider implements RouteProvider {
         JsonNode legNodes = itinerary.path("legs");
         if (legNodes.isArray()) {
             for (JsonNode leg : legNodes) {
-                String mode = leg.path("mode").asText("");
-                String route = leg.path("route").asText("");
+                String mode = text(leg, "mode");
+                String route = text(leg, "route");
                 int service = leg.path("service").asInt(1);
                 String label = route.isBlank() ? mode : mode + " " + route;
-                if (service == 0) label += "(운행 종료)";
-                if (!label.isBlank()) legs.add(label);
+                if (service == 0) {
+                    label += "(운행 종료)";
+                }
+                if (!label.isBlank()) {
+                    legs.add(label);
+                }
             }
         }
         String summary = "TMAP 대중교통 경로"
                 + (legs.isEmpty() ? "" : ": " + String.join(" -> ", legs));
         return new RouteEstimate(
-                durationMinutes, transfers, Math.max(0, fare), summary, providerName());
+                durationMinutes,
+                transfers,
+                Math.max(0, fare),
+                summary,
+                providerName());
+    }
+
+    private String text(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isMissingNode() || value.isNull() ? "" : value.asString();
     }
 
     private int minutes(double seconds) {

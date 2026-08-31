@@ -1,6 +1,6 @@
 package com.gayadi.server.friendship;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.friendship.dto.response.UserSearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
+/** 친구 관계 관련 HTTP 요청과 응답을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/users")
@@ -39,8 +39,8 @@ public class UserSearchController {
     @Operation(summary = "친구 추가용 사용자 검색", description = "이메일은 검색하거나 응답하지 않습니다.")
     @ApiResponse(responseCode = "200", description = "닉네임과 일치하는 공개 사용자 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.UserSearch.class))))
-    public List<Map<String, Object>> users(
+                    schema = @Schema(implementation = UserSearchResponse.class))))
+    public List<UserSearchResponse> users(
             @AuthenticationPrincipal Long userId,
             @RequestParam
             @NotBlank(message = "검색할 닉네임을 입력해 주세요.")

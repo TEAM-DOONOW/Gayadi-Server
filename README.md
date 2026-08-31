@@ -42,6 +42,8 @@ Spring Boot 4.1 기반의 단일 서버입니다.
 - Android 연계: 프로필, 9문항 성향검사, 여행, 날짜 조율, 참여자, 공유·개별 초대, 일정, 경로, 경비·공금·정산, 찜, 공지, 문의, 약관 제공
 - API 문서: `/api/docs`, OpenAPI JSON `/api/openapi`
 - Android 연동 명세: [`docs/FRONTEND_API_SPEC.md`](docs/FRONTEND_API_SPEC.md)
+- 개발 문서 시작점: [`docs/README.md`](docs/README.md)
+- 프로젝트 파악 후 새 세션 인수인계: [`docs/HANDOFF.md`](docs/HANDOFF.md)
 
 외부 관광·날씨·혼잡·대중교통 API가 없어도 로컬에서 전체 핵심 흐름을 실행할 수 있습니다. `.env`는 실행 디렉터리에서 자동으로 읽습니다.
 

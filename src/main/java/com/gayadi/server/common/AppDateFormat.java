@@ -21,7 +21,9 @@ public final class AppDateFormat {
     }
 
     public static LocalDate parseDate(String value, String label) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         try {
             return LocalDate.parse(value.replace('.', '-'));
         } catch (DateTimeParseException exception) {
@@ -30,7 +32,9 @@ public final class AppDateFormat {
     }
 
     public static LocalTime parseTime(String value, String label) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         try {
             return LocalTime.parse(value, TIME);
         } catch (DateTimeParseException exception) {
@@ -47,20 +51,32 @@ public final class AppDateFormat {
     }
 
     public static LocalDate databaseDate(Object value) {
-        if (value instanceof LocalDate date) return date;
-        if (value instanceof java.sql.Date date) return date.toLocalDate();
+        if (value instanceof LocalDate date) {
+            return date;
+        }
+        if (value instanceof java.sql.Date date) {
+            return date.toLocalDate();
+        }
         return LocalDate.parse(value.toString().substring(0, 10).replace('.', '-'));
     }
 
     public static LocalDateTime databaseDateTime(Object value) {
-        if (value instanceof LocalDateTime dateTime) return dateTime;
-        if (value instanceof java.sql.Timestamp timestamp) return timestamp.toLocalDateTime();
+        if (value instanceof LocalDateTime dateTime) {
+            return dateTime;
+        }
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
         return LocalDateTime.parse(value.toString().replace(' ', 'T'));
     }
 
     public static LocalTime databaseTime(Object value) {
-        if (value instanceof LocalTime time) return time;
-        if (value instanceof java.sql.Time time) return time.toLocalTime();
+        if (value instanceof LocalTime time) {
+            return time;
+        }
+        if (value instanceof java.sql.Time time) {
+            return time.toLocalTime();
+        }
         return LocalTime.parse(value.toString().substring(0, 8));
     }
 }

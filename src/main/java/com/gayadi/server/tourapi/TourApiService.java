@@ -1,5 +1,15 @@
 package com.gayadi.server.tourapi;
 
+import com.gayadi.server.tourapi.dto.request.AreaBasedListRequest;
+import com.gayadi.server.tourapi.dto.request.FestivalSearchRequest;
+import com.gayadi.server.tourapi.dto.request.KeywordSearchRequest;
+import com.gayadi.server.tourapi.dto.request.LocationBasedListRequest;
+import com.gayadi.server.tourapi.dto.request.StaySearchRequest;
+import com.gayadi.server.tourapi.dto.response.TourListResponse;
+import com.gayadi.server.tourapi.dto.response.TourPlaceDetailResponse;
+import com.gayadi.server.tourapi.dto.response.TourPlaceResponse;
+import com.gayadi.server.tourapi.model.LegalDistrict;
+
 import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/** 한국관광공사 API 호출 결과를 서비스 응답 DTO로 변환합니다. */
 @Service
 public class TourApiService {
 
@@ -82,7 +93,7 @@ public class TourApiService {
         return List.copyOf(result);
     }
 
-    /** 좌표(mapX/mapY)와 반경(radius) 기반으로 주변 관광정보 목록을 조회한다. */
+    /** 도메인 관련 도메인 업무를 처리합니다. */
     public TourListResponse locationBasedList(LocationBasedListRequest req) {
         int pageNo = TourCursor.decodePageNo(req.cursor());
         Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
@@ -103,7 +114,7 @@ public class TourApiService {
     }
 
     /** 키워드로 관광정보를 검색한다. */
-    public TourListResponse searchKeyword(SearchKeywordRequest req) {
+    public TourListResponse searchKeyword(KeywordSearchRequest req) {
         int pageNo = TourCursor.decodePageNo(req.cursor());
         Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
         requireParam("keyword", req.keyword());
@@ -117,7 +128,7 @@ public class TourApiService {
     }
 
     /** 행사/공연/축제 정보를 날짜로 조회한다. */
-    public TourListResponse searchFestival(SearchFestivalRequest req) {
+    public TourListResponse searchFestival(FestivalSearchRequest req) {
         int pageNo = TourCursor.decodePageNo(req.cursor());
         Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
         requireParam("eventStartDate", req.eventStartDate());
@@ -133,7 +144,7 @@ public class TourApiService {
     }
 
     /** 숙박 정보 목록을 조회한다. */
-    public TourListResponse searchStay(SearchStayRequest req) {
+    public TourListResponse searchStay(StaySearchRequest req) {
         int pageNo = TourCursor.decodePageNo(req.cursor());
         Map<String, String> params = baseParams(req.pageSize(), pageNo, req.arrange());
         putIfPresent(params, "modifiedtime", req.modifiedtime());
@@ -163,10 +174,13 @@ public class TourApiService {
         return detailFields(call("detailIntro2", params));
     }
 
-    /** 콘텐츠 상세정보를 Agent 후보에 사용할 수 있는 형태로 묶는다. */
-    public TourPlaceDetail detail(String contentId, String contentTypeId) {
-        return new TourPlaceDetail(contentId, contentTypeId,
-                detailCommon(contentId), detailIntro(contentId, contentTypeId));
+    /** 도메인 관련 도메인 업무를 처리합니다. */
+    public TourPlaceDetailResponse detail(String contentId, String contentTypeId) {
+        return new TourPlaceDetailResponse(
+                contentId,
+                contentTypeId,
+                detailCommon(contentId),
+                detailIntro(contentId, contentTypeId));
     }
 
     private TourListResponse listResponse(String operation, Map<String, String> params, int pageSize, int pageNo) {
@@ -174,7 +188,7 @@ public class TourApiService {
         JsonNode body = response.path("body");
         JsonNode itemNode = body.path("items").path("item");
 
-        List<TourPlace> items = new ArrayList<>();
+        List<TourPlaceResponse> items = new ArrayList<>();
         if (itemNode.isArray()) {
             for (JsonNode node : itemNode) {
                 items.add(toTourPlace(node));
@@ -196,11 +210,15 @@ public class TourApiService {
         JsonNode item = itemNode.isArray()
                 ? (itemNode.isEmpty() ? null : itemNode.get(0))
                 : itemNode.isObject() ? itemNode : null;
-        if (item == null) return Map.of();
+        if (item == null) {
+            return Map.of();
+        }
 
         Map<String, String> fields = new LinkedHashMap<>();
         for (Map.Entry<String, JsonNode> entry : item.properties()) {
-            if (!entry.getValue().isNull()) fields.put(entry.getKey(), entry.getValue().asText(""));
+            if (!entry.getValue().isNull()) {
+                fields.put(entry.getKey(), entry.getValue().asString());
+            }
         }
         return Map.copyOf(fields);
     }
@@ -261,8 +279,8 @@ public class TourApiService {
         }
 
         JsonNode header = root.path("response").path("header");
-        String resultCode = header.path("resultCode").asText("");
-        String resultMsg = header.path("resultMsg").asText("");
+        String resultCode = text(header, "resultCode");
+        String resultMsg = text(header, "resultMsg");
         if (!RESULT_CODE_OK.equals(resultCode)) {
             log.warn("관광 API 업무 오류: code={}, message={}", resultCode, resultMsg);
             throw new BusinessException(TourApiErrorCode.TOUR_API_RESPONSE_INVALID);
@@ -296,8 +314,8 @@ public class TourApiService {
         }
     }
 
-    private TourPlace toTourPlace(JsonNode node) {
-        return new TourPlace(
+    private TourPlaceResponse toTourPlace(JsonNode node) {
+        return new TourPlaceResponse(
                 text(node, "contentid"),
                 text(node, "contenttypeid"),
                 text(node, "title"),
@@ -322,8 +340,7 @@ public class TourApiService {
                 text(node, "eventstartdate"),
                 text(node, "eventenddate"),
                 text(node, "progresstype"),
-                text(node, "festivaltype")
-        );
+                text(node, "festivaltype"));
     }
 
     private LegalDistrict toLegalDistrict(JsonNode node) {
@@ -332,7 +349,7 @@ public class TourApiService {
 
     private String text(JsonNode node, String field) {
         JsonNode value = node.path(field);
-        return value.isMissingNode() || value.isNull() ? "" : value.asText("");
+        return value.isMissingNode() || value.isNull() ? "" : value.asString();
     }
 
     private void putIfPresent(Map<String, String> params, String key, String value) {
@@ -361,59 +378,4 @@ public class TourApiService {
         return xml.substring(start + open.length(), end).trim();
     }
 
-    public record AreaBasedListRequest(
-            int pageSize, String cursor, String arrange, String contentTypeId,
-            String lDongRegnCd, String lDongSignguCd,
-            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-    }
-
-    public record LocationBasedListRequest(
-            int pageSize, String cursor, String arrange,
-            String mapX, String mapY, String radius, String contentTypeId, String modifiedtime,
-            String lDongRegnCd, String lDongSignguCd,
-            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-    }
-
-    public record SearchKeywordRequest(
-            int pageSize, String cursor, String arrange, String keyword,
-            String lDongRegnCd, String lDongSignguCd,
-            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-    }
-
-    public record SearchFestivalRequest(
-            int pageSize, String cursor, String arrange, String eventStartDate, String eventEndDate,
-            String modifiedtime, String lDongRegnCd, String lDongSignguCd,
-            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-    }
-
-    public record SearchStayRequest(
-            int pageSize, String cursor, String arrange, String modifiedtime,
-            String lDongRegnCd, String lDongSignguCd,
-            String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-    }
-
-    public record TourListResponse(
-            List<TourPlace> items, int totalCount, int pageSize, String nextCursor) {
-    }
-
-    public record TourPlaceDetail(
-            String contentId,
-            String contentTypeId,
-            Map<String, String> common,
-            Map<String, String> intro) {
-    }
-
-    public record TourPlace(
-            String contentId, String contentTypeId, String title,
-            String address, String addressDetail, String zipcode, String tel,
-            String firstImage, String firstImage2, String mapX, String mapY, String mapLevel,
-            String createdTime, String modifiedTime, String copyrightType,
-            String lDongRegnCd, String lDongSignguCd,
-            String lclsSystm1, String lclsSystm2, String lclsSystm3,
-            String dist, String eventStartDate, String eventEndDate,
-            String progressType, String festivalType) {
-    }
-
-    public record LegalDistrict(String code, String name) {
-    }
 }

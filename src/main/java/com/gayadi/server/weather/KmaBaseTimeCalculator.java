@@ -32,7 +32,10 @@ final class KmaBaseTimeCalculator {
 
     enum ForecastType { ULTRA_NCST, ULTRA_FCST, VILAGE_FCST }
 
-    record BaseDateTime(String date, String time) {
+    record BaseDateTime(
+            String date,
+            String time
+    ) {
     }
 
     private KmaBaseTimeCalculator() {
@@ -79,7 +82,9 @@ final class KmaBaseTimeCalculator {
                 int hour = available.getHour();
                 int baseHour = -1;
                 for (int h : VILAGE_BASE_HOURS) {
-                    if (h <= hour) baseHour = h;
+                    if (h <= hour) {
+                        baseHour = h;
+                    }
                 }
                 LocalDateTime base = (baseHour == -1)
                         ? available.minusDays(1).withHour(23).withMinute(0).withSecond(0).withNano(0)
@@ -98,7 +103,9 @@ final class KmaBaseTimeCalculator {
         }
         int hour = Integer.parseInt(time.substring(0, 2));
         int minute = Integer.parseInt(time.substring(2));
-        if (hour > 23 || minute > 59) throw invalidBaseDateTime();
+        if (hour > 23 || minute > 59) {
+            throw invalidBaseDateTime();
+        }
         try {
             LocalDate.parse(date, DateTimeFormatter.BASIC_ISO_DATE);
             LocalTime.parse(time, TIME_FMT);
