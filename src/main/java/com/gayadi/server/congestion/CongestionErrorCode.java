@@ -3,6 +3,7 @@ package com.gayadi.server.congestion;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 혼잡도 예측 요청과 외부 제공기관 오류 코드를 정의합니다. */
 public enum CongestionErrorCode implements ErrorCode {
 
     // Forecast Request - 혼잡 예측 기준 시각
@@ -19,7 +20,19 @@ public enum CongestionErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

@@ -1,6 +1,16 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.TourContentType;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
+
 import com.gayadi.server.tourapi.TourApiService;
+import com.gayadi.server.tourapi.dto.request.AreaBasedListRequest;
+import com.gayadi.server.tourapi.dto.request.KeywordSearchRequest;
+import com.gayadi.server.tourapi.dto.request.LocationBasedListRequest;
+import com.gayadi.server.tourapi.dto.response.TourListResponse;
+import com.gayadi.server.tourapi.dto.response.TourPlaceDetailResponse;
+import com.gayadi.server.tourapi.dto.response.TourPlaceResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -34,7 +44,9 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
     @Override
     public List<TourPlaceCandidate> search(PlaceSearchPlan plan, SearchContext context) {
         Map<String, TourPlaceCandidate> byId = new LinkedHashMap<>();
-        if (plan == null || plan.queries() == null) return List.of();
+        if (plan == null || plan.queries() == null) {
+            return List.of();
+        }
 
         plan.queries().stream()
                 .limit(MAX_QUERIES)
@@ -58,7 +70,9 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
                          SearchContext context,
                          Map<String, TourPlaceCandidate> byId) {
         List<String> types = validTypes(query.contentTypeIds());
-        if (types.isEmpty()) types = List.of("");
+        if (types.isEmpty()) {
+            types = List.of("");
+        }
 
         switch (query.operation()) {
             case PlaceSearchPlan.OPERATION_AREA ->
@@ -77,7 +91,7 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
     private void area(PlaceSearchPlan.Query query, String type,
                       SearchContext context, Map<String, TourPlaceCandidate> byId) {
         paginate(query.maxPages(), cursor -> tourApi.areaBasedList(
-                new TourApiService.AreaBasedListRequest(
+                new AreaBasedListRequest(
                         PAGE_SIZE, cursor, "C", type,
                         query.regionCode(), query.sigunguCode(), null, null, null)),
                 context, byId);
@@ -86,7 +100,7 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
     private void location(PlaceSearchPlan.Query query, String type,
                           SearchContext context, Map<String, TourPlaceCandidate> byId) {
         paginate(query.maxPages(), cursor -> tourApi.locationBasedList(
-                new TourApiService.LocationBasedListRequest(
+                new LocationBasedListRequest(
                         PAGE_SIZE, cursor, "E", query.mapX(), query.mapY(),
                         String.valueOf(query.radiusMeters()), type, null,
                         query.regionCode(), query.sigunguCode(), null, null, null)),
@@ -96,7 +110,7 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
     private void keyword(PlaceSearchPlan.Query query, String keyword,
                          SearchContext context, Map<String, TourPlaceCandidate> byId) {
         paginate(query.maxPages(), cursor -> tourApi.searchKeyword(
-                new TourApiService.SearchKeywordRequest(
+                new KeywordSearchRequest(
                         PAGE_SIZE, cursor, "C", keyword,
                         query.regionCode(), query.sigunguCode(), null, null, null)),
                 context, byId);
@@ -108,23 +122,29 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
                           Map<String, TourPlaceCandidate> byId) {
         String cursor = null;
         for (int page = 0; page < maxPages; page++) {
-            TourApiService.TourListResponse response = call.get(cursor);
-            if (response == null || response.items() == null) return;
+            TourListResponse response = call.get(cursor);
+            if (response == null || response.items() == null) {
+                return;
+            }
             response.items().stream()
                     .map(place -> toCandidate(place, context))
                     .filter(candidate -> !candidate.placeId().isBlank())
                     .forEach(candidate -> byId.putIfAbsent(candidate.placeId(), candidate));
-            if (response.nextCursor() == null || response.nextCursor().isBlank()) return;
+            if (response.nextCursor() == null || response.nextCursor().isBlank()) {
+                return;
+            }
             cursor = response.nextCursor();
         }
     }
 
-    private TourPlaceCandidate toCandidate(TourApiService.TourPlace place,
+    private TourPlaceCandidate toCandidate(TourPlaceResponse place,
                                             SearchContext context) {
         Double latitude = decimal(place.mapY());
         Double longitude = decimal(place.mapX());
         Double distanceKm = decimal(place.dist());
-        if (distanceKm != null) distanceKm /= 1_000.0;
+        if (distanceKm != null) {
+            distanceKm /= 1_000.0;
+        }
         if (distanceKm == null && latitude != null && longitude != null) {
             distanceKm = distanceKm(latitude, longitude, context.latitude(), context.longitude());
         }
@@ -144,13 +164,17 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
 
     private TourPlaceCandidate enrich(TourPlaceCandidate candidate) {
         try {
-            TourApiService.TourPlaceDetail detail = tourApi.detail(
+            TourPlaceDetailResponse detail = tourApi.detail(
                     candidate.placeId(), candidate.contentTypeId());
             String overview = detail.common().getOrDefault("overview", "");
             String intro = detailSummary(detail.intro());
             String description = candidate.description();
-            if (!overview.isBlank()) description += "\n개요: " + overview;
-            if (!intro.isBlank()) description += "\n운영 정보: " + intro;
+            if (!overview.isBlank()) {
+                description += "\n개요: " + overview;
+            }
+            if (!intro.isBlank()) {
+                description += "\n운영 정보: " + intro;
+            }
             return new TourPlaceCandidate(
                     candidate.placeId(), candidate.name(), candidate.category(),
                     candidate.contentTypeId(), candidate.address(), candidate.latitude(),
@@ -190,7 +214,9 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
     }
 
     private String joinAddress(String address, String detail) {
-        if (detail == null || detail.isBlank()) return address == null ? "" : address;
+        if (detail == null || detail.isBlank()) {
+            return address == null ? "" : address;
+        }
         return (address == null ? "" : address) + " " + detail;
     }
 
@@ -214,6 +240,6 @@ public class TourApiPlaceSearchGateway implements TourPlaceSearchGateway {
 
     @FunctionalInterface
     private interface PageCall {
-        TourApiService.TourListResponse get(String cursor);
+        TourListResponse get(String cursor);
     }
 }

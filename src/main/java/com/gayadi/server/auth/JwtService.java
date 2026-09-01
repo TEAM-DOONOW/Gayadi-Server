@@ -56,6 +56,7 @@ public class JwtService {
         this.expiresIn = Duration.ofSeconds(expiresInSeconds);
     }
 
+    /** 인증 토큰 인증 토큰 값을 검증하거나 변환합니다. */
     public String issue(long userId, String email) {
         Instant now = Instant.now();
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -71,6 +72,7 @@ public class JwtService {
         return signingInput + "." + signature;
     }
 
+    /** 사용자 식별자 관련 인증 토큰 업무를 처리합니다. */
     public long parseAndGetUserId(String token) {
         Map<String, Object> claims = parse(token);
         Object sub = claims.get("sub");
@@ -84,6 +86,7 @@ public class JwtService {
         }
     }
 
+    /** 만료 정보를 조회합니다. */
     public Duration getExpiresIn() {
         return expiresIn;
     }
@@ -117,7 +120,9 @@ public class JwtService {
         }
         Map<String, Object> claims;
         try {
-            claims = json.read(new String(payload, StandardCharsets.UTF_8), Map.class);
+            claims = json.read(
+                    new String(payload, StandardCharsets.UTF_8),
+                    Map.class);
         } catch (Exception e) {
             throw unauthorized();
         }

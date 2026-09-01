@@ -1,5 +1,7 @@
 package com.gayadi.server.weather;
 
+import com.gayadi.server.weather.dto.request.WeatherRequest;
+
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -38,20 +40,55 @@ public class WeatherQuery {
     @Pattern(regexp = "\\d{4}", message = "baseTime은 HHMM 형식이어야 합니다.")
     private String baseTime;
 
-    public WeatherApiService.WeatherRequest toRequest() {
-        return new WeatherApiService.WeatherRequest(lat, lon, nx, ny, baseDate, baseTime);
+    public WeatherRequest toRequest() {
+        return new WeatherRequest(lat, lon, nx, ny, baseDate, baseTime);
     }
 
-    public Double getLat() { return lat; }
-    public void setLat(Double lat) { this.lat = lat; }
-    public Double getLon() { return lon; }
-    public void setLon(Double lon) { this.lon = lon; }
-    public Integer getNx() { return nx; }
-    public void setNx(Integer nx) { this.nx = nx; }
-    public Integer getNy() { return ny; }
-    public void setNy(Integer ny) { this.ny = ny; }
-    public String getBaseDate() { return baseDate; }
-    public void setBaseDate(String baseDate) { this.baseDate = baseDate; }
-    public String getBaseTime() { return baseTime; }
-    public void setBaseTime(String baseTime) { this.baseTime = baseTime; }
+    public Double getLat() {
+        return lat;
+    }
+
+    public void setLat(Double lat) {
+        this.lat = lat;
+    }
+
+    public Double getLon() {
+        return lon;
+    }
+
+    public void setLon(Double lon) {
+        this.lon = lon;
+    }
+
+    public Integer getNx() {
+        return nx;
+    }
+
+    public void setNx(Integer nx) {
+        this.nx = nx;
+    }
+
+    public Integer getNy() {
+        return ny;
+    }
+
+    public void setNy(Integer ny) {
+        this.ny = ny;
+    }
+
+    public String getBaseDate() {
+        return baseDate;
+    }
+
+    public void setBaseDate(String baseDate) {
+        this.baseDate = baseDate;
+    }
+
+    public String getBaseTime() {
+        return baseTime;
+    }
+
+    public void setBaseTime(String baseTime) {
+        this.baseTime = baseTime;
+    }
 }

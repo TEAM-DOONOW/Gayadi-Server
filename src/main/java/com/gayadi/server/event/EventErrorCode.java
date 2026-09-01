@@ -3,6 +3,7 @@ package com.gayadi.server.event;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 현장 상황과 일정 변경 제안 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum EventErrorCode implements ErrorCode {
 
     // Event - 현장 상황과 일정 변경 대상
@@ -63,7 +64,18 @@ public enum EventErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

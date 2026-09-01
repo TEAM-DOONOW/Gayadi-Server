@@ -1,6 +1,8 @@
 package com.gayadi.server.friendship;
 
-import com.gayadi.server.config.ApiSuccessSchemas;
+import com.gayadi.server.friendship.dto.request.FriendshipCreateRequest;
+import com.gayadi.server.friendship.dto.request.FriendshipStatusUpdateRequest;
+import com.gayadi.server.friendship.dto.response.FriendshipResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
+/** 친구 관계 관련 HTTP 요청과 응답을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/friendships")
@@ -48,8 +49,8 @@ public class FriendshipController {
     @Operation(summary = "친구 관계 목록")
     @ApiResponse(responseCode = "200", description = "현재 사용자의 친구 관계 목록입니다.",
             content = @Content(array = @ArraySchema(
-                    schema = @Schema(implementation = ApiSuccessSchemas.Friendship.class))))
-    public List<Map<String, Object>> friendships(
+                    schema = @Schema(implementation = FriendshipResponse.class))))
+    public List<FriendshipResponse> friendships(
             @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "50")
@@ -64,22 +65,22 @@ public class FriendshipController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "친구 요청 등록")
     @ApiResponse(responseCode = "201", description = "등록한 친구 요청입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Friendship.class)))
-    public Map<String, Object> friendship(
+            content = @Content(schema = @Schema(implementation = FriendshipResponse.class)))
+    public FriendshipResponse friendship(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody FriendshipRequest request) {
-        return service.create(userId, request.getTargetUserId());
+            @Valid @RequestBody FriendshipCreateRequest request) {
+        return service.create(userId, request.targetUserId());
     }
 
     @PatchMapping("/{friendshipId}")
     @Operation(summary = "친구 관계 상태 변경")
     @ApiResponse(responseCode = "200", description = "상태를 바꾼 친구 관계입니다.",
-            content = @Content(schema = @Schema(implementation = ApiSuccessSchemas.Friendship.class)))
-    public Map<String, Object> friendshipStatus(
+            content = @Content(schema = @Schema(implementation = FriendshipResponse.class)))
+    public FriendshipResponse friendshipStatus(
             @AuthenticationPrincipal Long userId,
             @PathVariable @Positive(message = "친구 관계 번호는 1 이상이어야 합니다.") long friendshipId,
-            @Valid @RequestBody FriendshipStatusRequest request) {
-        return service.update(userId, friendshipId, request.getStatus(), request.getVersion());
+            @Valid @RequestBody FriendshipStatusUpdateRequest request) {
+        return service.update(userId, friendshipId, request.status(), request.version());
     }
 
     @DeleteMapping("/{friendshipId}")
@@ -89,42 +90,5 @@ public class FriendshipController {
             @AuthenticationPrincipal Long userId,
             @PathVariable @Positive(message = "친구 관계 번호는 1 이상이어야 합니다.") long friendshipId) {
         service.delete(userId, friendshipId);
-    }
-
-    public static class FriendshipRequest {
-        @NotNull(message = "친구로 요청할 사용자 번호가 필요합니다.")
-        @Positive(message = "사용자 번호는 1 이상이어야 합니다.")
-        private Long targetUserId;
-
-        public Long getTargetUserId() {
-            return targetUserId;
-        }
-
-        public void setTargetUserId(Long targetUserId) {
-            this.targetUserId = targetUserId;
-        }
-    }
-
-    public static class FriendshipStatusRequest {
-        @NotNull(message = "바꿀 친구 관계 상태가 필요합니다.")
-        private FriendshipStatus status;
-        @PositiveOrZero(message = "친구 관계 버전은 0 이상이어야 합니다.")
-        private Integer version;
-
-        public FriendshipStatus getStatus() {
-            return status;
-        }
-
-        public void setStatus(FriendshipStatus status) {
-            this.status = status;
-        }
-
-        public Integer getVersion() {
-            return version;
-        }
-
-        public void setVersion(Integer version) {
-            this.version = version;
-        }
     }
 }

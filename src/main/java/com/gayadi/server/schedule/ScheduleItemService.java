@@ -1,12 +1,15 @@
 package com.gayadi.server.schedule;
 
 import com.gayadi.server.common.AppDateFormat;
-import com.gayadi.server.common.KeyHelper;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.schedule.dto.response.ScheduleResponse;
+import com.gayadi.server.schedule.model.ScheduleType;
+import com.gayadi.server.schedule.query.EditableScheduleItemQueryResult;
+import com.gayadi.server.schedule.query.ScheduleItemQueryResult;
+import com.gayadi.server.schedule.query.ScheduleTripQueryResult;
 import com.gayadi.server.travel.TripService;
 import com.gayadi.server.travel.TripErrorCode;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import com.gayadi.server.travel.model.TripStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,371 +17,294 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/** 여행 일정과 계획 유스케이스와 업무 규칙을 처리합니다. */
 @Service
 public class ScheduleItemService {
 
-
-    private final JdbcClient jdbc;
+    private final ScheduleRepository repository;
     private final TripService trips;
-    private final KeyHelper keyHelper;
 
-    public ScheduleItemService(JdbcClient jdbc, TripService trips, KeyHelper keyHelper) {
-        this.jdbc = jdbc;
+    public ScheduleItemService(ScheduleRepository repository, TripService trips) {
+        this.repository = repository;
         this.trips = trips;
-        this.keyHelper = keyHelper;
     }
 
-    public List<Map<String, Object>> list(long userId, long tripId) {
+    /** 일정 항목 조건에 맞는 일정 항목 정보를 조회합니다. */
+    public List<ScheduleResponse> list(long userId, long tripId) {
         trips.requireMember(tripId, userId);
-        return jdbc.sql("""
-                SELECT i.id, tp.trip_id, i.title, i.place_id, tp.plan_date,
-                       i.planned_start, i.planned_end, i.memo,
-                       i.schedule_type, i.sequence_no, i.is_visited,
-                       i.status, p.name AS place_name,
-                       ROW_NUMBER() OVER (
-                           ORDER BY tp.plan_date, i.sequence_no, i.id) - 1 AS global_order
-                FROM travel_plan_items i
-                JOIN travel_plans tp ON tp.id = i.plan_id
-                LEFT JOIN places p ON p.id = i.place_id
-                WHERE tp.trip_id = ?
-                ORDER BY tp.plan_date, i.sequence_no, i.id
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
+        return repository.findAllItems(tripId).stream()
                 .map(this::toView)
                 .toList();
     }
 
+    /** 일정 항목 일정 항목 정보를 등록합니다. */
     @Transactional
-    public Map<String, Object> create(long userId, long tripId, ScheduleCommand command) {
-        Map<String, Object> trip = lockTrip(tripId);
+    public ScheduleResponse create(long userId, long tripId, ScheduleCommand command) {
+        ScheduleTripQueryResult trip = lockTrip(tripId);
         trips.requireMember(tripId, userId);
         requireEditableTrip(trip);
+
         validateCommand(command);
         validateDate(trip, command.date());
         requirePlace(command.placeId(), tripId, userId);
+
         long planId = planForDate(trip, tripId, command.date(), userId);
         int sequence = nextSequence(planId);
         LocalDateTime start = LocalDateTime.of(command.date(), command.time());
-        long itemId = keyHelper.insert("""
-                INSERT INTO travel_plan_items
-                    (plan_id, place_id, item_type, title, sequence_no, planned_start,
-                     planned_end, memo, status, schedule_type, is_visited)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PLANNED', ?, FALSE)
-                """,
-                planId, command.placeId(), command.placeId() == null ? "CUSTOM" : "PLACE",
-                command.title().trim(), sequence, start, plannedEnd(command),
-                blankToNull(command.memo()), command.type().name());
+
+        long itemId = repository.insertItem(
+                planId,
+                command.placeId(),
+                command.title().trim(),
+                sequence,
+                start,
+                plannedEnd(command),
+                blankToNull(command.memo()),
+                command.type());
+
         incrementPlanVersion(planId);
         expireTripRoutes(tripId);
+
         return item(tripId, itemId);
     }
 
+    /** 일정 항목 일정 항목 상태를 변경합니다. */
     @Transactional
-    public Map<String, Object> update(
+    public ScheduleResponse update(
             long userId,
             long tripId,
             long scheduleId,
             SchedulePatch patch) {
-        Map<String, Object> trip = lockTrip(tripId);
+        ScheduleTripQueryResult trip = lockTrip(tripId);
         trips.requireMember(tripId, userId);
         requireEditableTrip(trip);
-        Map<String, Object> current = lockedItem(tripId, scheduleId);
+
+        EditableScheduleItemQueryResult current = lockedItem(tripId, scheduleId);
         ScheduleCommand command = mergedCommand(current, patch);
         boolean visited = patch.isVisited() == null
-                ? Boolean.TRUE.equals(nullable(current, "is_visited"))
+                ? current.visited()
                 : patch.isVisited();
+
         validateCommand(command);
         validateDate(trip, command.date());
         requirePlace(command.placeId(), tripId, userId);
 
-        long oldPlanId = RowSupport.longValue(current, "plan_id");
+        // 날짜가 바뀐 일정은 새 일차의 마지막 순번으로 이동한다.
+        long oldPlanId = current.planId();
         long newPlanId = planForDate(trip, tripId, command.date(), userId);
-        int sequence = RowSupport.intValue(current, "sequence_no");
+        int sequence = current.sequenceNo();
+
         if (oldPlanId != newPlanId) {
-            jdbc.sql("UPDATE travel_plan_items SET sequence_no = ? WHERE id = ?")
-                    .params(-scheduleId, scheduleId)
-                    .update();
+            repository.reserveSequence(scheduleId);
             sequence = nextSequence(newPlanId);
         }
+
         LocalDateTime start = LocalDateTime.of(command.date(), command.time());
-        jdbc.sql("""
-                UPDATE travel_plan_items
-                SET plan_id = ?, place_id = ?, item_type = ?, title = ?, sequence_no = ?,
-                    planned_start = ?, planned_end = ?, memo = ?, schedule_type = ?, is_visited = ?,
-                    status = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """)
-                .params(newPlanId, command.placeId(), command.placeId() == null ? "CUSTOM" : "PLACE",
-                        command.title().trim(), sequence, start, plannedEnd(command),
-                        blankToNull(command.memo()), command.type().name(), visited,
-                        visited ? "COMPLETED" : "PLANNED", scheduleId)
-                .update();
+        repository.updateItem(
+                scheduleId,
+                newPlanId,
+                command.placeId(),
+                command.title().trim(),
+                sequence,
+                start,
+                plannedEnd(command),
+                blankToNull(command.memo()),
+                command.type(),
+                visited);
+
         incrementPlanVersion(newPlanId);
+
         if (oldPlanId != newPlanId) {
             normalize(oldPlanId);
             incrementPlanVersion(oldPlanId);
         }
+
         expireTripRoutes(tripId);
+
         return item(tripId, scheduleId);
     }
 
     /** 기존 내부 호출과 테스트가 전체 일정 값을 넘길 때 사용하는 호환 진입점이다. */
     @Transactional
-    public Map<String, Object> update(
+    public ScheduleResponse update(
             long userId,
             long tripId,
             long scheduleId,
             ScheduleCommand command,
             boolean visited) {
-        return update(userId, tripId, scheduleId, new SchedulePatch(
-                command.title(), command.date(), command.time(), command.type(),
-                command.placeId(), true, command.endTime(), true, command.memo(), visited));
+        SchedulePatch patch = new SchedulePatch(
+                command.title(),
+                command.date(),
+                command.time(),
+                command.type(),
+                command.placeId(),
+                true,
+                command.endTime(),
+                true,
+                command.memo(),
+                visited);
+
+        return update(userId, tripId, scheduleId, patch);
     }
 
+    /** 일정 항목 일정 항목 정보를 삭제합니다. */
     @Transactional
     public void delete(long userId, long tripId, long scheduleId) {
-        Map<String, Object> trip = lockTrip(tripId);
+        ScheduleTripQueryResult trip = lockTrip(tripId);
         trips.requireMember(tripId, userId);
         requireEditableTrip(trip);
-        Map<String, Object> current = lockedItem(tripId, scheduleId);
-        long planId = RowSupport.longValue(current, "plan_id");
+
+        EditableScheduleItemQueryResult current = lockedItem(tripId, scheduleId);
+        long planId = current.planId();
+
         expireTripRoutes(tripId);
-        jdbc.sql("""
-                UPDATE travel_routes
-                SET from_plan_item_id = CASE WHEN from_plan_item_id = ? THEN NULL ELSE from_plan_item_id END,
-                    to_plan_item_id = CASE WHEN to_plan_item_id = ? THEN NULL ELSE to_plan_item_id END,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE from_plan_item_id = ? OR to_plan_item_id = ?
-                """)
-                .params(scheduleId, scheduleId, scheduleId, scheduleId)
-                .update();
-        jdbc.sql("""
-                UPDATE travel_supplies
-                SET plan_item_id = NULL, updated_at = CURRENT_TIMESTAMP
-                WHERE plan_item_id = ?
-                """).param(scheduleId).update();
-        jdbc.sql("UPDATE notifications SET plan_item_id = NULL WHERE plan_item_id = ?")
-                .param(scheduleId).update();
-        jdbc.sql("DELETE FROM travel_plan_items WHERE id = ?").param(scheduleId).update();
+        repository.deleteItem(scheduleId);
         normalize(planId);
         incrementPlanVersion(planId);
     }
 
+    /** 요청 순서에 맞춰 일정 항목을 재정렬합니다. */
     @Transactional
-    public List<Map<String, Object>> reorder(long userId, long tripId, List<Long> scheduleIds) {
-        Map<String, Object> trip = lockTrip(tripId);
+    public List<ScheduleResponse> reorder(long userId, long tripId, List<Long> scheduleIds) {
+        ScheduleTripQueryResult trip = lockTrip(tripId);
         trips.requireMember(tripId, userId);
         requireEditableTrip(trip);
+
         if (scheduleIds == null || scheduleIds.isEmpty()) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_ORDER_REQUIRED);
         }
+
         Set<Long> unique = new LinkedHashSet<>(scheduleIds);
         if (unique.size() != scheduleIds.size()) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_ORDER_DUPLICATED);
         }
-        List<Map<String, Object>> existing = jdbc.sql("""
-                SELECT i.id, i.plan_id
-                FROM travel_plan_items i JOIN travel_plans p ON p.id = i.plan_id
-                WHERE p.trip_id = ? FOR UPDATE
-                """)
-                .param(tripId)
-                .query().listOfRows();
-        Set<Long> existingIds = existing.stream()
-                .map(row -> RowSupport.longValue(row, "id"))
-                .collect(java.util.stream.Collectors.toSet());
-        if (!existingIds.equals(unique)) {
+
+        Map<Long, Long> planByItem = repository.lockItemPlans(tripId);
+        if (!planByItem.keySet().equals(unique)) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_ORDER_INCOMPLETE);
         }
-        Map<Long, Long> planByItem = new HashMap<>();
-        existing.forEach(row -> planByItem.put(
-                RowSupport.longValue(row, "id"), RowSupport.longValue(row, "plan_id")));
-        jdbc.sql("""
-                UPDATE travel_plan_items SET sequence_no = -sequence_no - 100000
-                WHERE plan_id IN (SELECT id FROM travel_plans WHERE trip_id = ?)
-                """)
-                .param(tripId)
-                .update();
-        Map<Long, Integer> nextByPlan = new HashMap<>();
-        for (Long scheduleId : scheduleIds) {
-            long planId = planByItem.get(scheduleId);
-            int sequence = nextByPlan.merge(planId, 1, Integer::sum);
-            jdbc.sql("UPDATE travel_plan_items SET sequence_no = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-                    .params(sequence, scheduleId)
-                    .update();
-        }
-        jdbc.sql("""
-                UPDATE travel_plans
-                SET version = version + 1, updated_at = CURRENT_TIMESTAMP
-                WHERE trip_id = ?
-                """)
-                .param(tripId)
-                .update();
+
+        repository.reorder(tripId, scheduleIds, planByItem);
         expireTripRoutes(tripId);
+
         return list(userId, tripId);
     }
 
-    private Map<String, Object> lockTrip(long tripId) {
-        return jdbc.sql("""
-                SELECT * FROM trips
-                WHERE id = ? AND deleted_at IS NULL
-                FOR UPDATE
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
+    private ScheduleTripQueryResult lockTrip(long tripId) {
+        return repository.lockTrip(tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 
     private void incrementPlanVersion(long planId) {
-        jdbc.sql("""
-                UPDATE travel_plans
-                SET version = version + 1, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """)
-                .param(planId)
-                .update();
+        repository.incrementPlanVersion(planId);
     }
 
     private void expireTripRoutes(long tripId) {
-        jdbc.sql("""
-                UPDATE travel_routes
-                SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
-                WHERE plan_id IN (SELECT id FROM travel_plans WHERE trip_id = ?)
-                  AND status IN ('RECOMMENDED', 'SELECTED')
-                """)
-                .param(tripId)
-                .update();
+        repository.expireTripRoutes(tripId);
     }
 
-    private Map<String, Object> item(long tripId, long itemId) {
-        return jdbc.sql("""
-                WITH ranked_items AS (
-                    SELECT i.id, tp.trip_id, i.title, i.place_id, tp.plan_date,
-                           i.planned_start, i.planned_end, i.memo,
-                           i.schedule_type, i.sequence_no, i.is_visited,
-                           i.status, p.name AS place_name,
-                           ROW_NUMBER() OVER (
-                               ORDER BY tp.plan_date, i.sequence_no, i.id) - 1 AS global_order
-                    FROM travel_plan_items i
-                    JOIN travel_plans tp ON tp.id = i.plan_id
-                    LEFT JOIN places p ON p.id = i.place_id
-                    WHERE tp.trip_id = ?
-                )
-                SELECT * FROM ranked_items WHERE id = ?
-                """)
-                .params(tripId, itemId)
-                .query().listOfRows().stream()
-                .findFirst()
+    private ScheduleResponse item(long tripId, long itemId) {
+        return repository.findItem(tripId, itemId)
                 .map(this::toView)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 
-    private Map<String, Object> lockedItem(long tripId, long itemId) {
-        return jdbc.sql("""
-                SELECT i.id, i.plan_id, i.title, i.place_id, p.plan_date,
-                       i.planned_start, i.planned_end, i.memo,
-                       i.schedule_type, i.sequence_no, i.is_visited
-                FROM travel_plan_items i JOIN travel_plans p ON p.id = i.plan_id
-                WHERE p.trip_id = ? AND i.id = ? FOR UPDATE
-                """)
-                .params(tripId, itemId)
-                .query().listOfRows().stream()
-                .findFirst()
+    private ScheduleResponse toView(ScheduleItemQueryResult row) {
+        LocalDateTime start = row.plannedStart() == null
+                ? row.planDate().atStartOfDay()
+                : row.plannedStart();
+        int order = row.globalOrder() == null ? row.sequenceNo() - 1 : row.globalOrder();
+
+        return new ScheduleResponse(
+                row.id(),
+                row.tripId(),
+                row.title(),
+                row.placeId(),
+                row.placeName(),
+                AppDateFormat.date(row.planDate()),
+                AppDateFormat.time(start.toLocalTime()),
+                row.plannedEnd() == null ? null : AppDateFormat.time(row.plannedEnd().toLocalTime()),
+                row.memo(),
+                row.type(),
+                order,
+                row.visited());
+    }
+
+    private EditableScheduleItemQueryResult lockedItem(long tripId, long itemId) {
+        return repository.lockItem(tripId, itemId)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 
     private long planForDate(
-            Map<String, Object> trip,
+            ScheduleTripQueryResult trip,
             long tripId,
             LocalDate date,
             long userId) {
-        Long planId = jdbc.sql("SELECT id FROM travel_plans WHERE trip_id = ? AND plan_date = ?")
-                .params(tripId, date)
-                .query(Long.class)
-                .optional()
-                .orElse(null);
-        if (planId != null) return planId;
-        LocalDate startDate = localDate(RowSupport.value(trip, "start_date"));
-        int day = Math.toIntExact(ChronoUnit.DAYS.between(startDate, date)) + 1;
-        var inserted = keyHelper.insertOrEmptyOnUniqueViolation("""
-                INSERT INTO travel_plans
-                    (trip_id, plan_date, day_number, title, source_type, status, created_by, version)
-                VALUES (?, ?, ?, ?, 'MANUAL', 'DRAFT', ?, 0)
-                """, tripId, date, day, day + "일차 일정", userId);
-        if (inserted.isPresent()) {
-            return inserted.getAsLong();
+        Long planId = repository.findPlanId(tripId, date).orElse(null);
+        if (planId != null) {
+            return planId;
         }
-        return jdbc.sql("SELECT id FROM travel_plans WHERE trip_id = ? AND plan_date = ?")
-                .params(tripId, date)
-                .query(Long.class)
-                .optional()
+
+        LocalDate startDate = trip.startDate();
+        int day = Math.toIntExact(ChronoUnit.DAYS.between(startDate, date)) + 1;
+        var inserted = repository.insertManualPlan(tripId, date, day, userId);
+        if (inserted.isPresent()) {
+            return inserted.get();
+        }
+
+        return repository.findPlanId(tripId, date)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_PLAN_CREATION_CONFLICT));
     }
 
     private int nextSequence(long planId) {
-        return jdbc.sql("SELECT COALESCE(MAX(sequence_no), 0) + 1 FROM travel_plan_items WHERE plan_id = ?")
-                .param(planId)
-                .query(Integer.class)
-                .single();
+        return repository.nextSequence(planId);
     }
 
     private void normalize(long planId) {
-        List<Long> ids = jdbc.sql("""
-                SELECT id FROM travel_plan_items WHERE plan_id = ? ORDER BY sequence_no, id
-                """)
-                .param(planId)
-                .query(Long.class)
-                .list();
-        jdbc.sql("UPDATE travel_plan_items SET sequence_no = -sequence_no - 100000 WHERE plan_id = ?")
-                .param(planId)
-                .update();
-        for (int index = 0; index < ids.size(); index++) {
-            jdbc.sql("UPDATE travel_plan_items SET sequence_no = ? WHERE id = ?")
-                    .params(index + 1, ids.get(index))
-                    .update();
-        }
+        repository.normalize(planId);
     }
 
-    private void validateDate(Map<String, Object> trip, LocalDate date) {
-        LocalDate start = localDate(RowSupport.value(trip, "start_date"));
-        LocalDate end = localDate(RowSupport.value(trip, "end_date"));
+    private void validateDate(ScheduleTripQueryResult trip, LocalDate date) {
+        LocalDate start = trip.startDate();
+        LocalDate end = trip.endDate();
         if (date.isBefore(start) || date.isAfter(end)) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_DATE_OUTSIDE_TRIP);
         }
     }
 
-    private ScheduleCommand mergedCommand(Map<String, Object> current, SchedulePatch patch) {
+    private ScheduleCommand mergedCommand(EditableScheduleItemQueryResult current, SchedulePatch patch) {
         String title = patch.title() == null
-                ? RowSupport.strValue(current, "title")
+                ? current.title()
                 : patch.title();
         LocalDate date = patch.date() == null
-                ? localDate(RowSupport.value(current, "plan_date"))
+                ? current.planDate()
                 : patch.date();
-        Object rawStart = nullable(current, "planned_start");
-        LocalTime currentTime = rawStart == null
+        LocalTime currentTime = current.plannedStart() == null
                 ? LocalTime.MIDNIGHT
-                : localDateTime(rawStart).toLocalTime();
+                : current.plannedStart().toLocalTime();
         LocalTime time = patch.time() == null ? currentTime : patch.time();
         ScheduleType type = patch.type() == null
-                ? ScheduleType.valueOf(RowSupport.strValue(current, "schedule_type"))
+                ? current.type()
                 : patch.type();
         Long placeId = patch.placeIdPresent()
                 ? patch.placeId()
-                : nullableLong(current, "place_id");
-        Object rawEnd = nullable(current, "planned_end");
-        LocalTime currentEndTime = rawEnd == null ? null : localDateTime(rawEnd).toLocalTime();
+                : current.placeId();
+        LocalTime currentEndTime = current.plannedEnd() == null ? null : current.plannedEnd().toLocalTime();
         LocalTime endTime = patch.endTimePresent() ? patch.endTime() : currentEndTime;
-        String memo = patch.memo() == null ? nullableString(current, "memo") : patch.memo();
-        return new ScheduleCommand(title, date, time, type, placeId, endTime, memo);
+        String memo = patch.memo() == null ? current.memo() : patch.memo();
+        return new ScheduleCommand(
+                title,
+                date,
+                time,
+                type,
+                placeId,
+                endTime,
+                memo);
     }
 
     private void validateCommand(ScheduleCommand command) {
@@ -397,70 +323,19 @@ public class ScheduleItemService {
         }
     }
 
-    private void requireEditableTrip(Map<String, Object> trip) {
-        String status = RowSupport.strValue(trip, "status");
-        if ("COMPLETED".equals(status) || "CANCELED".equals(status)) {
+    private void requireEditableTrip(ScheduleTripQueryResult trip) {
+        if (trip.status() == TripStatus.COMPLETED || trip.status() == TripStatus.CANCELED) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_TRIP_NOT_EDITABLE);
         }
     }
 
     private void requirePlace(Long placeId, long tripId, long userId) {
-        if (placeId == null) return;
-        long count = jdbc.sql("""
-                SELECT COUNT(*) FROM places
-                WHERE id = ? AND status = 'ACTIVE'
-                  AND (visibility = 'PUBLIC' OR owner_user_id = ? OR trip_id = ?)
-                """)
-                .params(placeId, userId, tripId)
-                .query(Long.class)
-                .single();
-        if (count == 0) {
+        if (placeId == null) {
+            return;
+        }
+        if (!repository.placeExists(placeId, tripId, userId)) {
             throw new BusinessException(ScheduleErrorCode.SCHEDULE_PLACE_NOT_FOUND);
         }
-    }
-
-    private Map<String, Object> toView(Map<String, Object> row) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", RowSupport.longValue(row, "id"));
-        result.put("tripId", RowSupport.longValue(row, "trip_id"));
-        result.put("title", RowSupport.strValue(row, "title"));
-        result.put("placeId", nullable(row, "place_id"));
-        result.put("placeName", nullable(row, "place_name"));
-        LocalDate date = localDate(RowSupport.value(row, "plan_date"));
-        result.put("date", AppDateFormat.date(date));
-        Object rawStart = nullable(row, "planned_start");
-        LocalDateTime start = rawStart == null
-                ? date.atStartOfDay()
-                : localDateTime(rawStart);
-        result.put("time", AppDateFormat.time(start.toLocalTime()));
-        Object rawEnd = nullable(row, "planned_end");
-        result.put("endTime", rawEnd == null
-                ? null : AppDateFormat.time(localDateTime(rawEnd).toLocalTime()));
-        result.put("memo", nullableString(row, "memo"));
-        result.put("type", RowSupport.strValue(row, "schedule_type"));
-        Object rawGlobalOrder = nullable(row, "global_order");
-        result.put("order", rawGlobalOrder == null
-                ? RowSupport.intValue(row, "sequence_no") - 1
-                : ((Number) rawGlobalOrder).intValue());
-        result.put("isVisited", Boolean.TRUE.equals(nullable(row, "is_visited")));
-        return result;
-    }
-
-    private Object nullable(Map<String, Object> row, String key) {
-        Object value = row.get(key);
-        return value != null ? value : row.get(key.toUpperCase());
-    }
-
-    private Long nullableLong(Map<String, Object> row, String key) {
-        Object value = nullable(row, key);
-        if (value == null) return null;
-        if (value instanceof Number number) return number.longValue();
-        return Long.parseLong(value.toString());
-    }
-
-    private String nullableString(Map<String, Object> row, String key) {
-        Object value = nullable(row, key);
-        return value == null ? "" : value.toString();
     }
 
     private LocalDateTime plannedEnd(ScheduleCommand command) {
@@ -470,19 +345,6 @@ public class ScheduleItemService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    private LocalDateTime localDateTime(Object value) {
-        return AppDateFormat.databaseDateTime(value);
-    }
-
-    private LocalDate localDate(Object value) {
-        return AppDateFormat.databaseDate(value);
-    }
-
-    public enum ScheduleType {
-        MAIN,
-        ALTERNATIVE
     }
 
     public record ScheduleCommand(
@@ -495,8 +357,19 @@ public class ScheduleItemService {
             String memo
     ) {
         public ScheduleCommand(
-                String title, LocalDate date, LocalTime time, ScheduleType type, Long placeId) {
-            this(title, date, time, type, placeId, null, "");
+                String title,
+                LocalDate date,
+                LocalTime time,
+                ScheduleType type,
+                Long placeId) {
+            this(
+                    title,
+                    date,
+                    time,
+                    type,
+                    placeId,
+                    null,
+                    "");
         }
     }
 
@@ -520,8 +393,17 @@ public class ScheduleItemService {
                 Long placeId,
                 boolean placeIdPresent,
                 Boolean isVisited) {
-            this(title, date, time, type, placeId, placeIdPresent,
-                    null, false, null, isVisited);
+            this(
+                    title,
+                    date,
+                    time,
+                    type,
+                    placeId,
+                    placeIdPresent,
+                    null,
+                    false,
+                    null,
+                    isVisited);
         }
     }
 }

@@ -3,6 +3,7 @@ package com.gayadi.server.recommendation;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 추천 Agent 실행과 외부 모델 처리 오류 코드를 정의합니다. */
 public enum RecommendationErrorCode implements ErrorCode {
 
     // Feature Availability - 추천 및 상황 대처 기능 설정
@@ -31,7 +32,19 @@ public enum RecommendationErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

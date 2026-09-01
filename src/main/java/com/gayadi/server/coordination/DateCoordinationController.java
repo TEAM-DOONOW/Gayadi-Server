@@ -1,5 +1,8 @@
 package com.gayadi.server.coordination;
 
+import com.gayadi.server.coordination.dto.request.DateAvailabilityRequest;
+import com.gayadi.server.coordination.dto.request.FinalizeTripDatesRequest;
+import com.gayadi.server.coordination.dto.response.DateCoordinationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 여행 날짜 조율 관련 HTTP 요청과 응답을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}/date-coordination")
 @Tag(name = "날짜 조율", description = "그룹 여행 참여자의 가능한 날짜 제출과 여행 기간 확정")

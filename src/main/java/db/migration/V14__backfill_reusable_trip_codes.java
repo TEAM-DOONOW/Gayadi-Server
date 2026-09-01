@@ -88,10 +88,15 @@ public class V14__backfill_reusable_trip_codes extends BaseJavaMigration {
             for (int index = 1; index < 6; index++) {
                 code.append(CHARACTERS[random.nextInt(CHARACTERS.length)]);
             }
-            if (!usedCodes.contains(code.toString())) return code.toString();
+            if (!usedCodes.contains(code.toString())) {
+                return code.toString();
+            }
         }
         throw new IllegalStateException("기존 여행의 공유 코드를 만들지 못했습니다.");
     }
 
-    private record TripCode(long id, String code) { }
+    private record TripCode(
+            long id,
+            String code
+    ) { }
 }

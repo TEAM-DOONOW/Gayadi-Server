@@ -1,8 +1,8 @@
 package com.gayadi.server;
 
-import com.gayadi.server.recommendation.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
 import com.gayadi.server.recommendation.RecommendationLanguageModel;
-import com.gayadi.server.recommendation.TourPlaceCandidate;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
 import com.gayadi.server.recommendation.TourPlaceSearchGateway;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -71,13 +71,13 @@ class AiUserJourneyIntegrationTests {
         Assertions.assertThat(route.path("options").size()).isEqualTo(2);
         Assertions.assertThat(route.path("segments").size())
                 .isEqualTo(route.path("stops").size() - 1);
-        Assertions.assertThat(route.path("provider").asText()).isEqualTo("LOCAL_ESTIMATE");
-        Assertions.assertThat(route.path("segments").get(0).path("summary").asText())
+        Assertions.assertThat(route.path("provider").asString()).isEqualTo("LOCAL_ESTIMATE");
+        Assertions.assertThat(route.path("segments").get(0).path("summary").asString())
                 .contains("직선거리");
         JsonNode selectedRoute = body(request(
                 "PUT", "/api/v1/trips/" + tripId + "/route-selections/ITINERARY", token,
                 "{\"optionId\":\"balanced\"}"), 200);
-        Assertions.assertThat(selectedRoute.path("provider").asText()).isEqualTo("LOCAL_ESTIMATE");
+        Assertions.assertThat(selectedRoute.path("provider").asString()).isEqualTo("LOCAL_ESTIMATE");
 
         JsonNode rain = body(request(
                 "POST", "/api/v1/trips/" + tripId + "/situation-responses", token, """
@@ -101,13 +101,13 @@ class AiUserJourneyIntegrationTests {
                   }
                 }
                 """.formatted(tripDate)), 200);
-        Assertions.assertThat(rain.path("situationSummary").asText()).contains("실내");
+        Assertions.assertThat(rain.path("situationSummary").asString()).contains("실내");
         Assertions.assertThat(rain.path("routeRecalculationRequired").asBoolean()).isFalse();
         Assertions.assertThat(rain.path("changeProposal").isEmpty()).isTrue();
         Assertions.assertThat(rain.path("placeRecommendations").path("recommendations").size())
                 .isEqualTo(1);
         Assertions.assertThat(rain.path("placeRecommendations").path("recommendations")
-                .get(0).path("sourcePlaceId").asText()).isEqualTo("indoor-ai");
+                .get(0).path("sourcePlaceId").asString()).isEqualTo("indoor-ai");
         Assertions.assertThat(jdbc.sql("""
                 SELECT COUNT(*) FROM places
                 WHERE source = 'TOUR_API' AND source_place_id = 'indoor-ai'
@@ -138,7 +138,7 @@ class AiUserJourneyIntegrationTests {
                   }
                 }
                 """), 200);
-        Assertions.assertThat(congestion.path("situationSummary").asText()).contains("혼잡 장소 회피");
+        Assertions.assertThat(congestion.path("situationSummary").asString()).contains("혼잡 장소 회피");
         Assertions.assertThat(congestion.path("routeRecalculationRequired").asBoolean()).isFalse();
         Assertions.assertThat(body(request(
                 "GET", "/api/v1/trips/" + tripId + "/route-selections", token, null), 200).size())
@@ -165,9 +165,9 @@ class AiUserJourneyIntegrationTests {
                 }
                 """.formatted(tripDate)), 200);
         Assertions.assertThat(transit.path("routeRecalculationRequired").asBoolean()).isTrue();
-        Assertions.assertThat(transit.path("nextAction").asText()).contains("대체 경로");
+        Assertions.assertThat(transit.path("nextAction").asString()).contains("대체 경로");
         Assertions.assertThat(transit.path("placeRecommendations").path("recommendations")
-                .get(0).path("sourcePlaceId").asText()).isEqualTo("near-ai");
+                .get(0).path("sourcePlaceId").asString()).isEqualTo("near-ai");
         Assertions.assertThat(body(request(
                 "GET", "/api/v1/trips/" + tripId + "/route-selections", token, null), 200).size())
                 .isZero();
@@ -196,10 +196,10 @@ class AiUserJourneyIntegrationTests {
                 }
                 """), 200);
         JsonNode congestionProposal = activeCongestion.path("changeProposal");
-        Assertions.assertThat(congestionProposal.path("type").asText())
+        Assertions.assertThat(congestionProposal.path("type").asString())
                 .isEqualTo("CONGESTION_CHANGE");
         Assertions.assertThat(congestionProposal.path("options").get(0)
-                .path("placeName").asText()).isEqualTo("AI 야외 공원");
+                .path("placeName").asString()).isEqualTo("AI 야외 공원");
         Assertions.assertThat(congestionProposal.path("options").get(0)
                 .path("requireIndoor").asBoolean()).isFalse();
         Assertions.assertThat(jdbc.sql("""
@@ -209,7 +209,7 @@ class AiUserJourneyIntegrationTests {
 
         JsonNode congestionApproved = approve(
                 tripId, token, congestionProposal);
-        Assertions.assertThat(congestionApproved.path("status").asText()).isEqualTo("APPROVED");
+        Assertions.assertThat(congestionApproved.path("status").asString()).isEqualTo("APPROVED");
         JsonNode congestionChangedPlan = body(request(
                 "GET", "/api/v1/trips/" + tripId + "/plans", token, null), 200);
         Assertions.assertThat(congestionChangedPlan.toString()).contains("AI 야외 공원");
@@ -240,7 +240,7 @@ class AiUserJourneyIntegrationTests {
                 }
                 """), 200);
         JsonNode firstRainProposal = firstRainResponse.path("changeProposal");
-        Assertions.assertThat(firstRainProposal.path("type").asText())
+        Assertions.assertThat(firstRainProposal.path("type").asString())
                 .isEqualTo("WEATHER_CHANGE");
         Assertions.assertThat(firstRainProposal.path("options").get(0)
                 .path("requireIndoor").asBoolean()).isTrue();
@@ -271,7 +271,7 @@ class AiUserJourneyIntegrationTests {
 
         int revision = latestRainProposal.path("baseRevisionNo").asInt();
         JsonNode approved = approve(tripId, token, latestRainProposal);
-        Assertions.assertThat(approved.path("status").asText()).isEqualTo("APPROVED");
+        Assertions.assertThat(approved.path("status").asString()).isEqualTo("APPROVED");
         Assertions.assertThat(jdbc.sql("""
                 SELECT COUNT(*) FROM ai_schedule_change_proposals
                 WHERE trip_id = ? AND status = 'PENDING'
@@ -292,7 +292,7 @@ class AiUserJourneyIntegrationTests {
     }
 
     private JsonNode approve(long tripId, String token, JsonNode proposal) throws Exception {
-        String optionKey = proposal.path("options").get(0).path("key").asText();
+        String optionKey = proposal.path("options").get(0).path("key").asString();
         int revision = proposal.path("baseRevisionNo").asInt();
         return body(request(
                 "PATCH", "/api/v1/trips/" + tripId + "/change-proposals/"
@@ -347,7 +347,7 @@ class AiUserJourneyIntegrationTests {
                 "POST", "/api/v1/auth/registrations", null,
                 "{\"email\":\"" + email
                         + "\",\"password\":\"password1\",\"nickname\":\"AI사용자\"}"), 201);
-        return response.path("accessToken").asText();
+        return response.path("accessToken").asString();
     }
 
     private String surveyAnswers() {

@@ -18,6 +18,7 @@ public class FcmService {
         this.messaging = messaging;
     }
 
+    /** 푸시 알림 메시지를 전송합니다. */
     public void sendToTopic(String topic, String title, String body, Map<String, String> data) {
         try {
             Message.Builder builder = Message.builder()
@@ -32,6 +33,7 @@ public class FcmService {
         }
     }
 
+    /** 토큰 메시지를 전송합니다. */
     public void sendToToken(String token, String title, String body, Map<String, String> data) {
         try {
             Message.Builder builder = Message.builder()

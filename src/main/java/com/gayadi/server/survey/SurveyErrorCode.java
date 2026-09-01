@@ -3,6 +3,7 @@ package com.gayadi.server.survey;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 여행 성향 설문 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum SurveyErrorCode implements ErrorCode {
 
     // Survey State - 진행 가능한 설문과 응답 상태
@@ -51,7 +52,19 @@ public enum SurveyErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

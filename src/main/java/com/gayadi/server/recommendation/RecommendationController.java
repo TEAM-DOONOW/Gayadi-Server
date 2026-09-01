@@ -1,5 +1,9 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.response.PlaceRecommendationResponse;
+import com.gayadi.server.recommendation.dto.response.SituationResponse;
+
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.response.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.*;
 
+/** 맞춤 장소 추천과 일반 상황 대응 HTTP 요청을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1/recommendations")
 @Tag(name = "추천", description = "여행 성향과 위치에 맞는 장소를 추천합니다.")

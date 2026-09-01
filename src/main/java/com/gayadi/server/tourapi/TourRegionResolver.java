@@ -1,5 +1,7 @@
 package com.gayadi.server.tourapi;
 
+import com.gayadi.server.tourapi.model.LegalDistrict;
+
 import com.gayadi.server.common.exception.BusinessException;
 import org.springframework.stereotype.Component;
 
@@ -10,12 +12,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** 앱 지역명을 TourAPI 법정동 코드 목록으로 변환합니다. */
 @Component
 public class TourRegionResolver {
 
     private static final Map<String, List<AreaTarget>> APP_REGIONS = regions();
     private final TourApiService tourApi;
-    private final Map<String, List<TourApiService.LegalDistrict>> districtCache = new ConcurrentHashMap<>();
+    private final Map<String, List<LegalDistrict>> districtCache = new ConcurrentHashMap<>();
 
     public TourRegionResolver(TourApiService tourApi) {
         this.tourApi = tourApi;
@@ -33,7 +36,7 @@ public class TourRegionResolver {
                 result.add(new RegionCode(target.areaCode(), "", target.label()));
                 continue;
             }
-            List<TourApiService.LegalDistrict> districts = districtCache.computeIfAbsent(
+            List<LegalDistrict> districts = districtCache.computeIfAbsent(
                     target.areaCode(), tourApi::legalDistricts);
             List<List<RegionCode>> matchesByName = new ArrayList<>();
             for (String districtName : target.districtNames()) {
@@ -48,7 +51,9 @@ public class TourRegionResolver {
             int longest = matchesByName.stream().mapToInt(List::size).max().orElse(0);
             for (int index = 0; index < longest; index++) {
                 for (List<RegionCode> matches : matchesByName) {
-                    if (index < matches.size()) result.add(matches.get(index));
+                    if (index < matches.size()) {
+                        result.add(matches.get(index));
+                    }
                 }
             }
         }
@@ -61,7 +66,9 @@ public class TourRegionResolver {
 
     private static String districtCode(String areaCode, String value) {
         String digits = value == null ? "" : value.replaceAll("[^0-9]", "");
-        if (digits.length() == 5 && digits.startsWith(areaCode)) return digits.substring(2);
+        if (digits.length() == 5 && digits.startsWith(areaCode)) {
+            return digits.substring(2);
+        }
         return digits.length() == 3 ? digits : "";
     }
 
@@ -118,9 +125,17 @@ public class TourRegionResolver {
         return new AreaTarget(code, label, List.of(districts));
     }
 
-    private record AreaTarget(String areaCode, String label, List<String> districtNames) {
+    private record AreaTarget(
+            String areaCode,
+            String label,
+            List<String> districtNames
+    ) {
     }
 
-    public record RegionCode(String areaCode, String districtCode, String label) {
+    public record RegionCode(
+            String areaCode,
+            String districtCode,
+            String label
+    ) {
     }
 }

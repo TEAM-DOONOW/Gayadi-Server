@@ -1,5 +1,10 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.response.PlaceRecommendationResponse;
+import com.gayadi.server.recommendation.dto.response.SituationResponse;
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 

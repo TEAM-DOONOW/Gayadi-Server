@@ -17,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/** 인증과 사용자 계정 요청의 인증 정보를 검사하고 SecurityContext를 구성합니다. */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

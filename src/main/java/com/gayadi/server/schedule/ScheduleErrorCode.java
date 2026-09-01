@@ -3,6 +3,7 @@ package com.gayadi.server.schedule;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 여행 일정과 계획 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum ScheduleErrorCode implements ErrorCode {
 
     // Schedule Order - 수동 일정 순서 변경
@@ -63,7 +64,19 @@ public enum ScheduleErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

@@ -85,14 +85,22 @@ public class OpenApiConfig {
     @Bean
     OpenApiCustomizer jsonSuccessResponseMediaTypes() {
         return openApi -> {
-            if (openApi.getPaths() == null) return;
+            if (openApi.getPaths() == null) {
+                return;
+            }
             openApi.getPaths().values().forEach(path -> path.readOperations().forEach(operation -> {
-                if (operation.getResponses() == null) return;
+                if (operation.getResponses() == null) {
+                    return;
+                }
                 operation.getResponses().values().forEach(response -> {
                     Content content = response.getContent();
-                    if (content == null || content.containsKey("application/json")) return;
+                    if (content == null || content.containsKey("application/json")) {
+                        return;
+                    }
                     MediaType wildcard = content.remove("*/*");
-                    if (wildcard != null) content.addMediaType("application/json", wildcard);
+                    if (wildcard != null) {
+                        content.addMediaType("application/json", wildcard);
+                    }
                 });
             }));
         };

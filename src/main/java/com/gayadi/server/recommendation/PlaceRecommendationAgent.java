@@ -1,5 +1,12 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.response.PlaceRecommendationResponse;
+import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -114,12 +121,18 @@ public class PlaceRecommendationAgent {
             int limit) {
         Map<String, RecommendationLanguageModel.CandidateDecision.Selection> result =
                 new LinkedHashMap<>();
-        if (decision == null) return result;
+        if (decision == null) {
+            return result;
+        }
         for (RecommendationLanguageModel.CandidateDecision.Selection selection
                 : decision.recommendations()) {
-            if (selection == null || !candidates.containsKey(selection.placeId())) continue;
+            if (selection == null || !candidates.containsKey(selection.placeId())) {
+                continue;
+            }
             result.putIfAbsent(selection.placeId(), selection);
-            if (result.size() >= limit) break;
+            if (result.size() >= limit) {
+                break;
+            }
         }
         return result;
     }
@@ -164,7 +177,9 @@ public class PlaceRecommendationAgent {
     private PlaceSearchPlan safePlan(RecommendationLanguageModel.RecommendationContext context) {
         try {
             PlaceSearchPlan plan = languageModel.createSearchPlan(context);
-            if (plan != null && !plan.queries().isEmpty()) return plan;
+            if (plan != null && !plan.queries().isEmpty()) {
+                return plan;
+            }
         } catch (RuntimeException exception) {
             log.warn("추천 검색 계획 생성에 실패해 기본 계획을 사용합니다: {}",
                     exception.getClass().getSimpleName());
@@ -216,7 +231,9 @@ public class PlaceRecommendationAgent {
     private List<TourPlaceCandidate> rankedCandidates(
             List<TourPlaceCandidate> candidates,
             RecommendationLanguageModel.RecommendationContext context) {
-        if (candidates == null) return List.of();
+        if (candidates == null) {
+            return List.of();
+        }
         return candidates.stream()
                 .filter(candidate -> candidate != null && !candidate.placeId().isBlank())
                 .filter(candidate -> !context.policy().indoorRequired()

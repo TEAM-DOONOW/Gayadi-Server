@@ -3,6 +3,7 @@ package com.gayadi.server.travel;
 import com.gayadi.server.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
+/** 여행과 참여자 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum TripErrorCode implements ErrorCode {
 
     // Trip Access - 여행 조회, 참여자 및 소유자 권한
@@ -71,7 +72,19 @@ public enum TripErrorCode implements ErrorCode {
         this.messageKey = messageKey;
     }
 
-    @Override public HttpStatus status() { return status; }
-    @Override public String code() { return code; }
-    @Override public String messageKey() { return messageKey; }
+    @Override
+
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String messageKey() {
+        return messageKey;
+    }
 }

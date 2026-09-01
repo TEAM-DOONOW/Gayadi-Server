@@ -1,63 +1,57 @@
 package com.gayadi.server.schedule;
 
 import com.gayadi.server.common.JsonSupport;
-import com.gayadi.server.common.KeyHelper;
-import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.schedule.PlanRepository.GeneratedPlanItem;
+import com.gayadi.server.schedule.dto.response.PlanDayResponse;
+import com.gayadi.server.schedule.dto.response.PlanItemResponse;
+import com.gayadi.server.schedule.dto.response.PlanResponse;
+import com.gayadi.server.schedule.query.*;
 import com.gayadi.server.survey.SurveyService;
-import com.gayadi.server.travel.TripService;
+import com.gayadi.server.survey.dto.response.GroupPersonalityResponse;
 import com.gayadi.server.travel.TripErrorCode;
+import com.gayadi.server.travel.TripService;
+import com.gayadi.server.travel.model.TripStatus;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
+/** 여행 일정과 계획 유스케이스와 업무 규칙을 처리합니다. */
 @Service
 public class PlanService {
-
     private static final int MAX_PLACES_PER_DAY = 3;
     private static final int MAX_GENERATED_DAYS = 366;
 
-    private final JdbcClient jdbc;
+    private final PlanRepository repository;
     private final TripService trips;
     private final SurveyService surveys;
     private final JsonSupport json;
-    private final KeyHelper keyHelper;
 
-    public PlanService(JdbcClient jdbc, TripService trips, SurveyService surveys, JsonSupport json, KeyHelper keyHelper) {
-        this.jdbc = jdbc;
+    public PlanService(PlanRepository repository, TripService trips,
+                       SurveyService surveys, JsonSupport json) {
+        this.repository = repository;
         this.trips = trips;
         this.surveys = surveys;
         this.json = json;
-        this.keyHelper = keyHelper;
     }
 
+    /** 여행 기간과 장소 후보를 바탕으로 일차별 계획을 생성합니다. */
     @Transactional
-    public Map<String, Object> generate(long tripId) {
-        Map<String, Object> trip = lockedTrip(tripId);
-        if (!"PLANNING".equals(RowSupport.strValue(trip, "status"))) {
+    public PlanResponse generate(long tripId) {
+        PlanTripQueryResult trip = repository.lockTrip(tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+        if (trip.status() != TripStatus.PLANNING) {
             throw new BusinessException(ScheduleErrorCode.PLAN_GENERATION_TRIP_NOT_PLANNING);
         }
-
-        Map<String, Object> profile = surveys.groupProfile(tripId);
-        String dominant = RowSupport.strValue(profile, "dominantProfile");
-        ProfileCode profileCode = ProfileCode.from(dominant);
-        long ownerId = RowSupport.longValue(trip, "owner_id");
-        long regionId = RowSupport.longValue(trip, "region_id");
-        LocalDate startDate = tripDate(trip, "start_date");
-        LocalDate endDate = tripDate(trip, "end_date");
-        long dayCount = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        GroupPersonalityResponse profile = surveys.groupProfile(tripId);
+        ProfileCode profileCode = ProfileCode.from(profile.dominantProfile());
+        long dayCount = ChronoUnit.DAYS.between(trip.startDate(), trip.endDate()) + 1;
         if (dayCount <= 0) {
             throw new BusinessException(ScheduleErrorCode.PLAN_TRIP_DATE_INVALID);
         }
@@ -65,326 +59,165 @@ public class PlanService {
             throw new BusinessException(ScheduleErrorCode.PLAN_GENERATION_RANGE_EXCEEDED);
         }
 
+        // 여행 기간과 성향에 맞는 후보를 한 번 조회해 모든 일차에 순환 배치합니다.
         int candidateLimit = Math.min(1_100,
                 Math.max(MAX_PLACES_PER_DAY, Math.toIntExact(dayCount) * MAX_PLACES_PER_DAY));
-        List<PlaceCandidate> places = orderedPlaces(
-                tripId, regionId, profileCode, candidateLimit);
+        List<PlanPlaceQueryResult> places = repository.findCandidates(
+                tripId, trip.regionId(), profileCode.place(), profileCode.energy(),
+                profileCode.preparation(), candidateLimit);
         if (places.isEmpty()) {
             throw new BusinessException(ScheduleErrorCode.PLAN_PLACE_CANDIDATE_NOT_FOUND);
         }
 
-        List<Map<String, Object>> existingPlans = jdbc.sql("""
-                SELECT id, day_number
-                FROM travel_plans
-                WHERE trip_id = ?
-                ORDER BY day_number
-                """)
-                .param(tripId)
-                .query().listOfRows();
-        Map<Integer, Long> planIdByDay = existingPlans.stream()
-                .collect(Collectors.toMap(
-                        row -> RowSupport.intValue(row, "day_number"),
-                        row -> RowSupport.longValue(row, "id"),
-                        (first, ignored) -> first,
-                        LinkedHashMap::new
-                ));
+        Map<Integer, Long> planIdByDay = repository.findPlanIdsByDay(tripId);
+        repository.deleteItems(new ArrayList<>(planIdByDay.values()));
+        String snapshot = json.write(profile);
+        List<GeneratedPlanItem> items = new ArrayList<>();
 
-        List<Long> existingPlanIds = existingPlans.stream()
-                .map(row -> RowSupport.longValue(row, "id"))
-                .toList();
-        deleteItems(existingPlanIds);
-
-        String preferenceSnapshot = json.write(profile);
-        List<PlannedItem> items = new ArrayList<>();
-        int numberOfDays = Math.toIntExact(dayCount);
+        // 기존 일차 계획은 유지·갱신하고 부족한 일차만 생성해 식별자 변경을 줄입니다.
         try {
-            for (int dayIndex = 0; dayIndex < numberOfDays; dayIndex++) {
-                int dayNumber = dayIndex + 1;
-                LocalDate planDate = startDate.plusDays(dayIndex);
-                Long planId = planIdByDay.get(dayNumber);
+            for (int dayIndex = 0; dayIndex < Math.toIntExact(dayCount); dayIndex++) {
+                int day = dayIndex + 1;
+                LocalDate date = trip.startDate().plusDays(dayIndex);
+                Long planId = planIdByDay.get(day);
                 if (planId == null) {
-                    planId = keyHelper.insert("""
-                            INSERT INTO travel_plans (trip_id, plan_date, day_number, title, source_type,
-                                                      status, created_by, version, preference_snapshot)
-                            VALUES (?, ?, ?, ?, 'AI', 'DRAFT', ?, 0, ?)
-                            """,
-                            tripId, planDate, dayNumber, dayNumber + "일차 일정", ownerId, preferenceSnapshot);
-                    planIdByDay.put(dayNumber, planId);
+                    planId = repository.insertPlan(tripId, date, day, day + "일차 일정",
+                            trip.ownerId(), snapshot);
+                    planIdByDay.put(day, planId);
                 } else {
-                    jdbc.sql("""
-                            UPDATE travel_plans
-                            SET plan_date = ?, title = ?, source_type = 'AI', status = 'DRAFT',
-                                version = version + 1, preference_snapshot = ?, updated_at = CURRENT_TIMESTAMP
-                            WHERE id = ? AND trip_id = ?
-                            """)
-                            .params(planDate, dayNumber + "일차 일정", preferenceSnapshot, planId, tripId)
-                            .update();
+                    repository.updatePlan(planId, tripId, date, day + "일차 일정", snapshot);
                 }
-                items.addAll(itemsForDay(planId, planDate, dayIndex, places, profileCode));
+                items.addAll(itemsForDay(planId, date, dayIndex, places, profileCode));
             }
         } catch (DuplicateKeyException exception) {
             throw new BusinessException(ScheduleErrorCode.PLAN_GENERATION_CONFLICT);
         }
 
-        deletePlansAfterDay(tripId, numberOfDays);
-        insertItems(items);
+        // 일차별 조립이 끝난 후 남은 계획을 정리하고 항목을 일괄 저장합니다.
+        repository.deletePlansAfterDay(tripId, Math.toIntExact(dayCount));
+        repository.insertItems(items);
         return get(tripId);
     }
 
-    public Map<String, Object> get(long tripId) {
+    /** 여행의 일차별 계획과 일정 항목을 조회합니다. */
+    public PlanResponse get(long tripId) {
         trips.requireTrip(tripId);
-        List<Map<String, Object>> planRows = jdbc.sql("""
-                SELECT *
-                FROM travel_plans
-                WHERE trip_id = ?
-                ORDER BY day_number
-                """)
-                .param(tripId)
-                .query().listOfRows();
-        if (planRows.isEmpty()) {
+        List<PlanDayQueryResult> days = repository.findDays(tripId);
+        if (days.isEmpty()) {
             throw new BusinessException(ScheduleErrorCode.PLAN_NOT_FOUND);
         }
-
-        List<Long> planIds = planRows.stream()
-                .map(row -> RowSupport.longValue(row, "id"))
+        List<Long> planIds = days.stream()
+                .map(PlanDayQueryResult::id)
                 .toList();
-        Map<Long, List<Map<String, Object>>> itemsByPlan = loadItems(planIds);
-        List<Map<String, Object>> days = new ArrayList<>();
-        for (Map<String, Object> row : planRows) {
-            Map<String, Object> day = new LinkedHashMap<>(row);
-            day.put("items", itemsByPlan.getOrDefault(RowSupport.longValue(row, "id"), List.of()));
-            days.add(day);
-        }
+        Map<Long, List<PlanItemQueryResult>> items = repository.findItems(planIds).stream()
+                .collect(Collectors.groupingBy(
+                        PlanItemQueryResult::planId,
+                        LinkedHashMap::new,
+                        Collectors.toList()));
 
-        // 기존 단일 일정 응답의 최상위 필드를 유지하면서 전체 일차도 함께 제공한다.
-        Map<String, Object> result = new LinkedHashMap<>(days.getFirst());
-        result.put("days", days);
-        return result;
+        List<PlanDayResponse> responses = days.stream()
+                .map(day -> new PlanDayResponse(
+                        day.id(),
+                        day.tripId(),
+                        day.planDate(),
+                        day.dayNumber(),
+                        day.title(),
+                        day.description(),
+                        day.sourceType(),
+                        day.status(),
+                        day.preferenceSnapshot(),
+                        day.createdBy(),
+                        day.version(),
+                        day.createdAt(),
+                        day.updatedAt(),
+                        items.getOrDefault(day.id(), List.of()).stream()
+                                .map(this::toItem)
+                                .toList()))
+                .toList();
+
+        PlanDayResponse first = responses.getFirst();
+        return new PlanResponse(
+                first.id(),
+                first.trip_id(),
+                first.plan_date(),
+                first.day_number(),
+                first.title(),
+                first.description(),
+                first.source_type(),
+                first.status(),
+                first.preference_snapshot(),
+                first.created_by(),
+                first.version(),
+                first.created_at(),
+                first.updated_at(),
+                first.items(),
+                responses);
     }
 
-    public Map<String, Object> firstPlace(long tripId) {
+    /** 여행 일정의 첫 장소를 조회합니다. */
+    public PlanPlaceQueryResult firstPlace(long tripId) {
         return boundaryPlace(tripId, false);
     }
 
-    public Map<String, Object> lastPlace(long tripId) {
+    /** 여행 일정의 마지막 장소를 조회합니다. */
+    public PlanPlaceQueryResult lastPlace(long tripId) {
         return boundaryPlace(tripId, true);
     }
 
-    private Map<String, Object> boundaryPlace(long tripId, boolean descending) {
-        String order = descending
-                ? "tp.day_number DESC, i.sequence_no DESC"
-                : "tp.day_number ASC, i.sequence_no ASC";
-        String sql = """
-                SELECT p.*
-                FROM travel_plans tp
-                JOIN travel_plan_items i ON i.plan_id = tp.id
-                LEFT JOIN places p ON p.id = i.place_id
-                WHERE tp.trip_id = ? AND p.id IS NOT NULL
-                ORDER BY %s
-                LIMIT 1
-                """.formatted(order);
-        return jdbc.sql(sql)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
+    private PlanPlaceQueryResult boundaryPlace(long tripId, boolean descending) {
+        return repository.findBoundaryPlace(tripId, descending)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.PLAN_PLACE_REQUIRED));
     }
 
-    private Map<String, Object> lockedTrip(long tripId) {
-        return jdbc.sql("""
-                SELECT *
-                FROM trips
-                WHERE id = ? AND deleted_at IS NULL
-                FOR UPDATE
-                """)
-                .param(tripId)
-                .query().listOfRows().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-    }
-
-    private List<PlaceCandidate> orderedPlaces(
-            long tripId, long regionId, ProfileCode profile, int limit) {
-        List<Map<String, Object>> rows = jdbc.sql("""
-                SELECT id, name, category
-                FROM places
-                WHERE region_id = ?
-                  AND status = 'ACTIVE'
-                  AND category <> 'SHELTER'
-                  AND (visibility = 'PUBLIC' OR trip_id = ?)
-                ORDER BY
-                  CASE ?
-                    WHEN 'N' THEN CASE WHEN category = 'ATTRACTION' AND COALESCE(indoor, FALSE) = FALSE THEN 0 ELSE 1 END
-                    WHEN 'C' THEN CASE WHEN category IN ('CULTURE', 'SHOPPING', 'CAFE', 'RESTAURANT')
-                                            OR COALESCE(indoor, FALSE) = TRUE THEN 0 ELSE 1 END
-                    ELSE 1
-                  END,
-                  CASE ?
-                    WHEN 'A' THEN CASE WHEN category IN ('ATTRACTION', 'SHOPPING')
-                                            OR COALESCE(basic_info, '') LIKE '%\"pace\":\"ACTIVE\"%' THEN 0 ELSE 1 END
-                    WHEN 'R' THEN CASE WHEN category IN ('CULTURE', 'CAFE', 'RESTAURANT', 'ACCOMMODATION')
-                                            OR COALESCE(basic_info, '') LIKE '%\"pace\":\"RELAXED\"%' THEN 0 ELSE 1 END
-                    ELSE 1
-                  END,
-                  CASE WHEN ? = 'S' THEN id ELSE 0 END DESC,
-                  id
-                LIMIT ?
-                """)
-                .params(regionId, tripId,
-                        String.valueOf(profile.place()),
-                        String.valueOf(profile.energy()),
-                        String.valueOf(profile.preparation()),
-                        limit)
-                .query().listOfRows();
-        return rows.stream()
-                .map(row -> new PlaceCandidate(
-                        RowSupport.longValue(row, "id"),
-                        RowSupport.strValue(row, "name"),
-                        RowSupport.strValue(row, "category")
-                ))
-                .toList();
-    }
-
-    private List<PlannedItem> itemsForDay(long planId, LocalDate date, int dayIndex,
-                                          List<PlaceCandidate> places, ProfileCode profile) {
+    private List<GeneratedPlanItem> itemsForDay(
+            long planId,
+            LocalDate date,
+            int dayIndex,
+            List<PlanPlaceQueryResult> places,
+            ProfileCode profile) {
         int count = Math.min(MAX_PLACES_PER_DAY, places.size());
         int startHour = profile.preparation() == 'P' ? 9 : 10;
         int startMinute = profile.preparation() == 'P' ? 30 : 0;
-        int durationMinutes = profile.energy() == 'A' ? 90 : 120;
-        int intervalMinutes = profile.energy() == 'A' ? 120 : 150;
+        int duration = profile.energy() == 'A' ? 90 : 120;
+        int interval = profile.energy() == 'A' ? 120 : 150;
         int offset = Math.floorMod(dayIndex * count, places.size());
-
-        List<PlannedItem> result = new ArrayList<>();
+        List<GeneratedPlanItem> result = new ArrayList<>();
         for (int index = 0; index < count; index++) {
-            PlaceCandidate place = places.get((offset + index) % places.size());
-            LocalDateTime startsAt = date.atTime(startHour, startMinute)
-                    .plusMinutes((long) index * intervalMinutes);
-            result.add(new PlannedItem(
+            PlanPlaceQueryResult place = places.get((offset + index) % places.size());
+            LocalDateTime start = date.atTime(startHour, startMinute).plusMinutes((long) index * interval);
+            result.add(new GeneratedPlanItem(
                     planId,
                     place.id(),
                     itemType(place.category()),
                     place.name(),
                     index + 1,
-                    startsAt,
-                    startsAt.plusMinutes(durationMinutes)
-            ));
+                    start,
+                    start.plusMinutes(duration)));
         }
         return result;
     }
 
-    private void deleteItems(List<Long> planIds) {
-        if (planIds.isEmpty()) return;
-        String placeholders = String.join(", ", Collections.nCopies(planIds.size(), "?"));
-        jdbc.sql("""
-                UPDATE travel_routes
-                SET from_plan_item_id = NULL, to_plan_item_id = NULL, status = 'EXPIRED',
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE plan_id IN (%s)
-                """.formatted(placeholders))
-                .params(planIds)
-                .update();
-        jdbc.sql("""
-                UPDATE travel_supplies
-                SET plan_item_id = NULL, updated_at = CURRENT_TIMESTAMP
-                WHERE plan_item_id IN (
-                    SELECT id FROM travel_plan_items WHERE plan_id IN (%s)
-                )
-                """.formatted(placeholders))
-                .params(planIds)
-                .update();
-        jdbc.sql("""
-                UPDATE notifications
-                SET plan_item_id = NULL
-                WHERE plan_item_id IN (
-                    SELECT id FROM travel_plan_items WHERE plan_id IN (%s)
-                )
-                """.formatted(placeholders))
-                .params(planIds)
-                .update();
-        jdbc.sql("DELETE FROM travel_plan_items WHERE plan_id IN (" + placeholders + ")")
-                .params(planIds)
-                .update();
+    private PlanItemResponse toItem(PlanItemQueryResult item) {
+        return new PlanItemResponse(
+                item.id(),
+                item.sequenceNo(),
+                item.plannedStart(),
+                item.plannedEnd(),
+                item.status(),
+                item.itemType(),
+                item.title(),
+                item.description(),
+                item.estimatedCost(),
+                item.memo(),
+                item.placeId(),
+                item.placeName(),
+                item.category(),
+                item.address(),
+                item.latitude(),
+                item.longitude());
     }
 
-    private void deletePlansAfterDay(long tripId, int lastDayNumber) {
-        List<Long> planIds = jdbc.sql("""
-                SELECT id FROM travel_plans
-                WHERE trip_id = ? AND day_number > ?
-                """)
-                .params(tripId, lastDayNumber)
-                .query(Long.class)
-                .list();
-        if (planIds.isEmpty()) return;
-        String placeholders = String.join(", ", Collections.nCopies(planIds.size(), "?"));
-        jdbc.sql("""
-                UPDATE notifications SET route_id = NULL
-                WHERE route_id IN (SELECT id FROM travel_routes WHERE plan_id IN (%s))
-                """.formatted(placeholders)).params(planIds).update();
-        jdbc.sql("""
-                UPDATE notifications SET proposal_id = NULL
-                WHERE proposal_id IN (
-                    SELECT id FROM ai_schedule_change_proposals WHERE plan_id IN (%s)
-                )
-                """.formatted(placeholders)).params(planIds).update();
-        jdbc.sql("UPDATE notifications SET plan_id = NULL WHERE plan_id IN (" + placeholders + ")")
-                .params(planIds).update();
-        jdbc.sql("DELETE FROM travel_plans WHERE id IN (" + placeholders + ")")
-                .params(planIds).update();
-    }
-
-    private void insertItems(List<PlannedItem> items) {
-        if (items.isEmpty()) return;
-        String rowPlaceholder = "(?, ?, ?, ?, ?, ?, ?, 'PLANNED')";
-        String values = String.join(", ", Collections.nCopies(items.size(), rowPlaceholder));
-        List<Object> parameters = new ArrayList<>(items.size() * 7);
-        for (PlannedItem item : items) {
-            parameters.add(item.planId());
-            parameters.add(item.placeId());
-            parameters.add(item.itemType());
-            parameters.add(item.title());
-            parameters.add(item.sequenceNo());
-            parameters.add(item.startsAt());
-            parameters.add(item.endsAt());
-        }
-        jdbc.sql("""
-                INSERT INTO travel_plan_items (plan_id, place_id, item_type, title, sequence_no,
-                                               planned_start, planned_end, status)
-                VALUES %s
-                """.formatted(values))
-                .params(parameters)
-                .update();
-    }
-
-    private Map<Long, List<Map<String, Object>>> loadItems(List<Long> planIds) {
-        String placeholders = String.join(", ", Collections.nCopies(planIds.size(), "?"));
-        List<Map<String, Object>> rows = jdbc.sql("""
-                SELECT i.plan_id, i.id, i.sequence_no, i.planned_start, i.planned_end,
-                       i.status, i.item_type, i.title, i.description, i.estimated_cost, i.memo,
-                       p.id AS place_id, p.name AS place_name, p.category, p.address,
-                       p.latitude, p.longitude
-                FROM travel_plan_items i
-                LEFT JOIN places p ON p.id = i.place_id
-                WHERE i.plan_id IN (%s)
-                ORDER BY i.plan_id, i.sequence_no
-                """.formatted(placeholders))
-                .params(planIds)
-                .query().listOfRows();
-
-        Map<Long, List<Map<String, Object>>> result = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            long planId = RowSupport.longValue(row, "plan_id");
-            Map<String, Object> item = new LinkedHashMap<>(row);
-            removeCaseInsensitive(item, "plan_id");
-            result.computeIfAbsent(planId, ignored -> new ArrayList<>()).add(item);
-        }
-        return result;
-    }
-
-    private static void removeCaseInsensitive(Map<String, Object> map, String key) {
-        map.keySet().removeIf(candidate -> candidate.equalsIgnoreCase(key));
-    }
-
-    private static String itemType(String category) {
+    private String itemType(String category) {
         return switch (category) {
             case "RESTAURANT", "CAFE" -> "MEAL";
             case "ACCOMMODATION" -> "ACCOMMODATION";
@@ -392,35 +225,18 @@ public class PlanService {
         };
     }
 
-    private LocalDate tripDate(Map<String, Object> trip, String column) {
-        Object raw = RowSupport.value(trip, column);
-        if (raw instanceof LocalDate date) return date;
-        if (raw instanceof java.sql.Date date) return date.toLocalDate();
-        if (raw instanceof java.sql.Timestamp timestamp) return timestamp.toLocalDateTime().toLocalDate();
-        return LocalDate.parse(raw.toString().substring(0, 10));
-    }
-
-    private record PlaceCandidate(long id, String name, String category) {
-    }
-
-    private record PlannedItem(
-            long planId,
-            long placeId,
-            String itemType,
-            String title,
-            int sequenceNo,
-            LocalDateTime startsAt,
-            LocalDateTime endsAt
+    private record ProfileCode(
+            char preparation,
+            char place,
+            char energy
     ) {
-    }
-
-    private record ProfileCode(char preparation, char place, char energy) {
         private static ProfileCode from(String code) {
             String normalized = code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
             if (!normalized.matches("[PS][NC][AR]")) {
                 throw new BusinessException(ScheduleErrorCode.PLAN_PROFILE_INVALID);
             }
-            return new ProfileCode(normalized.charAt(0), normalized.charAt(1), normalized.charAt(2));
+            return new ProfileCode(
+                    normalized.charAt(0), normalized.charAt(1), normalized.charAt(2));
         }
     }
 }

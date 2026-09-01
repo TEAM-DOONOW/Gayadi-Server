@@ -1,5 +1,8 @@
 package com.gayadi.server.weather;
 
+import com.gayadi.server.weather.dto.request.ForecastVersionRequest;
+import com.gayadi.server.weather.dto.request.WeatherRequest;
+
 import com.gayadi.server.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -35,19 +38,19 @@ class WeatherApiServiceValidationTest {
     @Test
     void validatesForecastVersionInputsBeforeCallingTheProvider() {
         assertThatThrownBy(() -> service.fcstVersion(
-                new WeatherApiService.FcstVersionRequest("OTHER", "202608250200")))
+                new ForecastVersionRequest("OTHER", "202608250200")))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(WeatherErrorCode.WEATHER_VERSION_FILE_TYPE_INVALID));
         assertThatThrownBy(() -> service.fcstVersion(
-                new WeatherApiService.FcstVersionRequest("SHRT", "202602300200")))
+                new ForecastVersionRequest("SHRT", "202602300200")))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(WeatherErrorCode.WEATHER_VERSION_DATETIME_INVALID));
     }
 
-    private WeatherApiService.WeatherRequest request(
+    private WeatherRequest request(
             Double lat, Double lon, Integer nx, Integer ny) {
-        return new WeatherApiService.WeatherRequest(lat, lon, nx, ny, null, null);
+        return new WeatherRequest(lat, lon, nx, ny, null, null);
     }
 }

@@ -95,3 +95,7 @@ tasks.named('test') {
     systemProperty 'weather.api.key', ''
     systemProperty 'congestion.api.key', ''
 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
+}

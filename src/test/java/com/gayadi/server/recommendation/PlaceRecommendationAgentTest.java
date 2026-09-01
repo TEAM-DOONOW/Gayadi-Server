@@ -1,5 +1,12 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
+import com.gayadi.server.recommendation.dto.response.PlaceRecommendationResponse;
+import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
+import com.gayadi.server.recommendation.model.TravelSituation;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

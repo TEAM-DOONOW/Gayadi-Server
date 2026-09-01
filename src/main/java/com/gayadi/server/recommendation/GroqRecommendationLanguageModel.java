@@ -1,5 +1,9 @@
 package com.gayadi.server.recommendation;
 
+import com.gayadi.server.recommendation.model.PlaceSearchPlan;
+import com.gayadi.server.recommendation.model.TourContentType;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
+
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.JsonSupport;
 import org.springframework.ai.chat.client.ChatClient;
@@ -23,6 +27,7 @@ public class GroqRecommendationLanguageModel implements RecommendationLanguageMo
 
     @Override
     public PlaceSearchPlan createSearchPlan(RecommendationContext context) {
+
         return call(PlaceSearchPlan.class, """
                 다음 여행 추천 요청을 TourAPI 검색 계획으로 변환하세요.
                 반드시 JSON 형식으로만 응답하세요.
@@ -51,6 +56,7 @@ public class GroqRecommendationLanguageModel implements RecommendationLanguageMo
                 context.latitude(), context.longitude(), context.targetAt(),
                 json.write(context.situation()), context.policy().summary(),
                 String.join(", ", TourContentType.indoorRecommendationCodes())));
+
     }
 
     @Override

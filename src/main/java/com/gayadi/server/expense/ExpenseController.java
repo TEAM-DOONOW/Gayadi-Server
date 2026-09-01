@@ -1,5 +1,10 @@
 package com.gayadi.server.expense;
 
+import com.gayadi.server.expense.dto.request.ExpenseRequest;
+import com.gayadi.server.expense.dto.request.SharedFundContributionRequest;
+import com.gayadi.server.expense.dto.response.ExpenseResponse;
+import com.gayadi.server.expense.dto.response.SettlementResponse;
+import com.gayadi.server.expense.dto.response.SharedFundSummary;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/** 여행 경비와 정산 관련 HTTP 요청과 응답을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}")
 @Tag(name = "여행 경비", description = "여행 지출, 공동 경비 잔액과 참여자 정산")

@@ -100,8 +100,8 @@ class WeatherApiClient {
         }
 
         JsonNode header = root.path("response").path("header");
-        String resultCode = header.path("resultCode").asText("");
-        String resultMsg = header.path("resultMsg").asText("");
+        String resultCode = text(header, "resultCode");
+        String resultMsg = text(header, "resultMsg");
         if (!RESULT_CODE_OK.equals(resultCode)) {
             if (RESULT_CODE_NO_DATA.equals(resultCode)) {
                 throw new BusinessException(WeatherErrorCode.WEATHER_DATA_NOT_FOUND);
@@ -126,7 +126,9 @@ class WeatherApiClient {
             totalCount = Math.max(0, body.path("totalCount").asInt(pageItems.size()));
             result.addAll(pageItems);
 
-            if (result.size() >= totalCount) return List.copyOf(result);
+            if (result.size() >= totalCount) {
+                return List.copyOf(result);
+            }
             if (pageItems.isEmpty()) {
                 throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
             }
@@ -163,13 +165,15 @@ class WeatherApiClient {
 
     static String text(JsonNode node, String field) {
         JsonNode value = node.path(field);
-        return value.isMissingNode() || value.isNull() ? "" : value.asText("");
+        return value.isMissingNode() || value.isNull() ? "" : value.asString();
     }
 
     private URI buildUri(String operation, Map<String, String> params) {
         StringBuilder query = new StringBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            if (!query.isEmpty()) query.append('&');
+            if (!query.isEmpty()) {
+                query.append('&');
+            }
             query.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
             query.append('=');
             query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
