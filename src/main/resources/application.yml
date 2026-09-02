@@ -28,6 +28,7 @@ spring:
     fallback-to-system-locale: false
   autoconfigure:
     exclude:
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
@@ -79,6 +80,11 @@ weather:
   api:
     key: ${WEATHER_API_KEY:${TOUR_API_KEY:}}
     base-url: ${WEATHER_API_BASE_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+
+auth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    android-client-id: ${GOOGLE_ANDROID_CLIENT_ID:}
 
 route:
   provider: ${ROUTE_PROVIDER:local}

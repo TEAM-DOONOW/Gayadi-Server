@@ -27,6 +27,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/registrations",
                                 "/api/v1/auth/tokens",
+                                "/api/v1/auth/google-tokens",
                                 "/api/openapi/**",
                                 "/api/docs/**",
                                 "/api/docs",

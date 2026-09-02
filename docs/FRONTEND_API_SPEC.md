@@ -1,6 +1,6 @@
 # GAYADI 프론트엔드 API 명세
 
-최종 수정일: 2026-08-30
+최종 수정일: 2026-09-02
 대상: `Gayadi-Android` 장소·혼잡도 및 AI Agent API 연동
 
 ## 1. 기본 정보
@@ -270,6 +270,19 @@ Agent 공통 오류:
 1. Android 로그인 성공 시 서버 `accessToken` 발급·보관
 2. Android 여행 생성·조회 시 서버 `tripId` 사용 또는 로컬 ID와 매핑
 3. 이후 추천·경로·상황 대처 API에 Bearer 토큰과 서버 `tripId` 전달
+
+Google 로그인은 Android Credential Manager가 발급한 Google ID 토큰을 서버에 넘겨 서버 JWT를 받습니다.
+
+```http
+POST /api/v1/auth/google-tokens
+Content-Type: application/json
+
+{"idToken":"<Google ID token>"}
+```
+
+성공 응답은 `POST /api/v1/auth/tokens`와 같은 `AuthTokenResponse`입니다. 서버의 `GOOGLE_CLIENT_ID`는 Google Cloud의 **웹 클라이언트 ID**여야 하며, Android Credential Manager의 `setServerClientId(WEB_CLIENT_ID)`에도 같은 값을 넣습니다. 서버는 Google 공개키를 캐시하는 공식 Java 검증기로 서명·issuer·audience·만료를 확인합니다. 키가 없으면 `503 AUTH_GOOGLE_NOT_CONFIGURED`입니다.
+
+클라이언트 구현에서는 Credential Manager 호출, ID 토큰 전송, 서버 JWT 저장과 이후 API의 Bearer 헤더 주입을 연결해야 합니다.
 
 인증을 제거하거나 외부 모델 호출 API를 공개하는 방식은 사용하지 않습니다.
 

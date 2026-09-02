@@ -1,5 +1,6 @@
 package com.gayadi.server.auth;
 
+import com.gayadi.server.auth.dto.request.GoogleLoginRequest;
 import com.gayadi.server.auth.dto.request.LoginRequest;
 import com.gayadi.server.auth.dto.request.SignupRequest;
 import com.gayadi.server.auth.dto.response.AuthTokenResponse;
@@ -39,5 +40,16 @@ public class AuthController {
             content = @Content(schema = @Schema(implementation = AuthTokenResponse.class)))
     public AuthTokenResponse login(@Valid @RequestBody LoginRequest request) {
         return service.login(request.email(), request.password());
+    }
+
+    @PostMapping("/google-tokens")
+    @Operation(
+            summary = "Google 로그인 토큰 발급",
+            description = "Android Google 로그인 ID 토큰을 검증하고 서버 JWT를 발급합니다. "
+                    + "GOOGLE_CLIENT_ID가 없으면 503을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "Google 계정으로 로그인 토큰을 발급했습니다.",
+            content = @Content(schema = @Schema(implementation = AuthTokenResponse.class)))
+    public AuthTokenResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return service.loginWithGoogle(request.idToken());
     }
 }

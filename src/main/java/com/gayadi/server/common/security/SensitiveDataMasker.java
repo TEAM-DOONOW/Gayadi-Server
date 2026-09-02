@@ -14,7 +14,8 @@ public final class SensitiveDataMasker {
     private static final String REDACTED = "[REDACTED]";
 
     private static final Pattern SENSITIVE_KEY_VALUE = Pattern.compile(
-            "(?i)([\"']?(?:password|passwd|pwd|access[_-]?token|refresh[_-]?token|token|authorization|"
+            "(?i)([\"']?(?:password|passwd|pwd|access[_-]?token|refresh[_-]?token|id[_-]?token|"
+                    + "token|authorization|"
                     + "cookie|set-cookie|api[_-]?key|service[_-]?key|client[_-]?secret|secret|"
                     + "resident[_-]?(?:registration[_-]?)?(?:number|no)|rrn|ssn)[\"']?\\s*[:=]\\s*[\"']?)"
                     + "([^\\s,;\"'&}]+)"
