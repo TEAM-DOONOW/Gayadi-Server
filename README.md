@@ -86,6 +86,7 @@ APP_AI_EMBEDDING_ENABLED=false
 | --- | --- | --- |
 | 인증 | `POST /api/v1/auth/registrations` | 이메일·비밀번호·닉네임으로 계정 등록 |
 | 인증 | `POST /api/v1/auth/tokens` | 로그인 토큰 발급 |
+| 인증 | `POST /api/v1/auth/google-tokens` | Google ID 토큰으로 서버 JWT 발급 |
 | 사용자 | `GET/PATCH/DELETE /api/v1/users/current` | 내 프로필 조회·수정·탈퇴 |
 | 설문 | `GET /api/v1/surveys/travel-personality-v1` | 9문항과 8개 성향 결과 조회 |
 | 설문 | `POST /api/v1/surveys/travel-personality-v1/submissions` | 내 성향 답변 제출 |
@@ -165,7 +166,7 @@ APP_AI_EMBEDDING_ENABLED=false
 
 ## 아직 운영 연동이 필요한 범위
 
-- OAuth/OIDC 토큰 검증으로 전환 (현재는 로컬 JWT 기반 인증)
+- Google 로그인 외 OAuth/OIDC 공급자 확대와 짧은 수명 access token 전환
 - 서울 주요 121장소 실시간 혼잡 공급자 추가와 TMAP 운영 키 검증
 - 공공 API 수집 → 정제 → 검색 자료 저장 작업
 - Redis 기반 경로 후보 TTL 캐시

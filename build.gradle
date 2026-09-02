@@ -62,6 +62,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-h2console'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'com.google.api-client:google-api-client-gson:2.7.1'
 
     implementation platform("org.springframework.ai:spring-ai-bom:${springAiVersion}")
     implementation('org.springframework.ai:spring-ai-starter-model-openai') {
@@ -94,6 +95,8 @@ tasks.named('test') {
     systemProperty 'tour.api.key', ''
     systemProperty 'weather.api.key', ''
     systemProperty 'congestion.api.key', ''
+    systemProperty 'auth.google.client-id', ''
+    systemProperty 'auth.google.android-client-id', ''
 }
 
 tasks.withType(JavaCompile).configureEach {

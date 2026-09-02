@@ -6,7 +6,7 @@
 
 | Android 사용자 기능 | 서버 도메인 | 대표 API | 서버 상태 | 현재 Android 데이터 원본 |
 | --- | --- | --- | --- | --- |
-| 가입·로그인·프로필·탈퇴 | `auth` | `/api/v1/auth/**`, `/api/v1/users/current` | 구현 | 로컬 프로필, 로그인 화면은 서버 미연결 |
+| 가입·로그인·프로필·탈퇴 | `auth` | `/api/v1/auth/**`, `/api/v1/users/current` | 구현(이메일·Google ID 토큰) | 로컬 프로필, 로그인 화면은 서버 미연결 |
 | 여행 성향 설문·결과 | `survey` | `/api/v1/surveys/**` | 구현 | Firestore |
 | 여행 생성·편집·상태 변경 | `travel` | `/api/v1/trips/**` | 구현 | 단말 파일 |
 | 초대 코드 참여·참여자 관리 | `invitation`, `travel` | `/api/v1/trip-memberships`, `/trips/{tripId}/invitations`, `/participants` | 구현 | 단말 파일 + Firestore |

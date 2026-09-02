@@ -22,7 +22,21 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_INVALID",
             "error.auth.token-invalid"),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_EXPIRED",
-            "error.auth.token-expired");
+            "error.auth.token-expired"),
+
+    // Google - Google ID 토큰 로그인
+    AUTH_GOOGLE_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_GOOGLE_NOT_CONFIGURED",
+            "error.auth.google-not-configured"),
+    AUTH_GOOGLE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_GOOGLE_TOKEN_INVALID",
+            "error.auth.google-token-invalid"),
+    AUTH_GOOGLE_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_GOOGLE_TOKEN_EXPIRED",
+            "error.auth.google-token-expired"),
+    AUTH_GOOGLE_ACCOUNT_CONFLICT(HttpStatus.CONFLICT, "AUTH_GOOGLE_ACCOUNT_CONFLICT",
+            "error.auth.google-account-conflict"),
+    AUTH_GOOGLE_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "AUTH_GOOGLE_REQUEST_FAILED",
+            "error.auth.google-request-failed"),
+    AUTH_GOOGLE_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_GOOGLE_RATE_LIMITED",
+            "error.auth.google-rate-limited");
 
     private final HttpStatus status;
     private final String code;

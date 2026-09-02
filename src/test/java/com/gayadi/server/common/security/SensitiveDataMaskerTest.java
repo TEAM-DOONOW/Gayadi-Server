@@ -9,13 +9,14 @@ class SensitiveDataMaskerTest {
     @Test
     void masksCredentialsAndTokens() {
         String log = "password=plain-password Authorization: Bearer aaa.bbb.ccc "
-                + "serviceKey=public-api-secret accessToken=jwt-value";
+                + "serviceKey=public-api-secret accessToken=jwt-value idToken=google-id-token";
 
         String masked = SensitiveDataMasker.mask(log);
 
         assertThat(masked)
-                .doesNotContain("plain-password", "aaa.bbb.ccc", "public-api-secret", "jwt-value")
-                .contains("password=[REDACTED]", "Authorization: [REDACTED]");
+                .doesNotContain("plain-password", "aaa.bbb.ccc", "public-api-secret", "jwt-value",
+                        "google-id-token")
+                .contains("password=[REDACTED]", "Authorization: [REDACTED]", "idToken=[REDACTED]");
     }
 
     @Test

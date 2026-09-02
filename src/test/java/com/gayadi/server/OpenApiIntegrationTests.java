@@ -83,6 +83,7 @@ class OpenApiIntegrationTests {
 
         Map<OperationKey, String> objectResponses = Map.ofEntries(
                 Map.entry(new OperationKey("/api/v1/auth/tokens", "post", "200"), "AuthTokenResponse"),
+                Map.entry(new OperationKey("/api/v1/auth/google-tokens", "post", "200"), "AuthTokenResponse"),
                 Map.entry(new OperationKey("/api/v1/users/current", "get", "200"), "UserProfileResponse"),
                 Map.entry(new OperationKey("/api/v1/trips", "post", "201"), "TripResponse"),
                 Map.entry(new OperationKey("/api/v1/trips/{tripId}/invitations", "post", "201"), "InvitationResponse"),

@@ -55,3 +55,42 @@
 - 자동 테스트 통과와 실제 PostgreSQL·외부 API 실호출 검증을 구분해 보고한다.
 - 관련 없는 기존 변경, 비밀 설정과 운영 데이터를 건드리지 않는다.
 - 구현, 테스트와 문서가 함께 현재 상태를 설명하도록 유지한다.
+
+## 현재 로컬 검증 상태 (2026-09-02, `dev` 기준)
+
+전체 H2 자동화 테스트와 별개로, 격리한 Docker PostgreSQL 16에 Flyway V1~V16을 적용하고 Docker 서버에서 `/api/v1` HTTP 스모크 45건을 다시 실행했다.
+
+### 되는 것
+
+- PostgreSQL 접속, Flyway V16, 시드·로컬 더미 데이터 조회
+- 인증, 프로필, 친구, 설문, 여행 생성·참여·초대, 날짜 조율, 일정, 경비·공금·정산, 찜, 대시보드, 공지, 약관, 문의
+- 일정 자동 생성 후 `ITINERARY` 경로 추천·선택
+- 초대 참여 시 출발·귀가 장소를 넣은 멤버의 `DEPARTURE`/`RETURN` 경로 추천
+- 여행 시작, 현장 상황 등록, 변경안 조회
+- 혼잡·TourAPI·기상청 조회는 이 로컬 환경에서 200
+
+### 안 되거나 빠진 것
+
+1. **소유자 출발·귀가 장소 API가 없다.**
+   `POST /api/v1/trips`는 `SEPARATE` 모드로 만들고 소유자 `departurePlaceId`/`returnPlaceId`를 넣지 않는다. 이후 `PUT /api/v1/trips/{tripId}/participants/{본인}`은 `409 TRIP_ALREADY_JOINED`다. 그 결과 소유자 `DEPARTURE` 경로 추천은 `400 ROUTE_DEPARTURE_PLACE_REQUIRED`다. 새 멤버만 `POST /api/v1/trip-memberships`의 장소 필드로 넣을 수 있다.
+
+2. **AI 추천·여행 상황 대처는 비활성이다.**
+   `APP_AI_ENABLED=false`이면
+   `POST /api/v1/recommendations/places` → `503 RECOMMENDATION_UNAVAILABLE`
+   `POST /api/v1/recommendations/situations` → `503 SITUATION_AGENT_UNAVAILABLE`
+   `POST /api/v1/trips/{tripId}/situation-responses` → 503
+   핵심 여행 API를 막지는 않는다.
+
+3. **기본 실행은 H2다.** `application.yml` datasource 기본값이 H2 메모리라서, 인자 없이 `bootRun`하면 PostgreSQL이 아니라 H2로 뜬다. 로컬 PostgreSQL로 검증하려면 datasource URL·계정·드라이버를 명시해야 한다. `docker-compose-db.yaml`의 Redis는 앱이 사용하지 않는다.
+
+4. **자동 일정 응답 필드명이 다른 API와 다르다.**
+   `GET/POST /api/v1/trips/{tripId}/plans`의 `PlanResponse`는 `trip_id`, `plan_date`, `created_at`처럼 snake_case다. 일정·여행 등 나머지 공개 DTO는 camelCase다.
+
+5. **아직 이 세션에서 확인하지 않은 것.** TMAP 운영 키 실호출, 탈퇴 API, Refresh Token, PostgreSQL Testcontainers CI, 운영 서버 배포 검증.
+
+### Google 로그인 (2026-09-02)
+
+- API: `POST /api/v1/auth/google-tokens` `{ "idToken": "..." }`
+- 서버는 Google 공식 Java 검증기로 ID 토큰의 서명·issuer·audience·만료를 확인한 뒤 기존 JWT를 발급한다. `social_login_accounts`에 `GOOGLE` subject를 저장하고, 같은 검증 이메일의 기존 계정이 있으면 연결한다.
+- `.env.example`에는 `GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID` placeholder만 있다. 실값은 `.env`를 열지 않았으므로 콘솔의 **웹 클라이언트 ID**를 `GOOGLE_CLIENT_ID`에 넣었는지 직접 확인해야 한다.
+- 키가 비어 있으면 `503 AUTH_GOOGLE_NOT_CONFIGURED`가 정상이다. client secret은 Android ID 토큰 검증에 필요 없다.

@@ -2,8 +2,11 @@ package com.gayadi.server;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContext;
+import org.springframework.security.core.userdetails.UserDetailsService;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -15,6 +18,9 @@ class AuthFlowIntegrationTests {
 
     @LocalServerPort
     int port;
+
+    @Autowired
+    ApplicationContext applicationContext;
 
     private final HttpClient client = HttpClient.newHttpClient();
 
@@ -60,6 +66,20 @@ class AuthFlowIntegrationTests {
         HttpResponse<String> duplicate = post("/api/v1/auth/registrations", body);
         Assertions.assertThat(duplicate.statusCode()).isEqualTo(409);
         Assertions.assertThat(duplicate.body()).contains("이미 가입된 이메일");
+    }
+
+    @Test
+    void rejectsGoogleLoginWhenClientIdIsMissing() throws Exception {
+        HttpResponse<String> response = post("/api/v1/auth/google-tokens",
+                "{\"idToken\":\"aaa.bbb.ccc\"}");
+        Assertions.assertThat(response.statusCode()).isEqualTo(503);
+        Assertions.assertThat(response.body()).contains("AUTH_GOOGLE_NOT_CONFIGURED");
+        Assertions.assertThat(response.body()).doesNotContain("aaa.bbb.ccc");
+    }
+
+    @Test
+    void doesNotCreateDefaultInMemoryUserCredentials() {
+        Assertions.assertThat(applicationContext.getBeansOfType(UserDetailsService.class)).isEmpty();
     }
 
     @Test

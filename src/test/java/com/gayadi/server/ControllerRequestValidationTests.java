@@ -1,5 +1,6 @@
 package com.gayadi.server;
 
+import com.gayadi.server.auth.dto.request.GoogleLoginRequest;
 import com.gayadi.server.event.dto.request.ChangeProposalDecisionRequest;
 import com.gayadi.server.invitation.dto.request.InvitationCreateRequest;
 import com.gayadi.server.recommendation.dto.request.PlaceRecommendationRequest;
@@ -20,6 +21,15 @@ class ControllerRequestValidationTests {
     @AfterAll
     static void closeValidatorFactory() {
         VALIDATOR_FACTORY.close();
+    }
+
+    @Test
+    void rejectsBlankGoogleIdToken() {
+        GoogleLoginRequest request = new GoogleLoginRequest("  ");
+
+        Assertions.assertThat(VALIDATOR.validate(request))
+                .extracting(error -> error.getPropertyPath().toString())
+                .contains("idToken");
     }
 
     @Test
