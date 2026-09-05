@@ -209,7 +209,7 @@ public class AuthService {
         UserQueryResult user = userService.get(userId);
         String email = user.email() == null ? "" : user.email();
         return new AuthTokenResponse(
-                jwtService.issue(userId, email),
+                jwtService.issue(userId),
                 "Bearer",
                 jwtService.getExpiresIn().toSeconds(),
                 new AccountResponse(

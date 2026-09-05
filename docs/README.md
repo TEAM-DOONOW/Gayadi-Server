@@ -26,7 +26,7 @@
 | Android 연동 | [Android 기능 계약](architecture/android-feature-contract.md) | Android 기능과 서버 계약 |
 | API | [프런트엔드 API 명세](FRONTEND_API_SPEC.md) | 클라이언트 연동용 경로와 요청·응답 |
 | 예외 | [예외 처리 가이드](exception/README.md) | 공통 오류 응답, ErrorCode, i18n과 테스트 |
-| 보안 | [민감정보 보호](security/sensitive-data-protection.md) | 로그 마스킹과 저장 시 보호 기준 |
+| 보안 | [보안 문서 안내](security/README.md) | 현재 HTTP·JWT 보안 구조와 Redis·RTR·민감정보 강화 기준 |
 | 데이터베이스 | [ERD SQL](database/gayadi-erdcloud.sql) | 데이터 모델 확인과 ERDCloud 반영 원본 |
 | 외부 API | [TourAPI 매뉴얼](tourapi-manual/manual_v4.4.txt) | 한국관광공사 API 연동 참고 자료 |
 | 발표 자료 | [발표 자료 안내](presentation/README.md) | ERD·아키텍처·서비스 흐름 이미지와 편집 원본 |
