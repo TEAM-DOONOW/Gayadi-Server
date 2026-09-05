@@ -8,6 +8,7 @@ import com.gayadi.server.auth.query.LoginAccountQueryResult;
 import com.gayadi.server.auth.query.UserQueryResult;
 import com.gayadi.server.auth.model.UserStatus;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,17 +30,20 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthRepository repository;
     private final GoogleIdTokenClient googleIdTokenClient;
+    private final ObjectProvider<RefreshTokenService> refreshTokenService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public AuthService(
             UserService userService,
             JwtService jwtService,
             AuthRepository repository,
-            GoogleIdTokenClient googleIdTokenClient) {
+            GoogleIdTokenClient googleIdTokenClient,
+            ObjectProvider<RefreshTokenService> refreshTokenService) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.repository = repository;
         this.googleIdTokenClient = googleIdTokenClient;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /** 이메일 계정을 생성하고 로그인 토큰을 발급합니다. */
@@ -205,13 +209,36 @@ public class AuthService {
         return new BusinessException(AuthErrorCode.AUTH_INVALID_CREDENTIALS);
     }
 
+    /** 일회성 Refresh Token을 회전해 새로운 인증 토큰 쌍을 발급합니다. */
+    public AuthTokenResponse refresh(String refreshToken) {
+        RefreshTokenService service = requireRefreshTokenService();
+        RefreshTokenService.RotatedRefreshToken rotated = service.rotate(refreshToken);
+        return tokenResponse(rotated.userId(), rotated.token(), rotated.expiresIn().toSeconds());
+    }
+
+    /** 전달된 Refresh Token이 속한 현재 로그인 세션을 종료합니다. */
+    public void logout(String refreshToken) {
+        requireRefreshTokenService().revokeCurrent(refreshToken);
+    }
+
     private AuthTokenResponse loginResult(long userId) {
+        RefreshTokenService service = refreshTokenService.getIfAvailable();
+        if (service == null) {
+            return tokenResponse(userId, null, null);
+        }
+
+        RefreshTokenService.IssuedRefreshToken refresh = service.issue(userId);
+        return tokenResponse(userId, refresh.token(), refresh.expiresIn().toSeconds());
+    }
+
+    private AuthTokenResponse tokenResponse(long userId, String refreshToken, Long refreshExpiresIn) {
         UserQueryResult user = userService.get(userId);
-        String email = user.email() == null ? "" : user.email();
         return new AuthTokenResponse(
                 jwtService.issue(userId),
                 "Bearer",
                 jwtService.getExpiresIn().toSeconds(),
+                refreshToken,
+                refreshExpiresIn,
                 new AccountResponse(
                         user.id(),
                         user.nickname(),
@@ -222,5 +249,13 @@ public class AuthService {
                         user.lastLoginAt(),
                         user.createdAt(),
                         user.updatedAt()));
+    }
+
+    private RefreshTokenService requireRefreshTokenService() {
+        RefreshTokenService service = refreshTokenService.getIfAvailable();
+        if (service == null) {
+            throw new BusinessException(AuthErrorCode.AUTH_REFRESH_UNAVAILABLE);
+        }
+        return service;
     }
 }

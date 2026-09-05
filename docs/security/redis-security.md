@@ -2,7 +2,7 @@
 
 ## 용도
 
-Redis는 향후 Refresh Token Rotation, 로그아웃 세션 폐기와 인증 endpoint rate limit에 사용한다. 현재는 연결 설정과 TTL이 강제된 보안 저장소만 준비되어 있으며 Refresh Token은 아직 발급하지 않는다.
+Redis는 Refresh Token Rotation, 로그아웃 세션 폐기와 인증 endpoint rate limit에 사용한다. Refresh Token 원문은 저장하지 않고 Lua script로 발급·회전·폐기와 요청 횟수 증가를 원자적으로 처리한다.
 
 ## 활성화
 
@@ -86,9 +86,10 @@ Refresh Token은 원문 대신 해시만 저장한다. 세션 값은 내부 사�
 ## 장애 정책
 
 - Refresh Token 갱신·재사용 검증은 Redis 장애 시 fail-closed로 처리한다.
-- 로그인·초대 코드 rate limit은 보안과 가용성 요구를 따로 확정한 후 장애 정책을 적용한다.
+- 회원가입·로그인·Google 로그인·토큰 갱신 rate limit은 Redis 장애 시 fail-closed로 처리한다.
+- 초대 코드·AI·외부 API rate limit은 각 기능의 보안과 가용성 요구를 확정한 후 장애 정책을 적용한다.
 - Redis 예외에 접속 정보나 저장값을 포함해 로그로 출력하지 않는다.
 
-## 다음 구현
+## 배포 환경 검증
 
-Refresh Token Rotation은 단순 `get` 후 `put`으로 구현하지 않는다. 동시 요청에서 하나의 Refresh Token만 성공하도록 Lua script나 Redis transaction으로 소비·교체를 원자적으로 구현한다.
+실제 Redis에서 Refresh Token 동시 회전, TTL, 재사용 family 폐기와 Rate Limit의 다중 인스턴스 공유 동작을 확인한다. 단위 테스트는 Java 처리 경로를 검증하며 실제 Redis의 원자성 검증을 대체하지 않는다.

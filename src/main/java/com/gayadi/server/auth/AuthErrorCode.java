@@ -17,12 +17,24 @@ public enum AuthErrorCode implements ErrorCode {
             "error.auth.account-unavailable"),
     AUTH_LOGIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_LOGIN_RATE_LIMITED",
             "error.auth.login-rate-limited"),
+    AUTH_REQUEST_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_REQUEST_RATE_LIMITED",
+            "error.auth.request-rate-limited"),
+    AUTH_RATE_LIMIT_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_RATE_LIMIT_UNAVAILABLE",
+            "error.auth.rate-limit-unavailable"),
 
     // Token - 로그인 토큰 형식, 서명 및 만료
     AUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_INVALID",
             "error.auth.token-invalid"),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_EXPIRED",
             "error.auth.token-expired"),
+    AUTH_REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_TOKEN_INVALID",
+            "error.auth.refresh-token-invalid"),
+    AUTH_REFRESH_TOKEN_REUSED(HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_TOKEN_REUSED",
+            "error.auth.refresh-token-reused"),
+    AUTH_REFRESH_SESSION_REVOKED(HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_SESSION_REVOKED",
+            "error.auth.refresh-session-revoked"),
+    AUTH_REFRESH_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_REFRESH_UNAVAILABLE",
+            "error.auth.refresh-unavailable"),
 
     // Google - Google ID 토큰 로그인
     AUTH_GOOGLE_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_GOOGLE_NOT_CONFIGURED",

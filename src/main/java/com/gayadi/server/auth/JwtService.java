@@ -26,14 +26,14 @@ import java.util.UUID;
 @Service
 public class JwtService {
 
-    private static final String HEADER_JSON = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final String ACCESS_TOKEN_TYPE = "access";
     private static final int GENERATED_SECRET_BYTES = 32;
     private static final long ALLOWED_CLOCK_SKEW_SECONDS = 60;
 
     private final JsonSupport json;
-    private final byte[] secret;
+    private final Map<String, byte[]> verificationKeys;
+    private final String activeKeyId;
     private final Duration expiresIn;
     private final String issuer;
     private final String audience;
@@ -42,9 +42,12 @@ public class JwtService {
             JsonSupport json,
             Environment environment,
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expires-in-seconds:604800}") long expiresInSeconds,
+            @Value("${app.jwt.expires-in-seconds:900}") long expiresInSeconds,
             @Value("${app.jwt.issuer:gayadi-server}") String issuer,
-            @Value("${app.jwt.audience:gayadi-android}") String audience) {
+            @Value("${app.jwt.audience:gayadi-android}") String audience,
+            @Value("${app.jwt.key-id:current}") String keyId,
+            @Value("${app.jwt.previous-secret:}") String previousSecret,
+            @Value("${app.jwt.previous-key-id:previous}") String previousKeyId) {
         if (expiresInSeconds <= 0) {
             throw new IllegalStateException("JWT 만료 시간은 0초보다 커야 합니다.");
         }
@@ -61,9 +64,15 @@ public class JwtService {
             throw new IllegalStateException("외부 DB 환경에는 32자 이상의 안전한 JWT 비밀키가 필요합니다.");
         }
         this.json = json;
-        this.secret = configuredSecret.isEmpty()
+        byte[] activeSecret = configuredSecret.isEmpty()
                 ? generatedDevelopmentSecret()
                 : configuredSecret.getBytes(StandardCharsets.UTF_8);
+        this.activeKeyId = requireSetting(keyId, "JWT key id");
+        this.verificationKeys = verificationKeys(
+                activeKeyId,
+                activeSecret,
+                previousKeyId,
+                previousSecret);
         this.expiresIn = Duration.ofSeconds(expiresInSeconds);
         this.issuer = requireSetting(issuer, "JWT issuer");
         this.audience = requireSetting(audience, "JWT audience");
@@ -81,10 +90,15 @@ public class JwtService {
         payload.put("iat", now.getEpochSecond());
         payload.put("exp", now.plus(expiresIn).getEpochSecond());
 
-        String header = base64Url(HEADER_JSON.getBytes(StandardCharsets.UTF_8));
+        Map<String, Object> headerClaims = new LinkedHashMap<>();
+        headerClaims.put("alg", "HS256");
+        headerClaims.put("typ", "JWT");
+        headerClaims.put("kid", activeKeyId);
+
+        String header = base64Url(json.write(headerClaims).getBytes(StandardCharsets.UTF_8));
         String body = base64Url(json.write(payload).getBytes(StandardCharsets.UTF_8));
         String signingInput = header + "." + body;
-        String signature = base64Url(sign(signingInput));
+        String signature = base64Url(sign(signingInput, verificationKeys.get(activeKeyId)));
         return signingInput + "." + signature;
     }
 
@@ -121,7 +135,16 @@ public class JwtService {
             throw unauthorized();
         }
         String signingInput = parts[0] + "." + parts[1];
-        byte[] expected = sign(signingInput);
+        Map<String, Object> header = decodeJson(parts[0]);
+        String keyId = header.get("kid") == null ? null : header.get("kid").toString();
+        byte[] verificationKey = keyId == null ? null : verificationKeys.get(keyId);
+        if (!"HS256".equals(header.get("alg"))
+                || !"JWT".equals(header.get("typ"))
+                || verificationKey == null) {
+            throw unauthorized();
+        }
+
+        byte[] expected = sign(signingInput, verificationKey);
         byte[] actual;
         try {
             actual = decode(parts[2]);
@@ -129,11 +152,6 @@ public class JwtService {
             throw unauthorized();
         }
         if (!MessageDigest.isEqual(expected, actual)) {
-            throw unauthorized();
-        }
-
-        Map<String, Object> header = decodeJson(parts[0]);
-        if (!"HS256".equals(header.get("alg")) || !"JWT".equals(header.get("typ"))) {
             throw unauthorized();
         }
 
@@ -195,10 +213,10 @@ public class JwtService {
         return Long.parseLong(value.toString());
     }
 
-    private byte[] sign(String signingInput) {
+    private byte[] sign(String signingInput, byte[] signingKey) {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            mac.init(new SecretKeySpec(secret, HMAC_ALGORITHM));
+            mac.init(new SecretKeySpec(signingKey, HMAC_ALGORITHM));
             return mac.doFinal(signingInput.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new IllegalStateException("JWT 서명 생성에 실패했습니다.", e);
@@ -217,6 +235,28 @@ public class JwtService {
         byte[] value = new byte[GENERATED_SECRET_BYTES];
         new SecureRandom().nextBytes(value);
         return value;
+    }
+
+    private static Map<String, byte[]> verificationKeys(
+            String activeKeyId,
+            byte[] activeSecret,
+            String previousKeyId,
+            String previousSecret) {
+        Map<String, byte[]> keys = new LinkedHashMap<>();
+        keys.put(activeKeyId, activeSecret);
+
+        if (previousSecret != null && !previousSecret.isBlank()) {
+            String normalizedPreviousKeyId = requireSetting(previousKeyId, "JWT previous key id");
+            if (activeKeyId.equals(normalizedPreviousKeyId)) {
+                throw new IllegalStateException("현재 JWT key id와 이전 key id는 달라야 합니다.");
+            }
+            byte[] previous = previousSecret.trim().getBytes(StandardCharsets.UTF_8);
+            if (previous.length < GENERATED_SECRET_BYTES) {
+                throw new IllegalStateException("이전 JWT 비밀키도 32자 이상이어야 합니다.");
+            }
+            keys.put(normalizedPreviousKeyId, previous);
+        }
+        return Map.copyOf(keys);
     }
 
     private static String requireSetting(String value, String name) {

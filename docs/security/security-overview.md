@@ -4,7 +4,7 @@
 
 GAYADI는 Android 앱을 주 클라이언트로 사용하는 Stateless JSON REST API다. 현재 HTTP 요청 경계, Bearer Access Token, 공통 401·403 응답, 입력 상한과 로그 마스킹을 적용한다.
 
-이 문서의 “현재 적용”은 코드와 자동 테스트로 확인된 범위를 뜻한다. Redis·RTR, 전체 인가 감사, DB 필드 암호화와 운영 모니터링은 아직 적용된 기능이 아니다.
+이 문서의 “현재 적용”은 코드와 자동 테스트로 확인된 범위를 뜻한다. DB 필드 암호화와 운영 모니터링은 아직 적용된 기능이 아니다.
 
 ## 요청 처리 흐름
 
@@ -49,7 +49,7 @@ CORS는 [`CorsProperties`](../../src/main/java/com/gayadi/server/config/security
 
 ## Redis 보안 저장소
 
-Spring Data Redis와 Lettuce 연결 설정이 준비되어 있다. 보안 저장소는 기본적으로 비활성화되며, 활성화하면 용도별 key namespace와 필수 TTL을 강제한다. Refresh Token·RTR·rate limit 기능은 아직 이 저장소에 연결되지 않았다. 상세 설정은 [Redis 보안 기반](redis-security.md)을 확인한다.
+Spring Data Redis와 Lettuce 연결 설정이 준비되어 있다. 보안 저장소를 활성화하면 Refresh Token Rotation과 인증·초대·AI·관리 API Rate Limit이 용도별 key namespace와 TTL을 사용한다. 두 기능 모두 Redis 장애 시 보호를 우회하지 않는 fail-closed 정책을 적용한다. 상세 설정은 [Redis 보안 기반](redis-security.md)을 확인한다.
 
 ## 입력과 데이터 보호
 
@@ -71,6 +71,9 @@ Spring Data Redis와 Lettuce 연결 설정이 준비되어 있다. 보안 저장
 | `AuthFlowIntegrationTests` | 가입·로그인·잘못된 JWT·계정 잠금 |
 | `GoogleAuthFlowIntegrationTests` | Google ID Token 로그인과 안전한 오류 응답 |
 | `JwtServiceTest` | 서명, header, issuer, audience, token type과 만료 |
+| `RefreshTokenServiceTest` | Refresh Token 발급·회전·재사용·폐기와 Redis 장애 |
+| `AuthRateLimitFilterTest` | 인증 요청 허용·429 차단과 Redis 장애 503 처리 |
+| `AuthorizationIntegrationTests` | 소유자 위조와 여행 하위 자원 IDOR/BOLA 차단 |
 | `ControllerRequestValidationTests` | DTO 요청 크기·형식 제한 |
 | `SensitiveDataMaskerTest` | 로그 민감정보 마스킹 |
 
@@ -78,9 +81,9 @@ Spring Data Redis와 Lettuce 연결 설정이 준비되어 있다. 보안 저장
 
 현재 보안 기반은 신규 API를 개발하기 전에 사용할 수 있는 전역 기준이다. 다음은 별도 구현과 운영 검증이 필요하다.
 
-- Refresh Token·Redis·RTR·로그아웃 세션 폐기
-- endpoint별 rate limit과 구조화된 보안 이벤트
-- 전체 도메인 IDOR/BOLA 인가 감사
+- 실제 Redis 환경의 RTR 동시성·TTL과 Rate Limit 다중 인스턴스 검증
+- 초대 코드·AI·외부 API의 용도별 rate limit과 구조화된 보안 이벤트
+- 새 API 추가 시 권한표에 따른 지속적인 IDOR/BOLA 회귀 테스트
 - 필요한 개인정보의 KMS 기반 DB 암호화
 - CI 취약점·secret·container image 검사
 - 운영 HTTPS·proxy·CORS·CSP·모니터링 검증

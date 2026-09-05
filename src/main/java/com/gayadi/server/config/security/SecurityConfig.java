@@ -1,11 +1,13 @@
 package com.gayadi.server.config.security;
 
 import com.gayadi.server.auth.JwtAuthenticationFilter;
+import com.gayadi.server.auth.AuthRateLimitFilter;
 import com.gayadi.server.common.security.ApiAccessDeniedHandler;
 import com.gayadi.server.common.security.ApiAuthenticationEntryPoint;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.Customizer;
@@ -21,7 +23,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Configuration
-@EnableConfigurationProperties(CorsProperties.class)
+@EnableConfigurationProperties({CorsProperties.class, AuthRateLimitProperties.class})
 public class SecurityConfig {
 
     private static final List<String> CORS_ALLOWED_METHODS = List.of(
@@ -42,8 +44,12 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
+            ObjectProvider<AuthRateLimitFilter> authRateLimitFilter,
             ApiAuthenticationEntryPoint authenticationEntryPoint,
             ApiAccessDeniedHandler accessDeniedHandler) throws Exception {
+        authRateLimitFilter.ifAvailable(filter ->
+                http.addFilterBefore(filter, JwtAuthenticationFilter.class));
+
         return http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
@@ -68,6 +74,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/registrations",
                                 "/api/v1/auth/tokens",
                                 "/api/v1/auth/google-tokens",
+                                "/api/v1/auth/token-refreshes",
+                                "/api/v1/auth/sessions/current",
                                 "/api/openapi/**",
                                 "/api/docs/**",
                                 "/api/docs",

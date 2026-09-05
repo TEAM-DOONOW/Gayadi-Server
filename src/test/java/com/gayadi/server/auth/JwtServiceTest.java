@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class JwtServiceTest {
 
     private static final String SECRET = "0123456789abcdef0123456789abcdef";
-    private static final String HEADER = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+    private static final String HEADER = "{\"alg\":\"HS256\",\"typ\":\"JWT\",\"kid\":\"test-current\"}";
     private static final String ISSUER = "gayadi-server";
     private static final String AUDIENCE = "gayadi-android";
 
@@ -31,7 +31,10 @@ class JwtServiceTest {
             SECRET,
             3600,
             ISSUER,
-            AUDIENCE);
+            AUDIENCE,
+            "test-current",
+            "",
+            "test-previous");
 
     @Test
     void parsesIssuedToken() {
@@ -57,9 +60,38 @@ class JwtServiceTest {
         Map<String, Object> claims = validClaims();
 
         assertThatThrownBy(() -> service.parseAndGetUserId(
-                signedToken("{\"alg\":\"none\",\"typ\":\"JWT\"}", claims)))
+                signedToken("{\"alg\":\"none\",\"typ\":\"JWT\",\"kid\":\"test-current\"}", claims)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(this::assertInvalidToken);
+    }
+
+    @Test
+    void rejectsTokenWithUnknownKeyId() {
+        assertThatThrownBy(() -> service.parseAndGetUserId(signedToken(
+                "{\"alg\":\"HS256\",\"typ\":\"JWT\",\"kid\":\"unknown\"}",
+                validClaims())))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(this::assertInvalidToken);
+    }
+
+    @Test
+    void acceptsPreviousKeyDuringRotationOverlap() {
+        String previousSecret = "abcdef0123456789abcdef0123456789";
+        JwtService rotatingService = new JwtService(
+                json,
+                new MockEnvironment(),
+                SECRET,
+                3600,
+                ISSUER,
+                AUDIENCE,
+                "test-current",
+                previousSecret,
+                "test-previous");
+        String previousHeader = "{\"alg\":\"HS256\",\"typ\":\"JWT\",\"kid\":\"test-previous\"}";
+
+        String token = signedToken(previousHeader, validClaims(), previousSecret);
+
+        assertThat(rotatingService.parseAndGetUserId(token)).isEqualTo(42L);
     }
 
     @Test
@@ -111,10 +143,14 @@ class JwtServiceTest {
     }
 
     private String signedToken(String headerJson, Map<String, Object> claims) {
+        return signedToken(headerJson, claims, SECRET);
+    }
+
+    private String signedToken(String headerJson, Map<String, Object> claims, String secret) {
         String header = base64Url(headerJson.getBytes(StandardCharsets.UTF_8));
         String payload = base64Url(json.write(claims).getBytes(StandardCharsets.UTF_8));
         String signingInput = header + "." + payload;
-        return signingInput + "." + base64Url(sign(signingInput));
+        return signingInput + "." + base64Url(sign(signingInput, secret));
     }
 
     private Map<String, Object> validClaims() {
@@ -143,10 +179,10 @@ class JwtServiceTest {
                 .isEqualTo(AuthErrorCode.AUTH_TOKEN_INVALID);
     }
 
-    private byte[] sign(String value) {
+    private byte[] sign(String value, String secret) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             return mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
         } catch (Exception exception) {
             throw new IllegalStateException(exception);
