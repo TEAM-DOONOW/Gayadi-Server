@@ -17,6 +17,7 @@ import java.util.Base64;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 경량 HMAC-SHA256 JWT 구현.
@@ -27,19 +28,29 @@ public class JwtService {
 
     private static final String HEADER_JSON = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
     private static final String HMAC_ALGORITHM = "HmacSHA256";
+    private static final String ACCESS_TOKEN_TYPE = "access";
     private static final int GENERATED_SECRET_BYTES = 32;
+    private static final long ALLOWED_CLOCK_SKEW_SECONDS = 60;
 
     private final JsonSupport json;
     private final byte[] secret;
     private final Duration expiresIn;
+    private final String issuer;
+    private final String audience;
 
     public JwtService(
             JsonSupport json,
             Environment environment,
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expires-in-seconds:604800}") long expiresInSeconds) {
+            @Value("${app.jwt.expires-in-seconds:604800}") long expiresInSeconds,
+            @Value("${app.jwt.issuer:gayadi-server}") String issuer,
+            @Value("${app.jwt.audience:gayadi-android}") String audience) {
+        if (expiresInSeconds <= 0) {
+            throw new IllegalStateException("JWT 만료 시간은 0초보다 커야 합니다.");
+        }
+
         String configuredSecret = secret == null ? "" : secret.trim();
-        boolean weakSecret = configuredSecret.length() < GENERATED_SECRET_BYTES
+        boolean weakSecret = configuredSecret.getBytes(StandardCharsets.UTF_8).length < GENERATED_SECRET_BYTES
                 || configuredSecret.toLowerCase(java.util.Locale.ROOT).contains("change-me");
         if (Arrays.asList(environment.getActiveProfiles()).contains("prod") && weakSecret) {
             throw new IllegalStateException("운영 환경에는 32자 이상의 안전한 JWT 비밀키가 필요합니다.");
@@ -54,14 +65,19 @@ public class JwtService {
                 ? generatedDevelopmentSecret()
                 : configuredSecret.getBytes(StandardCharsets.UTF_8);
         this.expiresIn = Duration.ofSeconds(expiresInSeconds);
+        this.issuer = requireSetting(issuer, "JWT issuer");
+        this.audience = requireSetting(audience, "JWT audience");
     }
 
-    /** 인증 토큰 인증 토큰 값을 검증하거나 변환합니다. */
-    public String issue(long userId, String email) {
+    /** Android 클라이언트가 API 인증에 사용할 Access Token을 발급합니다. */
+    public String issue(long userId) {
         Instant now = Instant.now();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", String.valueOf(userId));
-        payload.put("email", email);
+        payload.put("iss", issuer);
+        payload.put("aud", audience);
+        payload.put("jti", UUID.randomUUID().toString());
+        payload.put("token_type", ACCESS_TOKEN_TYPE);
         payload.put("iat", now.getEpochSecond());
         payload.put("exp", now.plus(expiresIn).getEpochSecond());
 
@@ -80,7 +96,11 @@ public class JwtService {
             throw unauthorized();
         }
         try {
-            return Long.parseLong(sub.toString());
+            long userId = Long.parseLong(sub.toString());
+            if (userId <= 0) {
+                throw unauthorized();
+            }
+            return userId;
         } catch (NumberFormatException e) {
             throw unauthorized();
         }
@@ -112,24 +132,31 @@ public class JwtService {
             throw unauthorized();
         }
 
-        byte[] payload;
-        try {
-            payload = decode(parts[1]);
-        } catch (IllegalArgumentException e) {
+        Map<String, Object> header = decodeJson(parts[0]);
+        if (!"HS256".equals(header.get("alg")) || !"JWT".equals(header.get("typ"))) {
             throw unauthorized();
         }
-        Map<String, Object> claims;
-        try {
-            claims = json.read(
-                    new String(payload, StandardCharsets.UTF_8),
-                    Map.class);
-        } catch (Exception e) {
-            throw unauthorized();
-        }
+
+        Map<String, Object> claims = decodeJson(parts[1]);
+
         try {
             long now = Instant.now().getEpochSecond();
-            if (claims.get("exp") == null || toLong(claims.get("exp")) <= now) {
+            long issuedAt = requiredLong(claims, "iat");
+            long expiration = requiredLong(claims, "exp");
+
+            if (expiration <= now) {
                 throw new BusinessException(AuthErrorCode.AUTH_TOKEN_EXPIRED);
+            }
+
+            boolean invalidClaims = !issuer.equals(claims.get("iss"))
+                    || !audience.equals(claims.get("aud"))
+                    || !ACCESS_TOKEN_TYPE.equals(claims.get("token_type"))
+                    || blank(claims.get("jti"))
+                    || issuedAt > now + ALLOWED_CLOCK_SKEW_SECONDS
+                    || expiration <= issuedAt;
+
+            if (invalidClaims) {
+                throw unauthorized();
             }
         } catch (BusinessException exception) {
             throw exception;
@@ -137,6 +164,28 @@ public class JwtService {
             throw unauthorized();
         }
         return claims;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> decodeJson(String encoded) {
+        try {
+            byte[] decoded = decode(encoded);
+            return json.read(new String(decoded, StandardCharsets.UTF_8), Map.class);
+        } catch (RuntimeException exception) {
+            throw unauthorized();
+        }
+    }
+
+    private long requiredLong(Map<String, Object> claims, String name) {
+        Object value = claims.get(name);
+        if (value == null) {
+            throw unauthorized();
+        }
+        return toLong(value);
+    }
+
+    private boolean blank(Object value) {
+        return value == null || value.toString().isBlank();
     }
 
     private long toLong(Object value) {
@@ -168,6 +217,13 @@ public class JwtService {
         byte[] value = new byte[GENERATED_SECRET_BYTES];
         new SecureRandom().nextBytes(value);
         return value;
+    }
+
+    private static String requireSetting(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " 설정이 필요합니다.");
+        }
+        return value.trim();
     }
 
     private BusinessException unauthorized() {

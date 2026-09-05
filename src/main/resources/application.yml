@@ -1,6 +1,8 @@
 spring:
   config:
-    import: optional:file:.env[.properties]
+    import:
+      - optional:file:.env[.properties]
+      - optional:configtree:/run/secrets/
   application:
     name: gayadi-server
   messages:
@@ -36,8 +38,18 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:h2:mem:gayadi;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:}
+    password: ${db_password:${DB_PASSWORD:}}
     driver-class-name: ${DB_DRIVER:org.h2.Driver}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
+      password: ${redis_password:${REDIS_PASSWORD:}}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_READ_TIMEOUT:2s}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
   flyway:
     enabled: true
   h2:
@@ -49,7 +61,7 @@ spring:
       chat: ${AI_CHAT_MODEL:none}
       embedding: ${AI_EMBEDDING_MODEL:none}
     openai:
-      api-key: ${GROQ_API_KEY:${OPENAI_API_KEY:}}
+      api-key: ${groq_api_key:${GROQ_API_KEY:}}
       base-url: ${AI_LLM_BASE_URL:https://api.openai.com}
       chat:
         model: ${AI_LLM_MODEL:gpt-4o-mini}
@@ -66,19 +78,19 @@ firebase:
 
 tour:
   api:
-    key: ${TOUR_API_KEY:}
+    key: ${tour_api_key:${TOUR_API_KEY:}}
     base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
     mobile-app: ${TOUR_API_MOBILE_APP:Gayadi}
 
 congestion:
   api:
-    key: ${CONGESTION_API_KEY:${TOUR_API_KEY:}}
+    key: ${congestion_api_key:${CONGESTION_API_KEY:}}
     base-url: ${CONGESTION_API_BASE_URL:https://apis.data.go.kr/B551011/TatsCnctrRateService}
     mobile-app: ${CONGESTION_API_MOBILE_APP:${TOUR_API_MOBILE_APP:Gayadi}}
 
 weather:
   api:
-    key: ${WEATHER_API_KEY:${TOUR_API_KEY:}}
+    key: ${weather_api_key:${WEATHER_API_KEY:}}
     base-url: ${WEATHER_API_BASE_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
 
 auth:
@@ -89,11 +101,19 @@ auth:
 route:
   provider: ${ROUTE_PROVIDER:local}
   tmap:
-    app-key: ${SKT_APPKEY:}
+    app-key: ${skt_appkey:${SKT_APPKEY:}}
     base-url: ${TRANSIT_API_BASE_URL:https://apis.openapi.sk.com/transit/routes}
     fallback-to-local: ${TMAP_FALLBACK_TO_LOCAL:true}
 
 app:
+  security:
+    cors:
+      # TODO: 웹 클라이언트 도메인이 확정되면 HTTPS Origin을 쉼표로 구분해 설정한다.
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+    redis:
+      enabled: ${SECURITY_REDIS_ENABLED:false}
+      key-prefix: ${SECURITY_REDIS_KEY_PREFIX:gayadi:local:security}
+      max-ttl: ${SECURITY_REDIS_MAX_TTL:90d}
   ai:
     enabled: ${APP_AI_ENABLED:false}
     embedding:
@@ -102,8 +122,10 @@ app:
   admin:
     user-id: ${ADMIN_USER_ID:0}
   jwt:
-    secret: ${JWT_SECRET:}
+    secret: ${jwt_secret:${JWT_SECRET:}}
     expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:604800}
+    issuer: ${JWT_ISSUER:gayadi-server}
+    audience: ${JWT_AUDIENCE:gayadi-android}
 
 springdoc:
   api-docs:
@@ -118,6 +140,9 @@ server:
   shutdown: graceful
 
 management:
+  health:
+    redis:
+      enabled: ${SECURITY_REDIS_ENABLED:false}
   endpoints:
     web:
       exposure:

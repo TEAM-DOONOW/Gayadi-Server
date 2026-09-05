@@ -3,6 +3,7 @@ package com.gayadi.server.survey.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
 public class SurveyResponseRequest {
 
     @NotEmpty(message = "{validation.survey.answers.required}")
+    @Size(max = 100, message = "{validation.survey.answers.size}")
     @Valid
     private List<SurveyResponseItem> answers;
 

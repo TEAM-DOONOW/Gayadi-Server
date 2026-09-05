@@ -32,6 +32,8 @@ build/
 ### Local runtime / secrets ###
 .env
 .env.*
+secrets/
+secerts/**
 !.env.example
 application-local.yml
 *.local.yml
