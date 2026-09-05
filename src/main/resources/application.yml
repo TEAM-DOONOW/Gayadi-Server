@@ -107,9 +107,23 @@ route:
 
 app:
   security:
+    auth-rate-limit:
+      enabled: ${SECURITY_AUTH_RATE_LIMIT_ENABLED:${SECURITY_REDIS_ENABLED:false}}
+      registration-limit: ${SECURITY_AUTH_REGISTRATION_LIMIT:5}
+      login-limit: ${SECURITY_AUTH_LOGIN_LIMIT:10}
+      google-login-limit: ${SECURITY_AUTH_GOOGLE_LOGIN_LIMIT:10}
+      refresh-limit: ${SECURITY_AUTH_REFRESH_LIMIT:30}
+      invitation-limit: ${SECURITY_INVITATION_LIMIT:10}
+      ai-limit: ${SECURITY_AI_LIMIT:20}
+      admin-limit: ${SECURITY_ADMIN_LIMIT:2}
+      window: ${SECURITY_AUTH_RATE_LIMIT_WINDOW:1m}
     cors:
       # TODO: 웹 클라이언트 도메인이 확정되면 HTTPS Origin을 쉼표로 구분해 설정한다.
       allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+    refresh-token:
+      enabled: ${SECURITY_REFRESH_TOKEN_ENABLED:${SECURITY_REDIS_ENABLED:false}}
+      idle-timeout: ${SECURITY_REFRESH_TOKEN_IDLE_TIMEOUT:30d}
+      absolute-lifetime: ${SECURITY_REFRESH_TOKEN_ABSOLUTE_LIFETIME:90d}
     redis:
       enabled: ${SECURITY_REDIS_ENABLED:false}
       key-prefix: ${SECURITY_REDIS_KEY_PREFIX:gayadi:local:security}
@@ -123,7 +137,10 @@ app:
     user-id: ${ADMIN_USER_ID:0}
   jwt:
     secret: ${jwt_secret:${JWT_SECRET:}}
-    expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:604800}
+    key-id: ${JWT_KEY_ID:current}
+    previous-secret: ${JWT_PREVIOUS_SECRET:}
+    previous-key-id: ${JWT_PREVIOUS_KEY_ID:previous}
+    expires-in-seconds: ${JWT_EXPIRES_IN_SECONDS:900}
     issuer: ${JWT_ISSUER:gayadi-server}
     audience: ${JWT_AUDIENCE:gayadi-android}
 

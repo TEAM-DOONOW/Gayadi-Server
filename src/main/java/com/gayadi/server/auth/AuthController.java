@@ -2,6 +2,7 @@ package com.gayadi.server.auth;
 
 import com.gayadi.server.auth.dto.request.GoogleLoginRequest;
 import com.gayadi.server.auth.dto.request.LoginRequest;
+import com.gayadi.server.auth.dto.request.RefreshTokenRequest;
 import com.gayadi.server.auth.dto.request.SignupRequest;
 import com.gayadi.server.auth.dto.response.AuthTokenResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,5 +52,21 @@ public class AuthController {
             content = @Content(schema = @Schema(implementation = AuthTokenResponse.class)))
     public AuthTokenResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
         return service.loginWithGoogle(request.idToken());
+    }
+
+    @PostMapping("/token-refreshes")
+    @Operation(summary = "로그인 토큰 갱신")
+    @ApiResponse(responseCode = "200", description = "기존 Refresh Token을 회전하고 새 토큰 쌍을 발급했습니다.",
+            content = @Content(schema = @Schema(implementation = AuthTokenResponse.class)))
+    public AuthTokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return service.refresh(request.refreshToken());
+    }
+
+    @DeleteMapping("/sessions/current")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "현재 로그인 세션 종료")
+    @ApiResponse(responseCode = "204", description = "현재 Refresh 세션을 종료했습니다.")
+    public void logout(@Valid @RequestBody RefreshTokenRequest request) {
+        service.logout(request.refreshToken());
     }
 }

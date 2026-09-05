@@ -1,6 +1,6 @@
 services:
   gayadi-be:
-    image: gayadi-cr.kr.ncr.ntruss.com/gayadi-be:latest
+    image: gayadi-cr.kr.ncr.ntruss.com/gayadi-be-dev:latest
     container_name: gayadi-be-container
     restart: unless-stopped
 
