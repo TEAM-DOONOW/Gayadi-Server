@@ -31,6 +31,7 @@ public record EventObservationRequest(
         Severity severity,
 
         @NotEmpty(message = "{validation.event.values.required}")
+        @Size(max = 32, message = "{validation.event.values.size}")
         Map<String, Object> values
 ) {
 }

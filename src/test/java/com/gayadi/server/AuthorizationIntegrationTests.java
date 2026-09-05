@@ -59,9 +59,18 @@ class AuthorizationIntegrationTests {
         HttpResponse<String> outsiderStatus = request(
                 "PATCH", "/api/v1/trips/" + tripId + "/status", outsiderToken,
                 "{\"status\":\"ONGOING\"}");
+        HttpResponse<String> outsiderSchedules = request(
+                "GET", "/api/v1/trips/" + tripId + "/schedules", outsiderToken, null);
+        HttpResponse<String> outsiderExpenses = request(
+                "GET", "/api/v1/trips/" + tripId + "/expenses", outsiderToken, null);
+        HttpResponse<String> outsiderDashboard = request(
+                "GET", "/api/v1/trips/" + tripId + "/dashboard", outsiderToken, null);
 
         Assertions.assertThat(outsiderRead.statusCode()).isEqualTo(403);
         Assertions.assertThat(outsiderStatus.statusCode()).isEqualTo(403);
+        Assertions.assertThat(outsiderSchedules.statusCode()).isEqualTo(403);
+        Assertions.assertThat(outsiderExpenses.statusCode()).isEqualTo(403);
+        Assertions.assertThat(outsiderDashboard.statusCode()).isEqualTo(403);
 
         HttpResponse<String> deleted = request(
                 "DELETE", "/api/v1/trips/" + tripId, ownerToken, null);
