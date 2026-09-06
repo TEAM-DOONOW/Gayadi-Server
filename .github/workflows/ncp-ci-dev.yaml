@@ -29,7 +29,7 @@ jobs:
 
       # 1. 일단 로컬에만 빌드
       - name: Build image locally
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
