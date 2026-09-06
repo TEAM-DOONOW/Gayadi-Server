@@ -139,3 +139,15 @@ validation.favorite.memo.size=메모는 최대 {max}자까지 입력할 수 있�
 ```
 
 한국어와 영어 파일에 같은 키를 추가하고 DTO 어노테이션에서는 메시지 키만 참조한다.
+
+## 사용자 입력 보안
+
+기본 클라이언트는 Android 네이티브 앱이며 일반 JSON 문자열을 HTML로 간주하지 않는다.
+
+- 코드·상태·날짜는 enum이나 `@Pattern` allowlist를 사용한다.
+- 제목·메모·소개는 필수 여부, 길이와 업무 규칙을 검증한다.
+- 사용자가 입력하고 다른 사용자가 클릭할 수 있는 외부 링크는 `@HttpUrl`로 HTTP·HTTPS 절대 URL만 허용한다.
+- WebView나 HTML 본문을 추가하는 시점에 sanitizer·JavaScript·navigation 정책을 별도로 설계한다.
+- 서버가 사용자 URL을 직접 호출하는 경우에는 별도 SSRF 검증이 필요하다.
+
+세부 적용법은 [Android 입력과 링크 보안 정책](../security/xss-input-policy.md)을 따른다.

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
 @Schema(name = "ScheduleOrderRequest", description = "일정 항목 정렬 순서")
 public class ScheduleOrderRequest {
     @NotEmpty(message = "{validation.schedule.order.required}")
+    @Size(max = 1000, message = "{validation.schedule.order.size}")
     private List<@NotNull(message = "{validation.schedule.order.item-required}") Long> scheduleIds;
 
     public List<Long> getScheduleIds() {

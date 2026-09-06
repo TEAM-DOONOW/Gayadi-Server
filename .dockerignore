@@ -5,6 +5,8 @@
 build
 logs
 .env*
+secrets/
+secrets/*
 *.iml
 *.log
 

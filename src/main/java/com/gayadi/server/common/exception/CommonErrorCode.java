@@ -67,6 +67,14 @@ public enum CommonErrorCode implements ErrorCode {
             HttpStatus.FORBIDDEN,
             "ACCESS_DENIED",
             "error.common.access-denied"),
+    REQUEST_RATE_LIMITED(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "REQUEST_RATE_LIMITED",
+            "error.common.request-rate-limited"),
+    SECURITY_STORE_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "SECURITY_STORE_UNAVAILABLE",
+            "error.common.security-store-unavailable"),
 
     // Server - 예상하지 못한 내부 오류
     INTERNAL_SERVER_ERROR(
