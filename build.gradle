@@ -71,7 +71,7 @@ dependencies {
         exclude group: 'io.swagger.core.v3', module: 'swagger-annotations'
     }
     implementation 'org.springframework.ai:spring-ai-vector-store'
-    implementation 'com.google.firebase:firebase-admin:9.4.3'
+    implementation 'com.google.firebase:firebase-admin:9.10.0'
 
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'org.postgresql:postgresql'
