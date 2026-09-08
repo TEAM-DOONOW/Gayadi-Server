@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /** UpdateProfileRequest API 요청 데이터를 전달합니다. */
+@Schema(name = "UpdateProfileRequest", description = "내 프로필 수정 요청")
 public record UpdateProfileRequest(
         @Schema(description = "닉네임", example = "가야디", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "{validation.auth.nickname.required}")

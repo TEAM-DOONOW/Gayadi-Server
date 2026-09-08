@@ -138,6 +138,17 @@ class JwtServiceTest {
                         .isEqualTo(AuthErrorCode.AUTH_TOKEN_EXPIRED));
     }
 
+    @Test
+    void issuedTokenWithPastExpirationIsExpired() {
+        Instant now = Instant.now();
+        String token = service.issue(7L, now.minusSeconds(120), now.minusSeconds(60));
+
+        assertThatThrownBy(() -> service.parseAndGetUserId(token))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(AuthErrorCode.AUTH_TOKEN_EXPIRED));
+    }
+
     private String signedToken(Map<String, Object> claims) {
         return signedToken(HEADER, claims);
     }

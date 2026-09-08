@@ -102,12 +102,52 @@ class GoogleAuthFlowIntegrationTests {
                 .isEqualTo(userId);
     }
 
+    @Test
+    void googleTokenCanReadProfileAndWithdraw() throws Exception {
+        HttpResponse<String> login = post("/api/v1/auth/google-tokens",
+                "{\"idToken\":\"withdraw-google\"}");
+        Assertions.assertThat(login.statusCode()).isEqualTo(200);
+        JsonNode body = json.readTree(login.body());
+        String token = body.path("accessToken").asString();
+        long userId = body.path("user").path("id").asLong();
+
+        HttpResponse<String> me = request("GET", "/api/v1/users/current", token, null);
+        Assertions.assertThat(me.statusCode()).isEqualTo(200);
+        Assertions.assertThat(json.readTree(me.body()).path("id").asLong()).isEqualTo(userId);
+        Assertions.assertThat(json.readTree(me.body()).path("nickname").asString())
+                .isEqualTo("탈퇴구글");
+
+        HttpResponse<String> withdrawn = request("DELETE", "/api/v1/users/current", token, null);
+        Assertions.assertThat(withdrawn.statusCode()).isEqualTo(204);
+
+        HttpResponse<String> rejected = request("GET", "/api/v1/users/current", token, null);
+        Assertions.assertThat(rejected.statusCode()).isEqualTo(403);
+        Assertions.assertThat(rejected.body()).contains("AUTH_ACCOUNT_UNAVAILABLE");
+
+        HttpResponse<String> again = post("/api/v1/auth/google-tokens",
+                "{\"idToken\":\"withdraw-google\"}");
+        Assertions.assertThat(again.statusCode()).isEqualTo(200);
+        Assertions.assertThat(json.readTree(again.body()).path("user").path("id").asLong())
+                .isNotEqualTo(userId);
+    }
+
     private HttpResponse<String> post(String path, String body) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
+        return request("POST", path, null, body);
+    }
+
+    private HttpResponse<String> request(String method, String path, String token, String body)
+            throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path));
+        if (token != null && !token.isBlank()) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+        if (body != null) {
+            builder.header("Content-Type", "application/json");
+        }
+        builder.method(method, body == null
+                ? HttpRequest.BodyPublishers.noBody()
+                : HttpRequest.BodyPublishers.ofString(body));
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     @TestConfiguration
@@ -139,6 +179,12 @@ class GoogleAuthFlowIntegrationTests {
                                 null,
                                 false,
                                 "이메일없는회원",
+                                null);
+                        case "withdraw-google" -> new GoogleIdentity(
+                                "google-sub-withdraw",
+                                "withdraw-google@example.com",
+                                true,
+                                "탈퇴구글",
                                 null);
                         default -> new GoogleIdentity(
                                 "google-sub-default",

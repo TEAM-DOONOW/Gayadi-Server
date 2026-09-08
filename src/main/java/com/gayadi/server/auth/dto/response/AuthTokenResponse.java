@@ -5,15 +5,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /** AuthTokenResponse API 응답 데이터를 반환합니다. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(name = "AuthTokenResponse", description = "가입 또는 로그인으로 발급한 인증 정보")
+@Schema(name = "AuthTokenResponse", description = "가입 또는 로그인으로 발급한 서버 JWT와 계정")
 public record AuthTokenResponse(
-        @Schema(description = "API 인증에 사용할 JWT", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "보호 API의 Authorization Bearer 값으로 사용할 JWT",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         String accessToken,
 
         @Schema(description = "인증 방식", example = "Bearer", requiredMode = Schema.RequiredMode.REQUIRED)
         String tokenType,
 
-        @Schema(description = "토큰 만료까지 남은 초", example = "7200", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Access Token 만료까지 남은 초. 기본값은 900(15분)",
+                example = "900",
+                requiredMode = Schema.RequiredMode.REQUIRED)
         long expiresIn,
 
         @Schema(description = "토큰 갱신에 사용할 일회성 Refresh Token")

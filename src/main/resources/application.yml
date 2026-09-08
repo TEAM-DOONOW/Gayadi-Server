@@ -149,6 +149,10 @@ springdoc:
     path: /api/openapi
   swagger-ui:
     path: /api/docs
+    persist-authorization: true
+    display-request-duration: true
+    doc-expansion: none
+    operations-sorter: method
   paths-to-match: /api/**
   packages-to-scan: com.gayadi.server
 

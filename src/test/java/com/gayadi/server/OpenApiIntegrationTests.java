@@ -12,6 +12,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,18 +39,31 @@ class OpenApiIntegrationTests {
         JsonNode document = objectMapper.readTree(response.body());
         Assertions.assertThat(document.path("info").path("title").asString()).isEqualTo("가야디 API");
         Assertions.assertThat(document.path("info").path("version").asString()).isEqualTo("v1");
-        Assertions.assertThat(document.path("components")
-                        .path("securitySchemes")
-                        .path("bearerAuth")
-                        .path("scheme")
-                        .asString())
-                .isEqualTo("bearer");
+        Assertions.assertThat(document.path("info").path("description").asString())
+                .contains("Google ID 토큰")
+                .contains("JWT")
+                .contains("/api/v1/users/current")
+                .contains("/api/v1/tour/areas")
+                .contains("/api/v1/trips/{tripId}/situation-responses")
+                .contains("APP_AI_ENABLED")
+                .contains("participants/current");
+        JsonNode bearer = document.path("components").path("securitySchemes").path("bearerAuth");
+        Assertions.assertThat(bearer.path("scheme").asString()).isEqualTo("bearer");
+        Assertions.assertThat(bearer.path("bearerFormat").asString()).isEqualTo("JWT");
+        Assertions.assertThat(bearer.path("description").asString())
+                .contains("AUTH_TOKEN_EXPIRED")
+                .contains("AUTH_ACCOUNT_UNAVAILABLE");
+        List<String> tagNames = new ArrayList<>();
+        document.path("tags").forEach(tag -> tagNames.add(tag.path("name").asString()));
+        Assertions.assertThat(tagNames)
+                .contains("인증", "사용자", "상황 대처", "친구", "여행 홈", "혼잡");
         Assertions.assertThat(document.path("paths").properties())
                 .isNotEmpty()
                 .allMatch(path -> path.getKey().startsWith("/api"));
 
         Set<String> forbiddenSegments = Set.of(
-                "signup", "login", "start", "complete", "generate", "recommend", "embed-places");
+                "signup", "login", "start", "complete", "generate", "recommend", "embed-places",
+                "discover", "now");
         Assertions.assertThat(document.path("paths").properties())
                 .noneMatch(path -> {
                     String[] segments = path.getKey().split("/");
@@ -84,7 +99,14 @@ class OpenApiIntegrationTests {
         Map<OperationKey, String> objectResponses = Map.ofEntries(
                 Map.entry(new OperationKey("/api/v1/auth/tokens", "post", "200"), "AuthTokenResponse"),
                 Map.entry(new OperationKey("/api/v1/auth/google-tokens", "post", "200"), "AuthTokenResponse"),
+                Map.entry(new OperationKey("/api/v1/auth/registrations", "post", "201"), "AuthTokenResponse"),
                 Map.entry(new OperationKey("/api/v1/users/current", "get", "200"), "UserProfileResponse"),
+                Map.entry(new OperationKey("/api/v1/users/current", "patch", "200"), "UserProfileResponse"),
+                Map.entry(new OperationKey("/api/v1/tour/areas", "get", "200"), "TourDiscoveryResponse"),
+                Map.entry(new OperationKey("/api/v1/weather/nowcasts", "get", "200"), "UltraShortNowcastResponse"),
+                Map.entry(new OperationKey("/api/v1/trips/{tripId}/situation-responses", "post", "200"), "SituationResponse"),
+                Map.entry(new OperationKey("/api/v1/recommendations/places", "post", "200"), "PlaceRecommendationResponse"),
+                Map.entry(new OperationKey("/api/v1/trips/{tripId}/participants/current", "patch", "200"), "ParticipantResponse"),
                 Map.entry(new OperationKey("/api/v1/trips", "post", "201"), "TripResponse"),
                 Map.entry(new OperationKey("/api/v1/trips/{tripId}/invitations", "post", "201"), "InvitationResponse"),
                 Map.entry(new OperationKey("/api/v1/trip-memberships", "post", "201"), "MembershipResponse"),
@@ -123,6 +145,8 @@ class OpenApiIntegrationTests {
 
         Map<String, Set<String>> requiredProperties = Map.ofEntries(
                 Map.entry("AuthTokenResponse", Set.of("accessToken", "tokenType", "expiresIn", "user")),
+                Map.entry("GoogleLoginRequest", Set.of("idToken")),
+                Map.entry("UpdateProfileRequest", Set.of("nickname")),
                 Map.entry("UserProfileResponse", Set.of("id", "email", "nickname", "characterKey")),
                 Map.entry("TripResponse", Set.of("id", "name", "startDate", "endDate", "participantIds", "inviteCode")),
                 Map.entry("ParticipantResponse", Set.of("userId", "participantId", "nickname", "role")),
@@ -137,7 +161,11 @@ class OpenApiIntegrationTests {
                 Map.entry("DashboardResponse", Set.of("trip", "participants", "schedules", "progress")),
                 Map.entry("FriendshipResponse", Set.of("id", "user", "status", "requestedByMe")),
                 Map.entry("FavoritePlaceResponse", Set.of("id", "name", "category", "memo")),
-                Map.entry("LegalDocumentResponse", Set.of("id", "title", "version", "sections"))
+                Map.entry("LegalDocumentResponse", Set.of("id", "title", "version", "sections")),
+                Map.entry("CreateTripRequest", Set.of("name", "startDate", "endDate", "cities", "departurePlaceId", "returnPlaceId")),
+                Map.entry("PlaceRecommendationRequest", Set.of("profile", "latitude", "longitude", "externalProcessingConsent")),
+                Map.entry("TripSituationRequest", Set.of("latitude", "longitude", "externalProcessingConsent")),
+                Map.entry("PlaceRecommendationResponse", Set.of("recommendations", "reasoning"))
         );
         requiredProperties.forEach((schemaName, propertyNames) -> {
             JsonNode properties = document.path("components").path("schemas")
@@ -165,6 +193,76 @@ class OpenApiIntegrationTests {
                 .contains("array");
         Assertions.assertThat(error.path("properties").path("details").path("items").path("$ref").asString())
                 .isEqualTo("#/components/schemas/ApiErrorDetail");
+    }
+
+    @Test
+    void documentsJwtOnProtectedNounPathsAndOmitsRemovedDuplicates() throws Exception {
+        JsonNode paths = objectMapper.readTree(get(uri("/api/openapi")).body()).path("paths");
+
+        Assertions.assertThat(paths.has("/api/v1/tour/discover")).isFalse();
+        Assertions.assertThat(paths.has("/api/v1/recommendations/situations")).isFalse();
+        Assertions.assertThat(paths.has("/api/v1/weather/now")).isFalse();
+        Assertions.assertThat(paths.has("/api/v1/tour/areas")).isTrue();
+        Assertions.assertThat(paths.has("/api/v1/recommendations/places")).isTrue();
+        Assertions.assertThat(paths.has("/api/v1/weather/nowcasts")).isTrue();
+        Assertions.assertThat(paths.has("/api/v1/trips/{tripId}/situation-responses")).isTrue();
+        Assertions.assertThat(paths.has("/api/v1/trips/{tripId}/participants/current")).isTrue();
+        Assertions.assertThat(paths.path("/api/v1/recommendations/places").path("post")
+                .path("responses").has("503")).isTrue();
+        Assertions.assertThat(paths.path("/api/v1/recommendations/places").path("post")
+                .path("description").asString()).contains("RECOMMENDATION_UNAVAILABLE");
+        Assertions.assertThat(paths.path("/api/v1/trips/{tripId}/situation-responses").path("post")
+                .path("description").asString())
+                .contains("SITUATION_AGENT_UNAVAILABLE")
+                .contains("설문");
+        Assertions.assertThat(parameterNames(paths.path("/api/v1/trips/{tripId}/situation-responses")
+                .path("post"))).doesNotContain("userId");
+
+        Assertions.assertThat(paths.path("/api/v1/tour/areas").path("get").path("security").isMissingNode()
+                || paths.path("/api/v1/tour/areas").path("get").path("security").isEmpty()).isTrue();
+        Assertions.assertThat(paths.path("/api/v1/tour/locations").path("get").path("security").toString())
+                .contains("bearerAuth");
+        Assertions.assertThat(paths.path("/api/v1/congestion/forecast").path("get").path("security").toString())
+                .contains("bearerAuth");
+        Assertions.assertThat(paths.path("/api/v1/weather/nowcasts").path("get").path("security").toString())
+                .contains("bearerAuth");
+        Assertions.assertThat(paths.path("/api/v1/users/current").path("delete").path("security").toString())
+                .contains("bearerAuth");
+        Assertions.assertThat(paths.path("/api/v1/auth/google-tokens").path("post").path("security").isMissingNode()
+                || paths.path("/api/v1/auth/google-tokens").path("post").path("security").isEmpty()).isTrue();
+        Assertions.assertThat(paths.path("/api/v1/auth/google-tokens").path("post").path("responses").has("503"))
+                .isTrue();
+        Assertions.assertThat(paths.path("/api/v1/auth/google-tokens").path("post").path("description").asString())
+                .contains("서버 JWT");
+
+        JsonNode currentGet = paths.path("/api/v1/users/current").path("get");
+        Assertions.assertThat(parameterNames(currentGet)).doesNotContain("userId");
+        Assertions.assertThat(currentGet.path("security").toString()).contains("bearerAuth");
+        Assertions.assertThat(currentGet.path("responses").has("401")).isTrue();
+        Assertions.assertThat(currentGet.path("description").asString()).contains("Bearer JWT");
+
+        JsonNode withdraw = paths.path("/api/v1/users/current").path("delete");
+        Assertions.assertThat(withdraw.path("responses").has("204")).isTrue();
+        Assertions.assertThat(withdraw.path("responses").has("409")).isTrue();
+        Assertions.assertThat(withdraw.path("description").asString())
+                .contains("WITHDRAW")
+                .contains("USER_ACTIVE_OWNED_TRIP_EXISTS");
+        Assertions.assertThat(parameterNames(withdraw)).doesNotContain("userId");
+
+        Assertions.assertThat(paths.path("/api/v1/tour/locations").path("get").path("description").asString())
+                .contains("JWT");
+        Assertions.assertThat(paths.path("/api/v1/weather/nowcasts").path("get").path("description").asString())
+                .contains("JWT");
+    }
+
+    private List<String> parameterNames(JsonNode operation) {
+        JsonNode parameters = operation.path("parameters");
+        if (!parameters.isArray()) {
+            return List.of();
+        }
+        List<String> names = new ArrayList<>();
+        parameters.forEach(parameter -> names.add(parameter.path("name").asString()));
+        return names;
     }
 
     private JsonNode successSchema(JsonNode document, OperationKey key) {

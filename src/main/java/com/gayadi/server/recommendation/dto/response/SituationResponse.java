@@ -3,7 +3,7 @@ package com.gayadi.server.recommendation.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /** 날씨·혼잡·교통 상황에 대한 대응 결과와 변경 제안을 반환합니다. */
-@Schema(description = "날씨·혼잡·교통 상황 대처 Agent 응답")
+@Schema(name = "SituationResponse", description = "여행 상황 대처 Agent 응답")
 public record SituationResponse(
         @Schema(description = "현재 상황과 적용 정책 요약")
         String situationSummary,

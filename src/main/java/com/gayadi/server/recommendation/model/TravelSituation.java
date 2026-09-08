@@ -12,8 +12,10 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
 
-/** 추천과 상황 대처 Agent가 공유하는 현재 여행 상황 값입니다. */
 /** 날씨·혼잡·교통 정보를 추천 정책으로 해석하는 도메인 값입니다. */
+@io.swagger.v3.oas.annotations.media.Schema(
+        name = "TravelSituation",
+        description = "날씨·혼잡·교통 상황. 비어 있으면 Agent가 공공데이터로 보강합니다.")
 public record TravelSituation(
         @Valid
         Weather weather,

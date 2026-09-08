@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -40,25 +41,11 @@ public class TourApiController {
         this.discovery = discovery;
     }
 
-    @GetMapping("/discover")
-    @Operation(summary = "GAYADI 앱용 지역 장소·혼잡 예측 통합 조회",
-            description = "앱의 지역 이름을 법정동 코드로 변환하고 관광정보와 여행일 기준 예상 혼잡도를 함께 반환합니다.")
-    public TourDiscoveryResponse discover(
-            @RequestParam(defaultValue = "20") @Min(1) @Max(20) int pageSize,
-            @RequestParam String regionName,
-            @RequestParam(required = false) LocalDate targetDate,
-            @RequestParam(required = false) String contentTypeId,
-            @RequestParam(required = false) String lclsSystm1,
-            @RequestParam(required = false) String lclsSystm2,
-            @RequestParam(required = false) String lclsSystm3) {
-        return discovery.discover(new TourDiscoveryRequest(pageSize, regionName, targetDate,
-                contentTypeId, lclsSystm1, lclsSystm2, lclsSystm3));
-    }
-
     @GetMapping("/areas")
-    @Operation(summary = "Android 호환 지역 장소·혼잡도 통합 조회",
-            description = "기존 Android /areas 호출 규격을 유지하면서 앱 지역명을 법정동 코드로 변환하고 "
-                    + "관광정보와 여행일 기준 예상 혼잡도를 함께 반환합니다. nextCursor는 항상 null입니다. "
+    @Operation(summary = "지역 장소·혼잡도 통합 조회",
+            description = "앱 여행 지역명으로 관광정보와 여행일 기준 예상 혼잡도를 함께 반환합니다. "
+                    + "인증 없이 호출합니다. `/tour/discover`는 이 경로와 중복되어 제거했습니다. "
+                    + "nextCursor는 항상 null입니다. "
                     + "관광 타입(contentTypeId): 12 관광지, 14 문화시설, 15 축제공연행사, 25 여행코스, "
                     + "28 레포츠, 32 숙박, 38 쇼핑, 39 음식점.")
     @ApiResponses({
@@ -104,10 +91,13 @@ public class TourApiController {
     }
 
     @GetMapping("/locations")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "위치기반 관광정보 조회",
-            description = "좌표(mapX/mapY)와 반경(radius, m, 최대 20000)으로 주변 관광정보 목록을 조회한다. "
+            description = "JWT가 필요합니다. 좌표(mapX/mapY)와 반경(radius, m, 최대 20000)으로 주변 관광정보 목록을 조회합니다. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순, E 거리순. "
-                    + "응답 항목에 중심 좌표로부터 거리(dist, m)가 추가된다.")
+                    + "응답 항목에 중심 좌표로부터 거리(dist, m)가 추가됩니다.")
+    @ApiResponse(responseCode = "200", description = "주변 관광정보 목록",
+            content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse locations(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
@@ -141,9 +131,12 @@ public class TourApiController {
     }
 
     @GetMapping("/keywords")
-    @Operation(summary = "키워드 검색 조회",
-            description = "키워드로 관광정보를 검색한다. 키워드는 필수이며 한국어 인코딩은 서버가 처리한다. "
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "키워드 관광정보 조회",
+            description = "JWT가 필요합니다. 키워드로 관광정보를 검색합니다. 키워드는 필수이며 한국어 인코딩은 서버가 처리합니다. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
+    @ApiResponse(responseCode = "200", description = "키워드 관광정보 목록",
+            content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse keywords(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
@@ -169,11 +162,14 @@ public class TourApiController {
     }
 
     @GetMapping("/festivals")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "행사정보 조회",
-            description = "행사/공연/축제 정보를 날짜로 조회한다. eventStartDate는 필수(YYYYMMDD). "
+            description = "JWT가 필요합니다. 행사/공연/축제 정보를 날짜로 조회합니다. eventStartDate는 필수(YYYYMMDD)입니다. "
                     + "응답 항목에 행사 시작일(eventStartDate)/종료일(eventEndDate)/"
-                    + "진행상태(progressType)/축제유형(festivalType)이 추가된다. "
+                    + "진행상태(progressType)/축제유형(festivalType)이 추가됩니다. "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
+    @ApiResponse(responseCode = "200", description = "행사정보 목록",
+            content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse festivals(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
@@ -203,9 +199,12 @@ public class TourApiController {
     }
 
     @GetMapping("/stays")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "숙박정보 조회",
-            description = "숙박 정보 목록을 조회한다(관광 타입 32). "
+            description = "JWT가 필요합니다. 숙박 정보 목록을 조회합니다(관광 타입 32). "
                     + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
+    @ApiResponse(responseCode = "200", description = "숙박정보 목록",
+            content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse stays(
             @Parameter(description = "한 페이지 결과 수")
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,

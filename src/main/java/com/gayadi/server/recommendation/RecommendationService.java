@@ -29,7 +29,6 @@ public class RecommendationService {
         this.vectorStore = vectorStore;
     }
 
-    /** 여행 조건과 벡터 검색 결과를 조합해 맞춤 장소를 추천합니다. */
     /** 성향과 현재 위치를 바탕으로 공개 장소 후보를 검색하고 추천 결과를 생성합니다. */
     public PlaceRecommendationResponse recommendPlaces(PlaceRecommendationRequest request) {
         StringBuilder queryBuilder = new StringBuilder(request.getProfile());

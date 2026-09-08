@@ -23,6 +23,14 @@ class CongestionSituationEnricherTest {
     }
 
     @Test
+    void skipsBrokenPublicDataInsteadOfFailingTheAgent() {
+        TravelSituation result = enricher.enrich(TravelSituation.empty(),
+                "11", "110", "not-an-instant");
+
+        assertThat(result.congestion().isEmpty()).isTrue();
+    }
+
+    @Test
     void preservesUserSuppliedCongestion() {
         TravelSituation supplied = new TravelSituation(
                 TravelSituation.Weather.empty(),

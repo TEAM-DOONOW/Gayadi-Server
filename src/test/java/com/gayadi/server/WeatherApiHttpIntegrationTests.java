@@ -51,12 +51,12 @@ class WeatherApiHttpIntegrationTests {
     @Test
     void weatherRequiresAuthenticationAndReturnsValidatedObservation() throws Exception {
         HttpResponse<String> unauthorized = get(
-                "/api/v1/weather/now?nx=60&ny=127&baseDate=20260825&baseTime=1400", null);
+                "/api/v1/weather/nowcasts?nx=60&ny=127&baseDate=20260825&baseTime=1400", null);
         Assertions.assertThat(unauthorized.statusCode()).isEqualTo(401);
 
         String token = register();
         JsonNode now = body(get(
-                "/api/v1/weather/now?lat=37.563569&lon=126.980008"
+                "/api/v1/weather/nowcasts?lat=37.563569&lon=126.980008"
                         + "&baseDate=20260825&baseTime=1400", token), 200);
         Assertions.assertThat(now.path("nx").asInt()).isEqualTo(60);
         Assertions.assertThat(now.path("ny").asInt()).isEqualTo(127);
@@ -64,10 +64,10 @@ class WeatherApiHttpIntegrationTests {
         Assertions.assertThat(now.path("precipitationTypeName").asString()).isEqualTo("없음");
 
         Assertions.assertThat(get(
-                "/api/v1/weather/now?nx=0&ny=127&baseDate=20260825&baseTime=1400", token)
+                "/api/v1/weather/nowcasts?nx=0&ny=127&baseDate=20260825&baseTime=1400", token)
                 .statusCode()).isEqualTo(400);
         Assertions.assertThat(get(
-                "/api/v1/weather/now?lat=37.56&lon=126.98&nx=60&ny=127"
+                "/api/v1/weather/nowcasts?lat=37.56&lon=126.98&nx=60&ny=127"
                         + "&baseDate=20260825&baseTime=1400", token)
                 .statusCode()).isEqualTo(400);
 
@@ -93,7 +93,7 @@ class WeatherApiHttpIntegrationTests {
         Assertions.assertThat(nx.path("schema").path("minimum").asInt()).isEqualTo(1);
         Assertions.assertThat(nx.path("schema").path("maximum").asInt()).isEqualTo(149);
         for (String path : new String[]{
-                "/api/v1/weather/now",
+                "/api/v1/weather/nowcasts",
                 "/api/v1/weather/ultra-forecast",
                 "/api/v1/weather/forecast"}) {
             JsonNode parameters = paths.path(path).path("get").path("parameters");
