@@ -70,7 +70,8 @@ public class EventController {
     }
 
     @GetMapping("/change-proposals")
-    @Operation(summary = "일정 변경 제안 목록")
+    @Operation(summary = "일정 변경 제안 목록",
+            description = "현장 상황 등록과 여행 상황 대처 Agent가 만든 변경안을 함께 조회합니다.")
     @ApiResponse(
             responseCode = "200",
             description = "일정 변경 제안 목록입니다.",
@@ -86,7 +87,9 @@ public class EventController {
     }
 
     @PatchMapping("/change-proposals/{proposalId}")
-    @Operation(summary = "일정 변경 제안 처리")
+    @Operation(summary = "일정 변경 제안 처리",
+            description = "상황 대처 Agent 또는 현장 상황으로 만든 변경안을 승인하거나 거절합니다. "
+                    + "승인 시 `baseRevisionNo`가 현재 일정 버전과 같아야 합니다.")
     @ApiResponse(
             responseCode = "200",
             description = "처리한 일정 변경 제안입니다.",

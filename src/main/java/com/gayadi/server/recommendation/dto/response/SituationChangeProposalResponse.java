@@ -10,7 +10,8 @@ import java.util.List;
 
 /** 상황 대응 과정에서 생성된 선택 대기 변경 제안을 반환합니다. */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "상황 대응으로 생성된 변경 제안")
+@Schema(name = "SituationChangeProposalResponse",
+        description = "여행 중 상황 대처로 생성된 변경 제안. 없으면 필드가 비어 있습니다.")
 public record SituationChangeProposalResponse(
         Long id,
         Long tripId,

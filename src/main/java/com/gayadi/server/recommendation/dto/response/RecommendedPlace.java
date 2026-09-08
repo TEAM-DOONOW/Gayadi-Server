@@ -3,7 +3,7 @@ package com.gayadi.server.recommendation.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /** 추천 Agent가 선택한 장소와 추천 점수를 반환합니다. */
-@Schema(description = "AI Agent가 관광 후보 중 선택한 장소")
+@Schema(name = "RecommendedPlace", description = "AI Agent가 관광 후보 중 선택한 장소")
 public record RecommendedPlace(
         @Schema(description = "Gayadi 내부 장소 ID", example = "42")
         String placeId,

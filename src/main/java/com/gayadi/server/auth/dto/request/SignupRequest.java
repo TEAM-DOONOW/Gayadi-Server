@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /** SignupRequest API 요청 데이터를 전달합니다. */
+@Schema(name = "SignupRequest", description = "개발용 이메일 계정 등록 요청")
 public record SignupRequest(
         @Schema(description = "이메일", example = "traveler@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "{validation.auth.email.required}")

@@ -25,7 +25,7 @@ Controller 개수는 도메인 분리 기준이 아니다. 같은 업무 모델�
 - `auth/AuthController`, `auth/UserController`: 토큰 발급과 계정 관리를 분리하므로 현재 배치를 유지한다. 사용자 프로필 기능이 커지면 `user` 도메인 독립을 검토한다.
 - `friendship/FriendshipController`, `friendship/UserSearchController`: 사용자 검색이 친구 추가 유스케이스에 한정되므로 `friendship`에 함께 둔다.
 - `schedule/PlanController`, `schedule/ScheduleItemController`: 계획 생성과 일정 항목 편집은 같은 일정 도메인의 서로 다른 API 자원이므로 함께 둔다.
-- `recommendation/RecommendationController`, `recommendation/TripSituationController`: 추천과 상황 대처가 같은 AI 추천 구성 요소를 공유하므로 현재는 함께 둔다.
+- `recommendation/RecommendationController`, `recommendation/TripSituationController`: 장소 추천과 여행 상황 대처가 같은 AI 추천 구성 요소를 공유하므로 현재는 함께 둔다.
 - `recommendation/EmbeddingAdminController`: 일반 사용자 추천 API와 인증 주체가 다른 운영 API이므로 파일이 더 늘어나면 `recommendation/admin` 하위 패키지로 가장 먼저 분리한다.
 
 Controller가 두세 개라는 이유만으로 `controller` 폴더를 만들지는 않는다. 다음 중 하나가 성립할 때 역할별 하위 패키지를 도입한다.

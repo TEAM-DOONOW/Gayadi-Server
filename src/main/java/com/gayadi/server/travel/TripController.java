@@ -23,7 +23,7 @@ import java.util.List;
 /** 여행과 참여자 관련 HTTP 요청과 응답을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1/trips")
-@Tag(name = "여행", description = "여행, 참여자와 진행 상태를 관리합니다.")
+@Tag(name = "여행", description = "여행 생성·참여자·내 출발·귀가 장소 관리")
 @SecurityRequirement(name = "bearerAuth")
 public class TripController {
 
@@ -48,14 +48,18 @@ public class TripController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "여행 생성")
+    @Operation(summary = "여행 생성",
+            description = "현재 사용자를 소유자로 여행을 만듭니다. "
+                    + "소유자 출발·귀가 장소는 `departurePlaceId`/`returnPlaceId`로 넣을 수 있고, "
+                    + "이후 `PATCH /api/v1/trips/{tripId}/participants/current`로 바꿀 수 있습니다.")
     @ApiResponse(responseCode = "201", description = "생성한 여행입니다.",
             content = @Content(schema = @Schema(implementation = TripResponse.class)))
     public TripResponse create(
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody CreateTripRequest request) {
         return service.createForUser(
-                userId, request.getName(), request.parsedStartDate(), request.parsedEndDate(), request.getCities());
+                userId, request.getName(), request.parsedStartDate(), request.parsedEndDate(),
+                request.getCities(), request.getDeparturePlaceId(), request.getReturnPlaceId());
     }
 
     @GetMapping("/{tripId}")
@@ -109,6 +113,19 @@ public class TripController {
             @PathVariable long tripId) {
         service.requireMember(tripId, userId);
         return service.members(tripId);
+    }
+
+    @PatchMapping("/{tripId}/participants/current")
+    @Operation(summary = "내 출발·귀가 장소 수정",
+            description = "현재 로그인한 참여자의 출발지와 귀가 장소를 바꿉니다. 기존 출발·귀가 경로 추천은 만료됩니다.")
+    @ApiResponse(responseCode = "200", description = "수정한 참여자 정보입니다.",
+            content = @Content(schema = @Schema(implementation = ParticipantResponse.class)))
+    public ParticipantResponse updateCurrentPlaces(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable long tripId,
+            @Valid @RequestBody ParticipantRequest request) {
+        return service.updateCurrentMemberPlaces(
+                userId, tripId, request.getDeparturePlaceId(), request.getReturnPlaceId());
     }
 
     @PutMapping("/{tripId}/participants/{participantUserId}")

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /** LoginRequest API 요청 데이터를 전달합니다. */
+@Schema(name = "LoginRequest", description = "개발용 이메일 로그인 요청")
 public record LoginRequest(
         @Schema(description = "이메일", example = "traveler@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "{validation.auth.email.required}")

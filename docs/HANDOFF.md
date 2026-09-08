@@ -71,13 +71,12 @@
 
 ### 안 되거나 빠진 것
 
-1. **소유자 출발·귀가 장소 API가 없다.**
-   `POST /api/v1/trips`는 `SEPARATE` 모드로 만들고 소유자 `departurePlaceId`/`returnPlaceId`를 넣지 않는다. 이후 `PUT /api/v1/trips/{tripId}/participants/{본인}`은 `409 TRIP_ALREADY_JOINED`다. 그 결과 소유자 `DEPARTURE` 경로 추천은 `400 ROUTE_DEPARTURE_PLACE_REQUIRED`다. 새 멤버만 `POST /api/v1/trip-memberships`의 장소 필드로 넣을 수 있다.
+1. **소유자 출발·귀가 장소는 여행 생성 또는 내 참여자 수정으로 넣는다.**
+   `POST /api/v1/trips`에 `departurePlaceId`/`returnPlaceId`를 넣을 수 있고, 이후 `PATCH /api/v1/trips/{tripId}/participants/current`로 바꿀 수 있다. `PUT /participants/{본인}`은 여전히 신규 참여자 추가이며 이미 참여한 사용자는 `409 TRIP_ALREADY_JOINED`다.
 
 2. **AI 추천·여행 상황 대처는 비활성이다.**
    `APP_AI_ENABLED=false`이면
    `POST /api/v1/recommendations/places` → `503 RECOMMENDATION_UNAVAILABLE`
-   `POST /api/v1/recommendations/situations` → `503 SITUATION_AGENT_UNAVAILABLE`
    `POST /api/v1/trips/{tripId}/situation-responses` → 503
    핵심 여행 API를 막지는 않는다.
 

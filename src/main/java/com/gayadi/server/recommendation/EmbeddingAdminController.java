@@ -28,7 +28,9 @@ public class EmbeddingAdminController {
     }
 
     @PostMapping("/place-embeddings")
-    @Operation(summary = "장소 검색 자료 갱신")
+    @Operation(
+            summary = "장소 검색 자료 갱신",
+            description = "관리자 사용자만 호출할 수 있습니다. 일반 로그인은 403 EMBEDDING_ADMIN_FORBIDDEN입니다.")
     public EmbeddingRefreshResponse embedPlaces(@AuthenticationPrincipal Long userId) {
         if (adminUserId <= 0 || userId == null || userId.longValue() != adminUserId) {
             throw new BusinessException(RecommendationErrorCode.EMBEDDING_ADMIN_FORBIDDEN);

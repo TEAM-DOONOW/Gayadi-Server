@@ -35,10 +35,10 @@ public class WeatherApiController {
         this.service = service;
     }
 
-    @GetMapping("/now")
+    @GetMapping("/nowcasts")
     @Operation(summary = "초단기실황 조회",
-            description = "현재 날씨 관측값을 조회한다. lat/lon(위경도) 또는 nx/ny(격자좌표) 중 하나를 지정한다. "
-                    + "baseDate/baseTime을 생략하면 발표 가능한 최신 시각으로 자동 계산한다. "
+            description = "JWT가 필요합니다. 현재 날씨 관측값을 조회합니다. lat/lon(위경도) 또는 nx/ny(격자좌표) 중 하나를 지정합니다. "
+                    + "baseDate/baseTime을 생략하면 발표 가능한 최신 시각으로 자동 계산합니다. "
                     + "항목: 기온(T1H), 1시간 강수량(RN1), 동서바람(UUU), 남북바람(VVV), "
                     + "습도(REH), 강수형태(PTY), 풍향(VEC), 풍속(WSD).")
     @ApiResponse(responseCode = "200", description = "현재 관측값",
@@ -51,8 +51,8 @@ public class WeatherApiController {
 
     @GetMapping("/ultra-forecast")
     @Operation(summary = "초단기예보 조회",
-            description = "예보시점부터 6시간 이내의 예보를 조회한다. lat/lon 또는 nx/ny 중 하나를 지정한다. "
-                    + "baseDate/baseTime을 생략하면 발표 가능한 최신 시각으로 자동 계산한다(매시각 30분 발표, 45분 이후 호출). "
+            description = "JWT가 필요합니다. 예보시점부터 6시간 이내의 예보를 조회합니다. lat/lon 또는 nx/ny 중 하나를 지정합니다. "
+                    + "baseDate/baseTime을 생략하면 발표 가능한 최신 시각으로 자동 계산합니다(매시각 30분 발표, 45분 이후 호출). "
                     + "항목: 기온(T1H), 1시간 강수량(RN1), 하늘상태(SKY), 동서바람(UUU), 남북바람(VVV), "
                     + "습도(REH), 강수형태(PTY), 강수확률(POP), 낙뢰(LGT), 풍향(VEC), 풍속(WSD).")
     @ApiResponse(responseCode = "200", description = "6시간 이내 초단기예보",
@@ -65,12 +65,12 @@ public class WeatherApiController {
 
     @GetMapping("/forecast")
     @Operation(summary = "단기예보 조회",
-            description = "3~5일 기간의 단기예보를 조회한다. lat/lon 또는 nx/ny 중 하나를 지정한다. "
-                    + "baseDate/baseTime을 생략하면 발표 가능한 최신 시각으로 자동 계산한다(1일 8회: 02,05,08,11,14,17,20,23시). "
+            description = "JWT가 필요합니다. 3~5일 기간의 단기예보를 조회합니다. lat/lon 또는 nx/ny 중 하나를 지정합니다. "
+                    + "baseDate/baseTime을 생략하면 발표 가능한 최신 시각으로 자동 계산합니다(1일 8회: 02,05,08,11,14,17,20,23시). "
                     + "항목: 강수확률(POP), 강수형태(PTY), 1시간 강수량(PCP), 습도(REH), 신적설(SNO), "
                     + "하늘상태(SKY), 기온(TMP), 일최저기온(TMN), 일최고기온(TMX), 동서바람(UUU), "
                     + "남북바람(VVV), 파고(WAV), 풍향(VEC), 풍속(WSD). "
-                    + "발표시각(02,05,08,11,14시)은 3일차부터 3시간 간격, (17,20,23시)은 4일차부터 3시간 간격으로 제공한다.")
+                    + "발표시각(02,05,08,11,14시)은 3일차부터 3시간 간격, (17,20,23시)은 4일차부터 3시간 간격으로 제공합니다.")
     @ApiResponse(responseCode = "200", description = "전체 단기예보 페이지를 합친 결과",
             content = @Content(schema = @Schema(
                     implementation = WeatherForecastResponse.class)))
@@ -81,7 +81,7 @@ public class WeatherApiController {
 
     @GetMapping("/version")
     @Operation(summary = "예보버전 조회",
-            description = "단기예보 각 오퍼레이션의 수정된 예보 버전을 조회한다. "
+            description = "JWT가 필요합니다. 단기예보 각 오퍼레이션의 수정된 예보 버전을 조회합니다. "
                     + "ftype: ODAM(초단기실황), VSRT(초단기예보), SHRT(단기예보). "
                     + "baseDateTime: YYYYMMDDHHMM 형식(예: 202608210200).")
     @ApiResponse(responseCode = "200", description = "예보 파일 버전",

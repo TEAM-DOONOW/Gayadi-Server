@@ -3,11 +3,13 @@ package com.gayadi.server.travel.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /** ParticipantRequest API 요청 데이터를 전달합니다. */
-@Schema(name = "ParticipantRequest", description = "여행 참여자 변경 정보")
+@Schema(name = "ParticipantRequest", description = "출발·귀가 장소 설정")
 public class ParticipantRequest {
 
+    @Schema(description = "출발 장소 ID", nullable = true, example = "1")
     private Long departurePlaceId;
 
+    @Schema(description = "귀가 장소 ID", nullable = true, example = "2")
     private Long returnPlaceId;
 
     public Long getDeparturePlaceId() {
