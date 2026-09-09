@@ -277,6 +277,17 @@ public class TripRepository {
                 .update();
     }
 
+    /** 역할과 참여 상태를 유지하면서 본인의 장소 설정을 교체합니다. */
+    public boolean updateParticipantSettings(long tripId, long userId, Long departurePlaceId, Long returnPlaceId) {
+        return jdbc.sql("""
+                UPDATE trip_participants SET departure_place_id = ?, return_place_id = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE trip_id = ? AND user_id = ? AND status = 'JOINED'
+                """)
+                .params(departurePlaceId, returnPlaceId, tripId, userId)
+                .update() == 1;
+    }
+
     /** 참여자 경로 목록 여행 상태를 DB에서 만료 또는 해제합니다. */
     public void expireParticipantRoutes(long tripId, long userId) {
         jdbc.sql("""

@@ -126,6 +126,18 @@ public class TripController {
                 participantUserId, settings.getDeparturePlaceId(), settings.getReturnPlaceId()));
     }
 
+    @PutMapping("/{tripId}/participants/current/settings")
+    @Operation(summary = "본인 출발·귀가 장소 설정", description = "인증된 참여자 본인의 두 장소 설정을 교체합니다. null은 해당 장소를 해제합니다.")
+    @ApiResponse(responseCode = "200", description = "장소 설정이 반영된 본인 참여자입니다.",
+            content = @Content(schema = @Schema(implementation = ParticipantResponse.class)))
+    public ParticipantResponse participantSettings(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable long tripId,
+            @Valid @RequestBody ParticipantRequest request) {
+        return service.updateMemberSettings(userId, tripId,
+                request.getDeparturePlaceId(), request.getReturnPlaceId());
+    }
+
     @DeleteMapping("/{tripId}/participants/{participantUserId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "여행 참여자 제외")

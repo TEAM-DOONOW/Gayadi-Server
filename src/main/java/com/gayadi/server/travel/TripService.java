@@ -101,6 +101,25 @@ public class TripService {
         return memberByUser(tripId, command.userId());
     }
 
+    /** 인증된 본인의 장소 설정만 변경하고 이전 개인 경로를 만료합니다. */
+    @Transactional
+    public ParticipantResponse updateMemberSettings(
+            long actorId, long tripId, Long departurePlaceId, Long returnPlaceId) {
+        lockTrip(tripId);
+        requireMember(tripId, actorId);
+        validateMemberPlaces(tripId, actorId, departurePlaceId, returnPlaceId);
+        ParticipantResponse current = memberByUser(tripId, actorId);
+        if (java.util.Objects.equals(current.departurePlaceId(), departurePlaceId)
+                && java.util.Objects.equals(current.returnPlaceId(), returnPlaceId)) {
+            return current;
+        }
+        if (!repository.updateParticipantSettings(tripId, actorId, departurePlaceId, returnPlaceId)) {
+            throw new BusinessException(TripErrorCode.TRIP_MEMBER_NOT_FOUND);
+        }
+        repository.expireParticipantRoutes(tripId, actorId);
+        return memberByUser(tripId, actorId);
+    }
+
     /** 참여자 여행 정보를 삭제합니다. */
     @Transactional
     public void removeMember(long actorId, long tripId, long userId) {

@@ -39,6 +39,39 @@ class RouteScheduleContractIntegrationTests {
     @Autowired JdbcClient jdbc;
 
     @Test
+    void ownEndpointUpdatePreservesMembershipAndExpiresOnlyPersonalRoutes() {
+        Fixture fixture = fixture("장소설정");
+        long participantId = participantId(fixture.tripId(), fixture.ownerId());
+        RouteResponse home = routes.recommendForUser(fixture.tripId(), fixture.ownerId(), RoutePhase.RETURN, fixture.ownerId());
+        routes.selectForUser(fixture.tripId(), fixture.ownerId(), RoutePhase.RETURN, home.id());
+        recommendItinerary(fixture);
+        var updated = trips.updateMemberSettings(fixture.ownerId(), fixture.tripId(), 1L, 2L);
+        Assertions.assertThat(updated.departurePlaceId()).isEqualTo(1L);
+        Assertions.assertThat(updated.returnPlaceId()).isEqualTo(2L);
+        Assertions.assertThat(participantId(fixture.tripId(), fixture.ownerId())).isEqualTo(participantId);
+        Assertions.assertThat(updated.role()).isEqualTo("OWNER");
+        Assertions.assertThat(updated.status()).isEqualTo("JOINED");
+        Assertions.assertThat(activeRoutes(fixture.tripId(), RoutePhase.RETURN)).isZero();
+        Assertions.assertThat(activeRoutes(fixture.tripId(), RoutePhase.IN_TRIP)).isEqualTo(2);
+        var cleared = trips.updateMemberSettings(fixture.ownerId(), fixture.tripId(), null, null);
+        Assertions.assertThat(cleared.departurePlaceId()).isNull();
+        Assertions.assertThat(cleared.returnPlaceId()).isNull();
+    }
+
+    @Test
+    void endpointUpdateRejectsNonMemberAndUnavailablePlace() {
+        Fixture fixture = fixture("장소권한");
+        long outsider = users.create("외부" + System.nanoTime() % 1_000_000).id();
+        Assertions.assertThatThrownBy(() -> trips.updateMemberSettings(outsider, fixture.tripId(), 1L, 2L))
+                .isInstanceOf(BusinessException.class);
+        Assertions.assertThatThrownBy(() -> trips.updateMemberSettings(fixture.ownerId(), fixture.tripId(), Long.MAX_VALUE, null))
+                .isInstanceOf(BusinessException.class);
+        var member = trips.members(fixture.tripId()).getFirst();
+        Assertions.assertThat(member.departurePlaceId()).isEqualTo(2L);
+        Assertions.assertThat(member.returnPlaceId()).isEqualTo(1L);
+    }
+
+    @Test
     void itineraryContainsEveryPlaceSegmentAndTwoStoredOptions() {
         Assertions.assertThat(Arrays.stream(
                         RouteRecommendationRequest.class.getRecordComponents())

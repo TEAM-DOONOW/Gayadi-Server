@@ -25,6 +25,33 @@ class AndroidFeatureDomainHttpIntegrationTests {
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
+    void participantSettingsUpdatesOnlyAuthenticatedMember() throws Exception {
+        Account owner = register("settings-owner-" + System.nanoTime() + "@example.com", "설정주최자");
+        Account member = register("settings-member-" + System.nanoTime() + "@example.com", "설정참여자");
+        JsonNode trip = body(request("POST", "/api/v1/trips", owner.token(), """
+                {"name":"장소 설정 여행","startDate":"2026.10.10","endDate":"2026.10.11","cities":["서울"]}
+                """), 201);
+        long tripId = trip.path("id").asLong();
+        String endpoint = "/api/v1/trips/" + tripId + "/participants/current/settings";
+        body(request("PUT", endpoint, null, "{}"), 401);
+        body(request("PUT", endpoint, member.token(), "{}"), 403);
+        body(request("POST", "/api/v1/trip-memberships", member.token(),
+                "{\"inviteCode\":\"" + trip.path("inviteCode").asString() + "\"}"), 201);
+        JsonNode updated = body(request("PUT", endpoint, member.token(),
+                "{\"departurePlaceId\":1,\"returnPlaceId\":2}"), 200);
+        Assertions.assertThat(updated.path("userId").asLong()).isEqualTo(member.id());
+        Assertions.assertThat(updated.path("role").asString()).isEqualTo("MEMBER");
+        Assertions.assertThat(updated.path("departurePlaceId").asLong()).isEqualTo(1);
+        Assertions.assertThat(updated.path("returnPlaceId").asLong()).isEqualTo(2);
+        JsonNode participants = body(request("GET", "/api/v1/trips/" + tripId + "/participants", owner.token(), null), 200);
+        for (JsonNode participant : participants) {
+            if (participant.path("userId").asLong() == owner.id()) {
+                Assertions.assertThat(participant.path("departurePlaceId").isNull()).isTrue();
+            }
+        }
+    }
+
+    @Test
     void androidDateExpenseNoticeAndInquiryJourneyUsesServerState() throws Exception {
         Account owner = register("android-owner-" + System.nanoTime() + "@example.com", "주최자");
         Account member = register("android-member-" + System.nanoTime() + "@example.com", "참여자");
