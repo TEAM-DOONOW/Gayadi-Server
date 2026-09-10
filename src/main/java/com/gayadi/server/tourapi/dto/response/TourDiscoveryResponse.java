@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** 지역 관광정보와 장소별 혼잡도 예측 목록을 반환합니다. */
-@Schema(description = "Android 장소 목록과 관광지 혼잡도 예측을 합친 응답")
+@Schema(name = "TourDiscoveryResponse", description = "지역 장소 목록과 관광지 혼잡도 예측을 합친 응답")
 public record TourDiscoveryResponse(
         @Schema(description = "관광지 및 혼잡도 목록", requiredMode = Schema.RequiredMode.REQUIRED)
         List<TourDiscoveryPlaceResponse> items,

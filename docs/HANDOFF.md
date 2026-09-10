@@ -56,6 +56,34 @@
 - 관련 없는 기존 변경, 비밀 설정과 운영 데이터를 건드리지 않는다.
 - 구현, 테스트와 문서가 함께 현재 상태를 설명하도록 유지한다.
 
+## Android 사용자 화면 연동 TODO (2026-09-10)
+
+`Gayadi-Android`에는 서버의 사용자용 Swagger API를 호출하는 Domain/Data 계층과 DI가 구현되어 있다.
+기존 여행·참여자·날짜 조율·일정·경비·공금·친구·초대·설문·공지·약관·문의 화면은
+서버 API와 연결되어 있으며 Android API 35 에뮬레이터에서 검증했다.
+
+다음 기능은 API 호출과 응답 매핑 테스트까지 완료했지만 이를 사용하는 ViewModel/UseCase와 사용자 화면은
+아직 만들지 않았다. 다음 Android 작업에서 필요한 기능만 신규 화면으로 구현해야 한다.
+
+1. 장소 단건 상세
+2. 자동 일정 생성과 여행 대시보드
+3. 출발·일정·귀가 경로 추천, 선택과 선택 해제
+4. 여행별 설문 제출과 성향 결과
+5. 현장 이벤트 등록과 일정 변경안 조회·승인·거절
+6. 장소 추천 Agent와 여행 상황 대응 Agent
+7. 실황·초단기·단기 날씨와 혼잡도
+8. TourAPI 지역·주변·키워드·축제·숙박 조회
+
+Android 화면 작업 시 URL과 JSON을 화면에서 직접 다루지 않고 `TripSupportGateway`를 Domain UseCase를 통해
+호출한다. 기존 Compose 화면의 레이아웃과 디자인은 불필요하게 변경하지 않으며, 기존 화면에 자연스러운
+진입점이 없는 기능은 `design.md`를 따른 신규 화면과 route로 추가한다. 로딩·빈 결과·오류·재시도 상태와
+Agent 외부 처리 동의도 화면 상태에 포함한다.
+
+2026-09-10 검증에서는 기존 핵심 기능 계측 테스트 3개와 고급 API 계측 테스트 1개가 통과했다.
+Agent·날씨·TourAPI는 로컬 외부 API 계약 스텁으로 Android → Server 경로를 확인한 상태이므로 실제 공급자
+개발 키가 준비된 환경에서 추가 E2E 검증이 필요하다. Google OAuth 코드 경로는 연결되어 있지만 Android
+개발 설정이 placeholder이고 로컬 서버 client ID도 미설정이어서 실제 Google 계정 로그인 검증은 남아 있다.
+
 ## 현재 로컬 검증 상태 (2026-09-02, `dev` 기준)
 
 전체 H2 자동화 테스트와 별개로, 격리한 Docker PostgreSQL 16에 Flyway V1~V16을 적용하고 Docker 서버에서 `/api/v1` HTTP 스모크 45건을 다시 실행했다.
@@ -71,13 +99,12 @@
 
 ### 안 되거나 빠진 것
 
-1. **소유자 출발·귀가 장소 API가 없다.**
-   `POST /api/v1/trips`는 `SEPARATE` 모드로 만들고 소유자 `departurePlaceId`/`returnPlaceId`를 넣지 않는다. 이후 `PUT /api/v1/trips/{tripId}/participants/{본인}`은 `409 TRIP_ALREADY_JOINED`다. 그 결과 소유자 `DEPARTURE` 경로 추천은 `400 ROUTE_DEPARTURE_PLACE_REQUIRED`다. 새 멤버만 `POST /api/v1/trip-memberships`의 장소 필드로 넣을 수 있다.
+1. **소유자 출발·귀가 장소는 여행 생성 또는 내 참여자 수정으로 넣는다.**
+   `POST /api/v1/trips`에 `departurePlaceId`/`returnPlaceId`를 넣을 수 있고, 이후 `PATCH /api/v1/trips/{tripId}/participants/current`로 바꿀 수 있다. `PUT /participants/{본인}`은 여전히 신규 참여자 추가이며 이미 참여한 사용자는 `409 TRIP_ALREADY_JOINED`다.
 
 2. **AI 추천·여행 상황 대처는 비활성이다.**
    `APP_AI_ENABLED=false`이면
    `POST /api/v1/recommendations/places` → `503 RECOMMENDATION_UNAVAILABLE`
-   `POST /api/v1/recommendations/situations` → `503 SITUATION_AGENT_UNAVAILABLE`
    `POST /api/v1/trips/{tripId}/situation-responses` → 503
    핵심 여행 API를 막지는 않는다.
 

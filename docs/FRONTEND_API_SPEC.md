@@ -1,11 +1,11 @@
 # GAYADI 프론트엔드 API 명세
 
-최종 수정일: 2026-09-02
+최종 수정일: 2026-09-10
 대상: `Gayadi-Android` 장소·혼잡도 및 AI Agent API 연동
 
 ## 1. 기본 정보
 
-- Base URL: Android의 `TOUR_API_BASE_URL`
+- Base URL: Android의 `BuildConfig.API_BASE_URL`
 - 로컬 Android Emulator: `http://10.0.2.2:8080`
 - Content-Type: `application/json`
 - 문자 인코딩: UTF-8
@@ -196,7 +196,7 @@ Authorization: Bearer {accessToken}
 Content-Type: application/json
 ```
 
-`accessToken`은 `POST /api/v1/auth/registrations` 또는 `POST /api/v1/auth/tokens`의 응답으로 발급합니다.
+`accessToken`은 `POST /api/v1/auth/google-tokens`의 응답으로 발급합니다. 개발용 이메일 가입은 `POST /api/v1/auth/registrations` 또는 `POST /api/v1/auth/tokens`입니다.
 요청에 `externalProcessingConsent: true`가 없으면 `400`을 반환합니다.
 
 ### 6.1 맞춤 장소 추천 Agent
@@ -221,28 +221,7 @@ POST /api/v1/recommendations/places
 성공 응답의 `recommendations`에는 `placeId`, `name`, `category`, `score`, `reason`,
 `sourcePlaceId`가 들어가고, `reasoning`에는 전체 추천 근거가 들어갑니다.
 
-### 6.2 상황 대처 Agent
-
-```http
-POST /api/v1/recommendations/situations
-```
-
-장소 추천 요청에 `purpose: "SITUATION_RESPONSE"`와 아래 `situation` 중 필요한 값을 추가합니다.
-
-```json
-{
-  "congestion": {
-    "level": "HIGH",
-    "occupancyPercent": 90,
-    "area": "서울 도심"
-  }
-}
-```
-
-응답은 `situationSummary`, `routeRecalculationRequired`, `nextAction`,
-`placeRecommendations`, `changeProposal`로 구성됩니다.
-
-### 6.3 여행 연계 상황 대처 Agent
+### 6.2 여행 상황 대처 Agent
 
 ```http
 POST /api/v1/trips/{tripId}/situation-responses
@@ -261,15 +240,12 @@ Agent 공통 오류:
 | `403` | 해당 여행의 참여자가 아님 |
 | `503` | Agent 비활성화 또는 외부 연동 불가 |
 
-### 6.4 Android 연동 선행 조건
+### 6.3 Android 연동 선행 조건
 
-현재 Android 로그인은 로컬 온보딩이며 Gayadi 서버의 JWT를 발급하지 않습니다. 또한 Android 여행 ID는
-로컬 문자열이고 서버 여행 ID는 숫자입니다. 따라서 Agent를 화면에서 안전하게 호출하려면 먼저 아래 계약을
-연결해야 합니다.
-
-1. Android 로그인 성공 시 서버 `accessToken` 발급·보관
-2. Android 여행 생성·조회 시 서버 `tripId` 사용 또는 로컬 ID와 매핑
-3. 이후 추천·경로·상황 대처 API에 Bearer 토큰과 서버 `tripId` 전달
+Android Google 로그인은 `POST /api/v1/auth/google-tokens`로 서버 JWT를 발급합니다.
+프로필 조회·수정·탈퇴는 `GET/PATCH/DELETE /api/v1/users/current`입니다.
+Android의 `ServerTravelGateway`는 서버 숫자 여행 ID를 Domain 문자열로 보존합니다.
+따라서 Agent 화면 연동 시 같은 값을 숫자로 검증해 `tripId`에 전달하면 됩니다.
 
 Google 로그인은 Android Credential Manager가 발급한 Google ID 토큰을 서버에 넘겨 서버 JWT를 받습니다.
 

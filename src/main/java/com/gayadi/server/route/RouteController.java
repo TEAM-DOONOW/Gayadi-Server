@@ -29,11 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /** 경로 추천 생성과 선택·해제 HTTP 요청을 처리합니다. */
-/** 경로 추천 생성과 선택·해제 HTTP 요청을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}")
-@Tag(name = "경로")
+@Tag(name = "경로", description = "출발, 이동과 귀가 경로 안내")
 @SecurityRequirement(name = "bearerAuth")
 public class RouteController {
 

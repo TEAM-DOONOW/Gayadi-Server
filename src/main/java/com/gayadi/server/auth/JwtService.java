@@ -81,14 +81,21 @@ public class JwtService {
     /** Android 클라이언트가 API 인증에 사용할 Access Token을 발급합니다. */
     public String issue(long userId) {
         Instant now = Instant.now();
+        return issue(userId, now, now.plus(expiresIn));
+    }
+
+    /** 지정한 발급·만료 시각으로 Access Token을 만듭니다. */
+    public String issue(long userId, Instant issuedAt, Instant expiresAt) {
+        Instant issued = issuedAt == null ? Instant.now() : issuedAt;
+        Instant expires = expiresAt == null ? issued.plus(expiresIn) : expiresAt;
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", String.valueOf(userId));
         payload.put("iss", issuer);
         payload.put("aud", audience);
         payload.put("jti", UUID.randomUUID().toString());
         payload.put("token_type", ACCESS_TOKEN_TYPE);
-        payload.put("iat", now.getEpochSecond());
-        payload.put("exp", now.plus(expiresIn).getEpochSecond());
+        payload.put("iat", issued.getEpochSecond());
+        payload.put("exp", expires.getEpochSecond());
 
         Map<String, Object> headerClaims = new LinkedHashMap<>();
         headerClaims.put("alg", "HS256");

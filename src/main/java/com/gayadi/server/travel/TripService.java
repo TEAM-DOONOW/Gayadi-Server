@@ -63,6 +63,19 @@ public class TripService {
             LocalDate startDate,
             LocalDate endDate,
             List<String> cities) {
+        return createForUser(ownerId, title, startDate, endDate, cities, null, null);
+    }
+
+    /** 소유자의 출발·귀가 장소를 포함해 여행을 생성합니다. */
+    @Transactional
+    public TripResponse createForUser(
+            long ownerId,
+            String title,
+            LocalDate startDate,
+            LocalDate endDate,
+            List<String> cities,
+            Long departurePlaceId,
+            Long returnPlaceId) {
         users.lockActive(ownerId);
         validateDates(startDate, endDate);
         validateTitle(title);
@@ -70,8 +83,9 @@ public class TripService {
         long regionId = resolveRegion(normalizedCities.getFirst());
         long tripId = insertTrip(new CreateTrip(
                 ownerId, title.trim(), startDate, endDate, DepartureMode.SEPARATE,
-                null, null, regionId, null, DEFAULT_MAX_MEMBERS, null, null));
-        addMemberInternal(tripId, ownerId, "OWNER", null, null);
+                null, null, regionId, null, DEFAULT_MAX_MEMBERS, departurePlaceId, returnPlaceId));
+        validateMemberPlaces(tripId, ownerId, departurePlaceId, returnPlaceId);
+        addMemberInternal(tripId, ownerId, "OWNER", departurePlaceId, returnPlaceId);
         replaceCities(tripId, normalizedCities);
         return view(tripId);
     }
@@ -99,6 +113,21 @@ public class TripService {
         addMemberInternal(tripId, command.userId(), "MEMBER",
                 command.departurePlaceId(), command.returnPlaceId());
         return memberByUser(tripId, command.userId());
+    }
+
+    /** 현재 참여자의 출발·귀가 장소를 수정합니다. */
+    @Transactional
+    public ParticipantResponse updateCurrentMemberPlaces(
+            long userId, long tripId, Long departurePlaceId, Long returnPlaceId) {
+        users.lockActive(userId);
+        lockTrip(tripId);
+        requireMember(tripId, userId);
+        validateMemberPlaces(tripId, userId, departurePlaceId, returnPlaceId);
+        if (!repository.updateJoinedPlaces(tripId, userId, departurePlaceId, returnPlaceId)) {
+            throw new BusinessException(TripErrorCode.TRIP_MEMBER_NOT_FOUND);
+        }
+        repository.expireParticipantRoutes(tripId, userId);
+        return memberByUser(tripId, userId);
     }
 
     /** 참여자 여행 정보를 삭제합니다. */

@@ -19,6 +19,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /** 맞춤 장소 추천에 필요한 위치·성향·상황 정보를 전달합니다. */
+@Schema(name = "PlaceRecommendationRequest", description = "맞춤 장소 추천 Agent 요청. externalProcessingConsent는 true여야 합니다.")
 public class PlaceRecommendationRequest {
 
     public static final String PURPOSE_PLACE_RECOMMENDATION = "PLACE_RECOMMENDATION";

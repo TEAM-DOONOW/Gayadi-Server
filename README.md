@@ -94,6 +94,7 @@ APP_AI_EMBEDDING_ENABLED=false
 | 여행 전 | `GET/PATCH/DELETE /api/v1/trips/{tripId}` | 여행 상세·수정·삭제 |
 | 여행 전 | `GET /api/v1/trips/{tripId}/participants` | 참여자 목록 |
 | 여행 전 | `PUT/DELETE /api/v1/trips/{tripId}/participants/{userId}` | 참여자 관리 |
+| 여행 전 | `PATCH /api/v1/trips/{tripId}/participants/current` | 내 출발·귀가 장소 수정 |
 | 여행 전 | `GET/POST /api/v1/trips/{tripId}/invitations` | 여행 초대 관리 |
 | 여행 전 | `PATCH /api/v1/trips/{tripId}/invitations/{invitationId}` | 개별 초대 상태 변경 |
 | 여행 전 | `POST /api/v1/trip-memberships` | 초대 코드로 참여 |
@@ -120,19 +121,18 @@ APP_AI_EMBEDDING_ENABLED=false
 | 여행 중 | `POST /api/v1/trips/{tripId}/event-observations` | 날씨·혼잡·교통 관측 및 변경안 생성 |
 | 상황 대처 | `POST /api/v1/trips/{tripId}/situation-responses` | 여행 컨텍스트를 포함한 대체 장소·상황 대응. 여행 중에는 승인 가능한 변경안도 생성 |
 | 여행 중 | `PATCH /api/v1/trips/{tripId}/change-proposals/{proposalId}` | 변경안 승인·거절 |
-| 날씨 | `GET /api/v1/weather/now` | 인증 사용자의 기상청 초단기실황 조회 |
+| 날씨 | `GET /api/v1/weather/nowcasts` | 인증 사용자의 기상청 초단기실황 조회 |
 | 날씨 | `GET /api/v1/weather/ultra-forecast` | 인증 사용자의 6시간 이내 초단기예보 조회 |
 | 날씨 | `GET /api/v1/weather/forecast` | 인증 사용자의 전체 단기예보 조회 |
 | 날씨 | `GET /api/v1/weather/version` | 인증 사용자의 예보 파일 버전 조회 |
 | 혼잡 | `GET /api/v1/congestion/forecast` | 한국관광공사 30일 관광지 집중률 예측. 자료가 없으면 낮은 신뢰도의 달력 추정값 반환 |
-| 앱 장소 탐색 | `GET /api/v1/tour/discover` | GAYADI 지역명·여행일·카테고리로 관광지와 예상 혼잡도를 통합 조회 |
+| 앱 장소 탐색 | `GET /api/v1/tour/areas` | GAYADI 지역명·여행일·카테고리로 관광지와 예상 혼잡도를 통합 조회 |
 | 장소 | `GET /api/v1/places` | 검색·지역·분류·커서 기반 공개 장소 조회 |
 | 찜 | `GET/PUT/DELETE /api/v1/users/current/favorite-places` | 내 장소 찜 관리 |
 | 공지 | `GET /api/v1/notices`, `GET /api/v1/notices/{noticeId}` | 공개 공지 목록·상세 조회 |
 | 문의 | `POST /api/v1/inquiries` | 인증 사용자의 고객지원 문의 접수 |
 | 문서 | `GET /api/v1/legal-documents/{documentId}` | 약관·개인정보처리방침 조회 |
 | 선택 기능 | `POST /api/v1/recommendations/places` | Groq·TourAPI 기반 장소 추천 Agent |
-| 상황 대처 | `POST /api/v1/recommendations/situations` | 날씨·혼잡·교통·대중교통 누락을 반영한 장소 대안 |
 | 관리 | `POST /api/v1/admin/place-embeddings` | 관리자 전용 장소 검색 자료 갱신 |
 
 `TravelFlowIntegrationTests`가 사용자 생성부터 설문, 일정, 모여서 출발, 이벤트 변경 승인, revision 증가, 귀가 및 완료까지 검증합니다. `AndroidFeatureDomainHttpIntegrationTests`는 Android 화면의 날짜 조율, 공동 경비, 개인 지출, 정산, 공지와 문의를 실제 HTTP·JWT·Swagger 계약으로 검증합니다. `AiUserJourneyIntegrationTests`는 추천 결과가 상황 변화와 변경안 승인 후 일정·경로에 반영되는 사용자 경로를 검증합니다.

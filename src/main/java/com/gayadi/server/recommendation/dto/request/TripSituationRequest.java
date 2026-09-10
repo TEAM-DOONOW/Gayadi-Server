@@ -17,6 +17,8 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /** 진행 중 여행의 상황 대응에 필요한 위치와 상황 정보를 전달합니다. */
+@Schema(name = "TripSituationRequest",
+        description = "여행 상황 대처 Agent 요청. 날씨·혼잡을 생략하면 공공데이터로 보강합니다.")
 public class TripSituationRequest {
 
     @Size(max = 10)
@@ -40,13 +42,16 @@ public class TripSituationRequest {
     private Double longitude;
 
     @Size(max = 10)
+    @Schema(description = "원하는 장소를 나타내는 낱말", example = "[\"박물관\", \"실내\"]")
     private List<@Size(max = 50) String> keywords = List.of();
 
     @Min(1)
     @Max(PlaceRecommendationRequest.MAX_RECOMMENDATIONS)
+    @Schema(description = "추천받을 장소 수", example = "5")
     private int limit = 5;
 
     @Size(max = 40)
+    @Schema(description = "상황 기준 시각(ISO-8601)", example = "2026-09-20T14:00:00+09:00")
     private String targetAt = "";
 
     @NotNull
@@ -55,6 +60,7 @@ public class TripSituationRequest {
     private TravelSituation situation = TravelSituation.empty();
 
     @AssertTrue(message = "외부 맞춤 추천 처리에 동의해야 합니다.")
+    @Schema(description = "성향과 검색어를 외부 추천 모델에서 처리하는 데 동의하는지", example = "true")
     private boolean externalProcessingConsent;
 
     public String getRegionCode() {

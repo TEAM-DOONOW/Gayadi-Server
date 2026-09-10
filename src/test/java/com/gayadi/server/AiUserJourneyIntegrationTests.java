@@ -342,6 +342,35 @@ class AiUserJourneyIntegrationTests {
         Assertions.assertThat(invalidTime.statusCode()).isEqualTo(400);
     }
 
+    @Test
+    void situationResponseWorksWithoutAGroupSurvey() throws Exception {
+        String token = register("ai-nosurvey-" + System.nanoTime() + "@example.com");
+        LocalDate tripDate = LocalDate.now().plusDays(1);
+        JsonNode trip = body(request("POST", "/api/v1/trips", token, """
+                {"name":"설문 없는 상황 대처","startDate":"%s","endDate":"%s","cities":["서울"]}
+                """.formatted(tripDate, tripDate)), 201);
+        long tripId = trip.path("id").asLong();
+
+        JsonNode response = body(request(
+                "POST", "/api/v1/trips/" + tripId + "/situation-responses", token, """
+                {
+                  "regionCode":"11",
+                  "latitude":37.5665,
+                  "longitude":126.9780,
+                  "keywords":["박물관"],
+                  "limit":1,
+                  "externalProcessingConsent":true,
+                  "situation":{
+                    "weather":{"condition":"RAIN","precipitationProbability":90}
+                  }
+                }
+                """), 200);
+        Assertions.assertThat(response.path("placeRecommendations").path("recommendations").size())
+                .isGreaterThanOrEqualTo(1);
+        Assertions.assertThat(response.path("changeProposal").path("id").isMissingNode()
+                || response.path("changeProposal").path("id").isNull()).isTrue();
+    }
+
     private String register(String email) throws Exception {
         JsonNode response = body(request(
                 "POST", "/api/v1/auth/registrations", null,

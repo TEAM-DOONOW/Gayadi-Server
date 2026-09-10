@@ -2,6 +2,7 @@ package com.gayadi.server.auth;
 
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.common.security.ApiAuthenticationEntryPoint;
+import com.gayadi.server.common.security.ApiSecurityErrorWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,14 +27,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserService userService;
     private final ApiAuthenticationEntryPoint authenticationEntryPoint;
+    private final ApiSecurityErrorWriter errorWriter;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
             UserService userService,
-            ApiAuthenticationEntryPoint authenticationEntryPoint) {
+            ApiAuthenticationEntryPoint authenticationEntryPoint,
+            ApiSecurityErrorWriter errorWriter) {
         this.jwtService = jwtService;
         this.userService = userService;
         this.authenticationEntryPoint = authenticationEntryPoint;
+        this.errorWriter = errorWriter;
     }
 
     @Override
@@ -63,8 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (BusinessException exception) {
             SecurityContextHolder.clearContext();
-            authenticationEntryPoint.commence(request, response,
-                    new BadCredentialsException("유효하지 않은 로그인 토큰입니다.", exception));
+            errorWriter.write(request, response, exception.getErrorCode());
         }
     }
 }

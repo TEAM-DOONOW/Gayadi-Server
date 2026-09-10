@@ -14,11 +14,13 @@ import com.gayadi.server.event.command.AiChangeProposalCommand;
 import com.gayadi.server.event.command.AiChangeProposalOption;
 import com.gayadi.server.event.model.ChangeProposalType;
 import com.gayadi.server.route.RouteService;
+import com.gayadi.server.survey.SurveyErrorCode;
 import com.gayadi.server.survey.SurveyService;
 import com.gayadi.server.survey.dto.response.GroupPersonalityResponse;
 import com.gayadi.server.travel.TripService;
 import com.gayadi.server.travel.dto.response.TripResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,7 +44,7 @@ import java.util.Objects;
 /** 진행 중 여행의 상황 대응과 변경 제안 생성 요청을 처리합니다. */
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}")
-@Tag(name = "상황 대처")
+@Tag(name = "상황 대처", description = "여행 상황 대처 Agent. APP_AI_ENABLED=true 필요")
 @SecurityRequirement(name = "bearerAuth")
 public class TripSituationController {
 
@@ -72,9 +74,12 @@ public class TripSituationController {
 
     @PostMapping("/situation-responses")
     @Operation(summary = "여행 상황 대처",
-            description = "여행의 참여자·성향과 날씨·혼잡·교통 상황을 반영해 대체 장소와 다음 조치를 제안합니다. "
-                    + "날씨를 생략하면 현재 위치의 기상청 초단기실황을 적용하고, 혼잡을 생략하면 관광지 집중률 공공데이터 또는 예상값으로 자동 보강하며, "
-                    + "여행 중에는 승인 가능한 변경안을 생성합니다. APP_AI_ENABLED=true가 필요합니다.")
+            description = "여행 참여자·성향과 날씨·혼잡·교통을 반영해 대체 장소와 다음 조치를 제안합니다. "
+                    + "설문이 없으면 기본 성향으로 진행합니다. "
+                    + "날씨·혼잡을 생략하면 기상청 초단기실황과 관광지 집중률로 보강하고, 보강이 실패해도 Agent는 계속됩니다. "
+                    + "여행 중(ONGOING)이면 승인 가능한 변경안을 만들고, 승인·거절은 "
+                    + "`PATCH /api/v1/trips/{tripId}/change-proposals/{proposalId}`입니다. "
+                    + "APP_AI_ENABLED=false이면 503 SITUATION_AGENT_UNAVAILABLE입니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "여행 상황 대처 및 변경안 생성 성공",
                     content = @Content(schema = @Schema(implementation = SituationResponse.class))),
@@ -86,11 +91,11 @@ public class TripSituationController {
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "여행을 찾을 수 없음",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
-            @ApiResponse(responseCode = "503", description = "상황 대처 Agent 또는 외부 데이터 연동 불가",
+            @ApiResponse(responseCode = "503", description = "상황 대처 Agent가 꺼져 있습니다. SITUATION_AGENT_UNAVAILABLE",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
     public SituationResponse respond(
-            @AuthenticationPrincipal Long userId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @PathVariable long tripId,
             @Valid @RequestBody TripSituationRequest request) {
         trips.requireMember(tripId, userId);
@@ -121,7 +126,7 @@ public class TripSituationController {
         recommendation.setSituation(effectiveSituation);
         recommendation.setExternalProcessingConsent(request.isExternalProcessingConsent());
         SituationResponse response = agent.respond(recommendation);
-        if ("ONGOING".equals(trip.status())) {
+        if (isOngoing(trip.status())) {
             SituationChangeProposalResponse proposal = createChangeProposal(tripId, request, response);
             if (proposal.id() != null) {
                 response = response.withChangeProposal(proposal);
@@ -191,10 +196,21 @@ public class TripSituationController {
         return null;
     }
 
+    private boolean isOngoing(String status) {
+        return "ONGOING".equals(status) || "IN_PROGRESS".equals(status);
+    }
+
     private String groupProfile(long tripId) {
-        GroupPersonalityResponse profile = surveys.groupProfile(tripId);
-        return "그룹 대표 성향: " + profile.dominantProfile()
-                + ", 성향 분포: " + profile.distribution();
+        try {
+            GroupPersonalityResponse profile = surveys.groupProfile(tripId);
+            return "그룹 대표 성향: " + profile.dominantProfile()
+                    + ", 성향 분포: " + profile.distribution();
+        } catch (BusinessException exception) {
+            if (exception.getErrorCode() == SurveyErrorCode.SURVEY_PROFILE_REQUIRED) {
+                return "여행 성향 설문이 아직 없습니다.";
+            }
+            throw exception;
+        }
     }
 
 }
