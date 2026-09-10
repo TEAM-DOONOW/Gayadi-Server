@@ -1,11 +1,11 @@
 # GAYADI 프론트엔드 API 명세
 
-최종 수정일: 2026-09-02
+최종 수정일: 2026-09-10
 대상: `Gayadi-Android` 장소·혼잡도 및 AI Agent API 연동
 
 ## 1. 기본 정보
 
-- Base URL: Android의 `TOUR_API_BASE_URL`
+- Base URL: Android의 `BuildConfig.API_BASE_URL`
 - 로컬 Android Emulator: `http://10.0.2.2:8080`
 - Content-Type: `application/json`
 - 문자 인코딩: UTF-8
@@ -244,8 +244,8 @@ Agent 공통 오류:
 
 Android Google 로그인은 `POST /api/v1/auth/google-tokens`로 서버 JWT를 발급합니다.
 프로필 조회·수정·탈퇴는 `GET/PATCH/DELETE /api/v1/users/current`입니다.
-Android 여행 ID는 아직 로컬 문자열이고 서버 여행 ID는 숫자이므로, Agent를 화면에서 호출하려면
-서버 `tripId` 매핑이 필요합니다.
+Android의 `ServerTravelGateway`는 서버 숫자 여행 ID를 Domain 문자열로 보존합니다.
+따라서 Agent 화면 연동 시 같은 값을 숫자로 검증해 `tripId`에 전달하면 됩니다.
 
 Google 로그인은 Android Credential Manager가 발급한 Google ID 토큰을 서버에 넘겨 서버 JWT를 받습니다.
 
