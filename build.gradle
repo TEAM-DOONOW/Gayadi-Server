@@ -60,7 +60,7 @@ dependencyManagement {
 }
 
 dependencies {
-    implementation enforcedPlatform('io.netty:netty-bom:4.2.17.Final')
+    implementation enforcedPlatform('io.netty:netty-bom:4.2.18.Final')
     implementation enforcedPlatform('tools.jackson:jackson-bom:3.2.2')
     implementation enforcedPlatform('com.fasterxml.jackson:jackson-bom:2.22.2')
 
