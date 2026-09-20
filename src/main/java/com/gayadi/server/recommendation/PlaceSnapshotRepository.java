@@ -48,13 +48,13 @@ public class PlaceSnapshotRepository implements PlaceSnapshotWriter {
             if (id == 0) {
                 id = keyHelper.insert("""
                         INSERT INTO places (source, visibility, source_place_id, name, category,
-                                            address, latitude, longitude, region_id, basic_info,
+                                            address, latitude, longitude, region_id, basic_info, image_url,
                                             indoor, status)
-                        VALUES ('TOUR_API', 'PUBLIC', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
+                        VALUES ('TOUR_API', 'PUBLIC', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE')
                         """,
                         candidate.placeId(), candidate.name(), candidate.category(), candidate.address(),
                         candidate.latitude(), candidate.longitude(), regionId,
-                        candidate.description(), candidate.indoor());
+                        candidate.description(), candidate.imageUrl(), candidate.indoor());
             }
             result.put(candidate.placeId(), id);
         }
@@ -99,13 +99,13 @@ public class PlaceSnapshotRepository implements PlaceSnapshotWriter {
         jdbc.sql("""
                 UPDATE places
                 SET region_id = ?, name = ?, category = ?, address = ?,
-                    latitude = ?, longitude = ?, basic_info = ?, indoor = ?,
+                    latitude = ?, longitude = ?, basic_info = ?, image_url = ?, indoor = ?,
                     status = 'ACTIVE', visibility = 'PUBLIC', updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """)
                 .params(regionId, candidate.name(), candidate.category(), candidate.address(),
                         candidate.latitude(), candidate.longitude(), candidate.description(),
-                        candidate.indoor(), ids.getFirst())
+                        candidate.imageUrl(), candidate.indoor(), ids.getFirst())
                 .update();
         return ids.getFirst();
     }

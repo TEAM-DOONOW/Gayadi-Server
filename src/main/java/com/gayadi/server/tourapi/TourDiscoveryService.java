@@ -4,6 +4,9 @@ import com.gayadi.server.congestion.CongestionForecastService;
 import com.gayadi.server.congestion.dto.request.CongestionForecastRequest;
 import com.gayadi.server.congestion.dto.response.CongestionForecastResponse;
 import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.recommendation.PlaceSnapshotWriter;
+import com.gayadi.server.recommendation.model.TourContentType;
+import com.gayadi.server.recommendation.model.TourPlaceCandidate;
 import com.gayadi.server.tourapi.dto.request.AreaBasedListRequest;
 import com.gayadi.server.tourapi.dto.request.TourDiscoveryRequest;
 import com.gayadi.server.tourapi.dto.response.TourDiscoveryPlaceResponse;
@@ -34,15 +37,18 @@ public class TourDiscoveryService {
     private final TourApiService tourApi;
     private final TourRegionResolver regionResolver;
     private final CongestionForecastService congestion;
+    private final PlaceSnapshotWriter snapshots;
     private final Map<PlaceQuery, CachedPlaces> placeCache = new ConcurrentHashMap<>();
     private final Map<PlaceQuery, Object> placeCacheLocks = new ConcurrentHashMap<>();
     private final Semaphore placeLoadBulkhead = new Semaphore(MAX_CONCURRENT_PLACE_LOADS);
 
     public TourDiscoveryService(TourApiService tourApi, TourRegionResolver regionResolver,
-                                CongestionForecastService congestion) {
+                                CongestionForecastService congestion,
+                                PlaceSnapshotWriter snapshots) {
         this.tourApi = tourApi;
         this.regionResolver = regionResolver;
         this.congestion = congestion;
+        this.snapshots = snapshots;
     }
 
     /** 관광지 정보와 혼잡도 예측을 조합해 탐색 결과를 반환합니다. */
@@ -57,9 +63,13 @@ public class TourDiscoveryService {
                         place.title(), targetAt))
                 .toList();
         List<CongestionForecastResponse> forecasts = congestion.forecastAll(forecastRequests);
+        Map<String, Long> localIds = snapshots.save(
+                places.stream().map(this::toSnapshot).toList(), request.regionName());
         List<TourDiscoveryPlaceResponse> result = new ArrayList<>();
         for (int index = 0; index < places.size(); index++) {
-            result.add(TourDiscoveryPlaceResponse.of(places.get(index), forecasts.get(index)));
+            TourPlaceResponse place = places.get(index);
+            result.add(TourDiscoveryPlaceResponse.of(
+                    place, forecasts.get(index), localIds.get(place.contentId())));
         }
         return new TourDiscoveryResponse(
                 result,
@@ -68,6 +78,37 @@ public class TourDiscoveryService {
                 null,
                 request.regionName(),
                 targetDate);
+    }
+
+    private TourPlaceCandidate toSnapshot(TourPlaceResponse place) {
+        TourContentType type = TourContentType.fromCode(place.contentTypeId());
+        String category = type == null ? "ETC" : type.category();
+        if ("39".equals(place.contentTypeId())
+                && place.lclsSystm2() != null
+                && place.lclsSystm2().startsWith("FD05")) {
+            category = "CAFE";
+        }
+        return new TourPlaceCandidate(
+                place.contentId(), place.title(), category, place.contentTypeId(),
+                joinAddress(place.address(), place.addressDetail()),
+                decimal(place.mapY()), decimal(place.mapX()),
+                type == null ? null : type.indoor(), null,
+                place.title() + " " + joinAddress(place.address(), place.addressDetail()),
+                place.firstImage());
+    }
+
+    private String joinAddress(String address, String detail) {
+        String first = address == null ? "" : address.trim();
+        String second = detail == null ? "" : detail.trim();
+        return second.isBlank() ? first : (first + " " + second).trim();
+    }
+
+    private Double decimal(String value) {
+        try {
+            return value == null || value.isBlank() ? null : Double.parseDouble(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private List<TourPlaceResponse> cachedPlaces(TourDiscoveryRequest request) {
