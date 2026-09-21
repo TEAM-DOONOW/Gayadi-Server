@@ -2,6 +2,8 @@ package com.gayadi.server.congestion;
 
 import com.gayadi.server.congestion.dto.request.CongestionForecastRequest;
 import com.gayadi.server.congestion.dto.response.CongestionForecastResponse;
+import com.gayadi.server.congestion.dto.response.CongestionHourlyForecastResponse;
+import com.gayadi.server.congestion.dto.response.CongestionHourlyPoint;
 
 import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
@@ -41,6 +43,13 @@ public class CongestionForecastService {
     private static final ZoneId KOREA = ZoneId.of("Asia/Seoul");
     private static final Duration SNAPSHOT_CACHE_TTL = Duration.ofMinutes(30);
     private static final int MAX_SNAPSHOT_CACHE_ENTRIES = 512;
+    private static final int MAX_HOURLY_POINTS = 24;
+    private static final List<Integer> DEFAULT_HOURLY_HOURS = List.of(9, 11, 13, 15, 17, 19);
+    /** 일별 기준 점수에 더하는 시간대별 가중치. 심야는 낮추고 13-15시 방문 집중 시간대를 높인다. */
+    private static final int[] HOURLY_OFFSETS = {
+            -22, -24, -25, -25, -24, -22, -18, -14, -10, -6, -2, 4,
+            8, 11, 13, 12, 9, 5, 1, -3, -7, -11, -15, -19,
+    };
 
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5)).build();
@@ -106,6 +115,59 @@ public class CongestionForecastService {
             }
         }
         return List.of(result);
+    }
+
+    /**
+     * 일별 기준 점수에 시간대 분포를 적용한 시간대별 예측을 반환합니다.
+     * 기존 단건/묶음 예측과 에이전트 보강 로직은 그대로 두어 호환을 유지합니다.
+     * 제공기관 자료는 일별 상대 집중률이므로 시간대별 값은 항상 추정치입니다.
+     */
+    public CongestionHourlyForecastResponse forecastHourly(
+            CongestionForecastRequest request, List<Integer> hours) {
+        List<Integer> targetHours = normalizeHours(hours);
+        CongestionForecastResponse base = forecast(request);
+        List<CongestionHourlyPoint> points = targetHours.stream()
+                .map(hour -> {
+                    int score = Math.max(0, Math.min(100,
+                            base.concentrationScore() + hourlyOffset(hour)));
+                    return new CongestionHourlyPoint(hour, score, level(score));
+                })
+                .toList();
+        return new CongestionHourlyForecastResponse(
+                base.area(),
+                base.placeName(),
+                base.targetDate(),
+                base.level(),
+                base.concentrationScore(),
+                base.source(),
+                true,
+                base.providerDataAvailable(),
+                "LOW",
+                "일별 예측 점수를 기준으로 시간대 분포를 적용한 추정치이므로 "
+                        + "실제 혼잡과 다를 수 있습니다.",
+                points);
+    }
+
+    private List<Integer> normalizeHours(List<Integer> hours) {
+        if (hours == null || hours.isEmpty()) {
+            return List.copyOf(DEFAULT_HOURLY_HOURS);
+        }
+        List<Integer> normalized = hours.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+        if (normalized.isEmpty() || normalized.size() > MAX_HOURLY_POINTS) {
+            throw new IllegalArgumentException("시간대 개수는 1개 이상 24개 이하여야 합니다.");
+        }
+        if (normalized.stream().anyMatch(hour -> hour < 0 || hour > 23)) {
+            throw new IllegalArgumentException("시간대는 0부터 23 사이여야 합니다.");
+        }
+        return normalized;
+    }
+
+    private int hourlyOffset(int hour) {
+        return HOURLY_OFFSETS[hour];
     }
 
     private ProviderSnapshot cachedSnapshot(GroupKey key) throws Exception {

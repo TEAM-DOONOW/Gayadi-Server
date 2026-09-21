@@ -186,4 +186,4 @@ info:
 logging:
   level:
     root: INFO
-    com.gayadi.server: INFO
+    com.gayadi.server: DEBUG

@@ -6,6 +6,7 @@ import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
 import com.gayadi.server.recommendation.model.PlaceSearchPlan;
 import com.gayadi.server.recommendation.model.TourPlaceCandidate;
 import com.gayadi.server.recommendation.model.TravelSituation;
+import com.gayadi.server.tourapi.TourRegionResolver;
 
 import org.junit.jupiter.api.Test;
 
@@ -157,6 +158,28 @@ class PlaceRecommendationAgentTest {
                 .contains("검색 조건");
     }
 
+    @Test
+    void resolvesDestinationRegionWhenTheClientOmitsTourApiCodes() {
+        FakeGateway gateway = new FakeGateway(List.of(
+                candidate("seoul", "서울박물관", "CULTURE", true, 1.0)));
+        FakeLanguageModel model = new FakeLanguageModel("seoul");
+        PlaceRecommendationAgent agent = new PlaceRecommendationAgent(
+                model,
+                gateway,
+                (candidates, destination) -> Map.of(),
+                new TourRegionResolver(null));
+        PlaceRecommendationRequest request = request(TravelSituation.empty());
+        request.setDestination("서울");
+        request.setRegionCode("");
+        request.setSigunguCode("");
+
+        agent.recommendPlaces(request);
+
+        assertThat(model.lastContext.regionCode()).isEqualTo("11");
+        assertThat(gateway.lastContext.regionCode()).isEqualTo("11");
+        assertThat(gateway.lastContext.sigunguCode()).isBlank();
+    }
+
     private PlaceRecommendationRequest request(TravelSituation situation) {
         PlaceRecommendationRequest request = new PlaceRecommendationRequest();
         request.setDestination("울산");
@@ -180,6 +203,7 @@ class PlaceRecommendationAgentTest {
     private static final class FakeGateway implements TourPlaceSearchGateway {
         private final List<TourPlaceCandidate> candidates;
         private TravelSituation.Policy lastPolicy;
+        private SearchContext lastContext;
 
         private FakeGateway(List<TourPlaceCandidate> candidates) {
             this.candidates = candidates;
@@ -187,6 +211,7 @@ class PlaceRecommendationAgentTest {
 
         @Override
         public List<TourPlaceCandidate> search(PlaceSearchPlan plan, SearchContext context) {
+            lastContext = context;
             lastPolicy = context.policy();
             return candidates;
         }
