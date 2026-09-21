@@ -2,6 +2,7 @@ package com.gayadi.server.congestion;
 
 import com.gayadi.server.congestion.dto.request.CongestionForecastRequest;
 import com.gayadi.server.congestion.dto.response.CongestionForecastResponse;
+import com.gayadi.server.congestion.dto.response.CongestionHourlyForecastResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +11,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
@@ -48,9 +51,35 @@ public class CongestionController {
             @RequestParam(defaultValue = "") @Size(max = 50) String areaName,
             @Parameter(description = "장소 표시명")
             @RequestParam(defaultValue = "") @Size(max = 100) String placeName,
-            @Parameter(description = "예측 기준 시각 또는 날짜")
+            @Parameter(description = "UTC 오프셋을 포함한 ISO-8601 예측 기준 시각")
             @RequestParam(defaultValue = "") @Size(max = 40) String targetAt) {
         return service.forecast(new CongestionForecastRequest(
                 areaCode, districtCode, areaName, placeName, targetAt));
+    }
+
+    @GetMapping("/forecast/hourly")
+    @Operation(summary = "관광지 시간대별 혼잡 예상",
+            description = "JWT가 필요합니다. 단건 예측과 같은 일별 기준 점수를 사용하고, "
+                    + "시간대 분포를 적용한 추정치 목록을 반환합니다. "
+                    + "제공기관 자료가 일별 상대 집중률이므로 시간대별 값은 항상 추정치이며 "
+                    + "신뢰도는 LOW로 표시됩니다. 기존 단건 예측과 에이전트 동작은 바뀌지 않습니다.")
+    @ApiResponse(responseCode = "200", description = "시간대별 혼잡 예상값",
+            content = @Content(schema = @Schema(implementation = CongestionHourlyForecastResponse.class)))
+    public CongestionHourlyForecastResponse forecastHourly(
+            @Parameter(description = "시도 코드 2자리", example = "11", required = true)
+            @RequestParam @Pattern(regexp = "\\d{2}") String areaCode,
+            @Parameter(description = "시군구 코드 3자리 또는 5자리", example = "110", required = true)
+            @RequestParam @Pattern(regexp = "\\d{3}|\\d{5}") String districtCode,
+            @Parameter(description = "지역 표시명")
+            @RequestParam(defaultValue = "") @Size(max = 50) String areaName,
+            @Parameter(description = "장소 표시명")
+            @RequestParam(defaultValue = "") @Size(max = 100) String placeName,
+            @Parameter(description = "UTC 오프셋을 포함한 ISO-8601 예측 기준 시각")
+            @RequestParam(defaultValue = "") @Size(max = 40) String targetAt,
+            @Parameter(description = "조회할 시간(0-23). 콤마 또는 반복 전달. 미전달 시 9,11,13,15,17,19",
+                    example = "9,11,13,15,17,19")
+            @RequestParam(required = false) java.util.List<@Min(0) @Max(23) Integer> hours) {
+        return service.forecastHourly(new CongestionForecastRequest(
+                areaCode, districtCode, areaName, placeName, targetAt), hours);
     }
 }
