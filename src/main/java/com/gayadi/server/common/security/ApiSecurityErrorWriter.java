@@ -2,6 +2,7 @@ package com.gayadi.server.common.security;
 
 import com.gayadi.server.common.JsonSupport;
 import com.gayadi.server.common.exception.ErrorCode;
+import com.gayadi.server.common.logging.RequestTrace;
 import com.gayadi.server.common.response.ApiErrorResponse;
 import com.gayadi.server.common.response.ApiErrorResponseFactory;
 import com.gayadi.server.common.response.ApiMessageResolver;
@@ -36,7 +37,7 @@ public class ApiSecurityErrorWriter {
                 errorCode,
                 messageResolver.resolve(errorCode, request.getLocale()),
                 request.getRequestURI(),
-                responseFactory.newTraceId(),
+                RequestTrace.currentOrCreate(),
                 null);
 
         response.setStatus(errorCode.status().value());

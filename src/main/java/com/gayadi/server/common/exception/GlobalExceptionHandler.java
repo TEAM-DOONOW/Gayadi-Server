@@ -4,6 +4,7 @@ import com.gayadi.server.common.response.ApiErrorDetail;
 import com.gayadi.server.common.response.ApiErrorResponse;
 import com.gayadi.server.common.response.ApiErrorResponseFactory;
 import com.gayadi.server.common.response.ApiMessageResolver;
+import com.gayadi.server.common.logging.RequestTrace;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -56,7 +57,7 @@ public class GlobalExceptionHandler {
         String message = messageResolver.resolve(
                 errorCode, request.getLocale(), ex.getMessageArguments());
         if (errorCode.status().is5xxServerError()) {
-            String traceId = responseFactory.newTraceId();
+            String traceId = RequestTrace.currentOrCreate();
             log.error("외부 연동 또는 서비스 처리 오류: {} {} code={} traceId={}",
                     request.getMethod(), request.getRequestURI(), errorCode.code(), traceId, ex);
             return error(errorCode, message, request.getRequestURI(), null, traceId);
@@ -136,7 +137,7 @@ public class GlobalExceptionHandler {
         String method = ex.getMethod();
         String message = "'" + method + "' 메서드는 이 경로에서 지원하지 않습니다.";
         ApiErrorDetail detail = new ApiErrorDetail("method", message);
-        String traceId = responseFactory.newTraceId();
+        String traceId = RequestTrace.currentOrCreate();
         ApiErrorResponse body = responseFactory.create(
                 CommonErrorCode.METHOD_NOT_ALLOWED, message,
                 request.getRequestURI(), traceId, List.of(detail));
@@ -178,7 +179,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataConflict(
             DataIntegrityViolationException ex, HttpServletRequest request) {
-        String traceId = responseFactory.newTraceId();
+        String traceId = RequestTrace.currentOrCreate();
         log.warn("데이터 제약 조건 충돌: {} {} traceId={}",
                 request.getMethod(), request.getRequestURI(), traceId);
         return error(CommonErrorCode.DATA_CONFLICT, request.getRequestURI(), null, traceId);
@@ -186,7 +187,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
-        String traceId = responseFactory.newTraceId();
+        String traceId = RequestTrace.currentOrCreate();
         log.error("처리하지 못한 요청 오류: {} {} traceId={}",
                 request.getMethod(), request.getRequestURI(), traceId, ex);
         return error(CommonErrorCode.INTERNAL_SERVER_ERROR, request.getRequestURI(), null, traceId);
@@ -259,7 +260,7 @@ public class GlobalExceptionHandler {
             String message,
             String path,
             List<ApiErrorDetail> details) {
-        return error(errorCode, message, path, details, responseFactory.newTraceId());
+        return error(errorCode, message, path, details, RequestTrace.currentOrCreate());
     }
 
     private ResponseEntity<ApiErrorResponse> error(
