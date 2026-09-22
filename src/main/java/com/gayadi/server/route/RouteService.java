@@ -16,12 +16,15 @@ import com.gayadi.server.route.query.RouteOptionQueryResult;
 import com.gayadi.server.route.query.RoutePlaceQueryResult;
 import com.gayadi.server.route.query.RouteQueryResult;
 import com.gayadi.server.route.query.RouteTripQueryResult;
+import com.gayadi.server.route.query.RouteItineraryStop;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -33,21 +36,22 @@ import java.util.Objects;
 public class RouteService {
 
     private static final int MAX_ITINERARY_STOPS = 100;
+    private static final int MAX_OPTIMIZATION_STOPS = 12;
 
     private final RouteRepository repository;
     private final TripService trips;
     private final PlanService plans;
-    private final RouteProvider provider;
+    private final List<RouteProvider> providers;
     private final JsonSupport json;
     private final TransactionTemplate transactions;
 
     public RouteService(RouteRepository repository, TripService trips, PlanService plans,
-                        RouteProvider provider, JsonSupport json,
+                        List<RouteProvider> providers, JsonSupport json,
                         PlatformTransactionManager transactionManager) {
         this.repository = repository;
         this.trips = trips;
         this.plans = plans;
-        this.provider = provider;
+        this.providers = List.copyOf(providers);
         this.json = json;
         this.transactions = new TransactionTemplate(transactionManager);
     }
@@ -55,6 +59,12 @@ public class RouteService {
     /** 인증된 HTTP 요청에서 사용하는 경로 추천입니다. */
     public RouteResponse recommendForUser(
             long tripId, long userId, RoutePhase phase, Long requestedUserId) {
+        return recommendForUser(tripId, userId, phase, requestedUserId, TransportMode.PUBLIC_TRANSIT);
+    }
+
+    public RouteResponse recommendForUser(
+            long tripId, long userId, RoutePhase phase, Long requestedUserId,
+            TransportMode transportMode) {
         RecommendationPreparation preparation = Objects.requireNonNull(
                 transactions.execute(status -> {
                     RouteTripQueryResult trip = lockTrip(tripId);
@@ -64,7 +74,7 @@ public class RouteService {
                             trip, phase, requestedUserId, userId, actorMemberId);
                     return prepare(tripId, trip, phase, memberId, userId);
                 }));
-        return routeResponse(recommendPrepared(preparation));
+        return routeResponse(recommendPrepared(preparation, transportMode));
     }
 
     /** 서비스 흐름 테스트와 내부 작업에서 사용하는 기존 진입점입니다. */
@@ -72,7 +82,7 @@ public class RouteService {
         RecommendationPreparation preparation = Objects.requireNonNull(
                 transactions.execute(status -> prepare(
                         tripId, lockTrip(tripId), phase, memberId, null)));
-        return routeResponse(recommendPrepared(preparation));
+        return routeResponse(recommendPrepared(preparation, TransportMode.PUBLIC_TRANSIT));
     }
 
     private RecommendationPreparation prepare(
@@ -85,10 +95,15 @@ public class RouteService {
                 routeRevision(tripId, memberId));
     }
 
-    private Map<String, Object> recommendPrepared(RecommendationPreparation preparation) {
+    private Map<String, Object> recommendPrepared(
+            RecommendationPreparation preparation, TransportMode transportMode) {
+        RouteProvider provider = providers.stream()
+                .filter(candidate -> candidate.transportMode() == transportMode)
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(RouteErrorCode.ROUTE_PROVIDER_FAILED));
         // 공급자 호출은 트랜잭션 밖에서 끝내 연결과 행 잠금을 오래 점유하지 않는다.
         RouteCalculation calculation = calculate(
-                preparation.context(), preparation.phase());
+                preparation.context(), preparation.phase(), provider);
         return Objects.requireNonNull(transactions.execute(status ->
                 persistRecommendation(preparation, calculation)));
     }
@@ -105,9 +120,32 @@ public class RouteService {
         };
     }
 
-    private RouteCalculation calculate(RouteContext context, RoutePhase phase) {
-        List<RouteProvider.RouteEstimate> estimates = provider.estimateSegments(
-                context.stops(), phase.name());
+    private RouteCalculation calculate(RouteContext context, RoutePhase phase, RouteProvider provider) {
+        List<RouteProvider.RouteEstimate> estimates;
+        if (phase == RoutePhase.IN_TRIP) {
+            SegmentCache cache = new SegmentCache(provider, phase);
+            List<Location> ordered = new ArrayList<>(context.stops());
+            for (OptimizationWindow window : context.windows()) {
+                if (window.to() - window.from() + 1 > MAX_OPTIMIZATION_STOPS) {
+                    throw new BusinessException(RouteErrorCode.ROUTE_OPTIMIZATION_TOO_LARGE);
+                }
+            }
+            for (OptimizationWindow window : context.windows()) {
+                List<Location> optimized = VisitOrderOptimizer.optimize(
+                        ordered.subList(window.from(), window.to() + 1),
+                        (from, to) -> cache.get(from, to).durationMinutes());
+                for (int i = 0; i < optimized.size(); i++) {
+                    ordered.set(window.from() + i, optimized.get(i));
+                }
+            }
+            context = new RouteContext(ordered, context.scope(), context.windows());
+            estimates = new ArrayList<>();
+            for (int i = 1; i < ordered.size(); i++) {
+                estimates.add(cache.get(ordered.get(i - 1), ordered.get(i)));
+            }
+        } else {
+            estimates = provider.estimateSegments(context.stops(), phase.name());
+        }
         if (estimates == null || estimates.size() != context.stops().size() - 1) {
             throw new BusinessException(RouteErrorCode.ROUTE_PROVIDER_FAILED);
         }
@@ -128,7 +166,8 @@ public class RouteService {
             durationMinutes += estimate.durationMinutes();
             transferCount += estimate.transferCount();
             fare += estimate.fare();
-            if (estimate.providerName() != null && !estimate.providerName().isBlank()) {
+            if (estimate.providerName() != null && !estimate.providerName().isBlank()
+                    && !estimate.providerName().equals(provider.providerName())) {
                 actualProvider = estimate.providerName();
             }
         }
@@ -138,7 +177,7 @@ public class RouteService {
                 durationMinutes,
                 transferCount,
                 fare,
-                actualProvider);
+                actualProvider, provider.providerName(), provider.transportMode());
     }
 
     private Map<String, Object> persistRecommendation(
@@ -166,7 +205,7 @@ public class RouteService {
         expireActiveRoutes(planId, phase, memberId);
 
         List<Map<String, Object>> options = new ArrayList<>();
-        for (OptionSpec option : optionSpecs(phase)) {
+        for (OptionSpec option : optionSpecs(phase, calculation.transportMode())) {
             options.add(persistOption(
                     tripId,
                     planId,
@@ -193,7 +232,7 @@ public class RouteService {
         String actualProvider = option.activeTravel()
                 ? RouteProvider.LOCAL_ESTIMATE : calculation.providerName();
         boolean fallback = !option.activeTravel()
-                && !actualProvider.equals(provider.providerName());
+                && !actualProvider.equals(calculation.configuredProvider());
 
         // 옵션별 보정이 반영된 구간을 합산해 저장용 요약 값을 계산합니다.
         int durationMinutes = optionSegments.stream()
@@ -207,7 +246,7 @@ public class RouteService {
                 .sum();
         Map<String, Object> routeData = new LinkedHashMap<>();
         routeData.put("provider", actualProvider);
-        routeData.put("configuredProvider", provider.providerName());
+        routeData.put("configuredProvider", calculation.configuredProvider());
         routeData.put("fallback", fallback);
         routeData.put("optionId", option.id());
         routeData.put("optionName", option.name());
@@ -250,7 +289,7 @@ public class RouteService {
         result.put("transportMode", option.transportMode());
         result.put("status", "RECOMMENDED");
         result.put("provider", actualProvider);
-        result.put("configuredProvider", provider.providerName());
+        result.put("configuredProvider", calculation.configuredProvider());
         result.put("fallback", fallback);
         result.put("summary", option.summary());
         return result;
@@ -261,7 +300,7 @@ public class RouteService {
             OptionSpec option) {
         return calculation.segments().stream()
                 .map(segment -> {
-                    int duration = Math.max(1, (int) Math.ceil(
+                    int duration = Math.max(0, (int) Math.ceil(
                             segment.estimate().durationMinutes() * option.durationFactor()));
                     if (option.activeTravel()) {
                         duration = activeTravelMinutes(segment.origin(), segment.destination(),
@@ -354,7 +393,16 @@ public class RouteService {
         return routeResponse(routeView(routeById(tripId, routeId)));
     }
 
-    private List<OptionSpec> optionSpecs(RoutePhase phase) {
+    private List<OptionSpec> optionSpecs(RoutePhase phase, TransportMode mode) {
+        if (mode == TransportMode.CAR) {
+            String id = switch (phase) {
+                case DEPARTURE -> "fast";
+                case IN_TRIP -> "balanced";
+                case RETURN -> "home-fast";
+            };
+            return List.of(new OptionSpec(id, "자동차 이동", "FASTEST", 1.0, false,
+                    "도로 예상 소요시간을 반영한 자동차 경로입니다.", "자동차 예상 이동 구간입니다.", "CAR"));
+        }
         List<OptionSpec> options = new ArrayList<>(switch (phase) {
             case DEPARTURE -> List.of(
                     new OptionSpec(
@@ -380,7 +428,7 @@ public class RouteService {
                             "BALANCED",
                             1.0,
                             false,
-                            "일정 순서에 따라 이동 시간과 환승 횟수를 계산한 동선입니다.",
+                            "일정의 고정 지점을 유지하고 이동 시간을 기준으로 계산한 동선입니다.",
                             "이동 시간과 환승을 함께 고려한 예상 구간입니다."),
                     new OptionSpec(
                             "crowd",
@@ -515,25 +563,29 @@ public class RouteService {
     }
 
     private RouteContext itineraryContext(long tripId) {
-        List<Location> stops = itineraryStops(tripId);
-        if (stops.size() < 2) {
-            throw new BusinessException(RouteErrorCode.ROUTE_STOPS_INSUFFICIENT);
-        }
-        return new RouteContext(stops, "GROUP");
-    }
-
-    private List<Location> itineraryStops(long tripId) {
-        List<RoutePlaceQueryResult> rows = repository.findItineraryStops(
-                tripId,
-                MAX_ITINERARY_STOPS + 1);
+        List<RouteItineraryStop> rows = repository.findItineraryStops(tripId, MAX_ITINERARY_STOPS + 1);
         if (rows.size() > MAX_ITINERARY_STOPS) {
             throw new BusinessException(RouteErrorCode.ROUTE_ITINERARY_TOO_LARGE);
         }
-        List<Location> stops = new ArrayList<>();
-        for (RoutePlaceQueryResult row : rows) {
-            stops.add(placeLocation(row));
+        if (rows.size() < 2) {
+            throw new BusinessException(RouteErrorCode.ROUTE_STOPS_INSUFFICIENT);
         }
-        return List.copyOf(stops);
+        List<OptimizationWindow> windows = new ArrayList<>();
+        int start = 0;
+        for (int i = 1; i < rows.size(); i++) {
+            RouteItineraryStop previous = rows.get(i - 1);
+            RouteItineraryStop current = rows.get(i);
+            if (current.planId() != previous.planId() || current.block() != previous.block()) {
+                windows.add(new OptimizationWindow(start, i - 1));
+                start = i;
+            } else if (current.fixed()) {
+                windows.add(new OptimizationWindow(start, i));
+                start = i;
+            }
+        }
+        windows.add(new OptimizationWindow(start, rows.size() - 1));
+        return new RouteContext(rows.stream().map(RouteItineraryStop::location).toList(),
+                "GROUP", List.copyOf(windows));
     }
 
     private String routeRevision(long tripId, Long memberId) {
@@ -553,7 +605,7 @@ public class RouteService {
             throw new BusinessException(RouteErrorCode.ROUTE_OPTION_REQUIRED);
         }
         String optionId = requestedOptionId.trim().toLowerCase(Locale.ROOT);
-        boolean allowed = optionSpecs(phase).stream()
+        boolean allowed = optionSpecs(phase, TransportMode.PUBLIC_TRANSIT).stream()
                 .anyMatch(option -> option.id().equals(optionId));
         if (!allowed) {
             throw new BusinessException(RouteErrorCode.ROUTE_OPTION_INVALID);
@@ -773,10 +825,12 @@ public class RouteService {
 
     private record RouteContext(
             List<Location> stops,
-            String scope
+            String scope,
+            List<OptimizationWindow> windows
     ) {
         private RouteContext {
             stops = List.copyOf(stops);
+            windows = List.copyOf(windows);
             if (stops.size() < 2) {
                 throw new IllegalArgumentException("경로에는 장소가 두 곳 이상 필요합니다.");
             }
@@ -784,7 +838,7 @@ public class RouteService {
 
         private static RouteContext of(Location origin, Location destination, String scope) {
 
-            return new RouteContext(List.of(origin, destination), scope);
+            return new RouteContext(List.of(origin, destination), scope, List.of());
 
         }
         private Location origin() {
@@ -840,7 +894,47 @@ public class RouteService {
             int durationMinutes,
             int transferCount,
             int fare,
-            String providerName
+            String providerName,
+            String configuredProvider,
+            TransportMode transportMode
     ) {
     }
+    private record OptimizationWindow(int from, int to) {
+    }
+
+    private record SegmentKey(Location origin, Location destination) {
+    }
+
+    /** 요청 단위 방향별 캐시. 실패한 계산은 저장하지 않습니다. */
+    private static final class SegmentCache {
+        private final RouteProvider provider;
+        private final RoutePhase phase;
+        private final Map<SegmentKey, RouteProvider.RouteEstimate> estimates = new HashMap<>();
+        private final long started = System.nanoTime();
+
+        private SegmentCache(RouteProvider provider, RoutePhase phase) {
+            this.provider = provider;
+            this.phase = phase;
+        }
+
+        private RouteProvider.RouteEstimate get(Location from, Location to) {
+            SegmentKey key = new SegmentKey(from, to);
+            RouteProvider.RouteEstimate cached = estimates.get(key);
+            if (cached != null) {
+                return cached;
+            }
+            if (estimates.size() >= 500 || System.nanoTime() - started > Duration.ofSeconds(30).toNanos()) {
+                throw new BusinessException(RouteErrorCode.ROUTE_PROVIDER_FAILED);
+            }
+            List<RouteProvider.RouteEstimate> result = provider.estimateSegments(List.of(from, to), phase.name());
+            if (result == null || result.size() != 1 || result.getFirst() == null
+                    || result.getFirst().durationMinutes() < 0 || result.getFirst().fare() < 0
+                    || result.getFirst().transferCount() < 0) {
+                throw new BusinessException(RouteErrorCode.ROUTE_PROVIDER_FAILED);
+            }
+            estimates.put(key, result.getFirst());
+            return result.getFirst();
+        }
+    }
+
 }

@@ -12,11 +12,21 @@ public interface RouteProvider {
 
     String providerName();
 
-    /**
-     * 정류장 순서 전체를 한 번에 계산한다. 외부 공급자는 구간마다 HTTP 요청을 반복하지 않고
-     * 경유지 일괄 API를 사용해야 한다.
-     */
+    default TransportMode transportMode() {
+        return TransportMode.PUBLIC_TRANSIT;
+    }
+
+    /** 입력 순서대로 각 구간을 계산합니다. 최적화 중에는 방향별 구간 결과를 재사용합니다. */
     List<RouteEstimate> estimateSegments(List<Location> stops, String phase);
+
+    default List<RouteEstimate> estimateSegments(
+            List<Location> stops, String phase, TransitRoutingOptions options) {
+        return estimateSegments(stops, phase);
+    }
+
+    default boolean supportsScheduledDeparture() {
+        return false;
+    }
 
     record RouteEstimate(
             int durationMinutes,

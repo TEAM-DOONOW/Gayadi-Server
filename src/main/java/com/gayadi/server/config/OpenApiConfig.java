@@ -179,6 +179,15 @@ public class OpenApiConfig {
     }
 
     private void applyPathSecurity(String path, PathItem.HttpMethod method, Operation operation) {
+        if (method == PathItem.HttpMethod.GET && "/api/v1/places".equals(path)) {
+            // 일반 검색은 공개지만 이동시간 계산에는 인증이 필요합니다.
+            // Bearer를 먼저 선언해 Swagger Authorize에 입력한 토큰을 전송할 수 있게 합니다.
+            operation.setSecurity(List.of(
+                    new SecurityRequirement().addList(BEARER_AUTH), new SecurityRequirement()));
+            operation.getResponses().addApiResponse("401", errorResponse(
+                    "이동시간순 검색(sort=TRAVEL_TIME 및 기준 좌표)은 로그인 필요. 일반 장소 검색은 인증 없이 사용 가능"));
+            return;
+        }
         if (isPublic(path, method)) {
             operation.setSecurity(List.of());
             return;

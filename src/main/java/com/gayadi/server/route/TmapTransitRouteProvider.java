@@ -16,7 +16,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.Comparator;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,25 +61,41 @@ public class TmapTransitRouteProvider implements RouteProvider {
     }
 
     @Override
+    public boolean supportsScheduledDeparture() {
+        return true;
+    }
+
+    @Override
     public List<RouteEstimate> estimateSegments(List<Location> stops, String phase) {
-        if (stops == null || stops.size() < 2) {
-            return List.of();
-        }
+        return estimateSegments(stops, phase, TransitRoutingOptions.defaults());
+    }
+
+    @Override
+    public List<RouteEstimate> estimateSegments(
+            List<Location> stops, String phase, TransitRoutingOptions options) {
+        if (stops == null || stops.size() < 2) return List.of();
         try {
             List<RouteEstimate> estimates = new ArrayList<>(stops.size() - 1);
+            OffsetDateTime departure = options.departureAt();
             for (int index = 0; index < stops.size() - 1; index++) {
-                estimates.add(estimate(stops.get(index), stops.get(index + 1)));
+                RouteEstimate estimate = estimate(stops.get(index), stops.get(index + 1),
+                        departure, options.preference());
+                estimates.add(estimate);
+                departure = departure.plusMinutes((long) estimate.durationMinutes() + options.stopoverMinutes());
             }
             return List.copyOf(estimates);
         } catch (BusinessException exception) {
-            if (!fallbackToLocal) {
+            // 운행 가능한 경로가 없다는 결과를 직선거리 추정으로 덮어쓰지 않습니다.
+            if (!fallbackToLocal || exception.getErrorCode() == RouteErrorCode.TMAP_ROUTE_UNAVAILABLE
+                    || Thread.currentThread().isInterrupted()) {
                 throw exception;
             }
             return localFallback.estimateSegments(stops, phase);
         }
     }
 
-    private RouteEstimate estimate(Location origin, Location destination) {
+    private RouteEstimate estimate(Location origin, Location destination,
+                                   OffsetDateTime departureAt, TransitPreference preference) {
         if (appKey == null || appKey.isBlank()) {
             throw new BusinessException(RouteErrorCode.TMAP_NOT_CONFIGURED);
         }
@@ -95,7 +113,7 @@ public class TmapTransitRouteProvider implements RouteProvider {
                 }
                 """.formatted(origin.longitude(), origin.latitude(),
                 destination.longitude(), destination.latitude(), MAX_RESULTS,
-                LocalDateTime.now().format(SEARCH_TIME));
+                departureAt.atZoneSameInstant(ZoneId.of("Asia/Seoul")).format(SEARCH_TIME));
 
         HttpResponse<String> response;
         try {
@@ -124,7 +142,7 @@ public class TmapTransitRouteProvider implements RouteProvider {
         }
 
         try {
-            return parse(response.body());
+            return parse(response.body(), preference);
         } catch (BusinessException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -132,13 +150,34 @@ public class TmapTransitRouteProvider implements RouteProvider {
         }
     }
 
-    private RouteEstimate parse(String body) {
+    private RouteEstimate parse(String body, TransitPreference preference) {
         JsonNode root = objectMapper.readTree(body);
         JsonNode itineraries = root.path("plan").path("itineraries");
         if (!itineraries.isArray() || itineraries.isEmpty()) {
             throw new BusinessException(RouteErrorCode.TMAP_ROUTE_UNAVAILABLE);
         }
-        JsonNode itinerary = itineraries.get(0);
+        List<JsonNode> candidates = new ArrayList<>();
+        boolean hasValidRoute = false;
+        for (JsonNode candidate : itineraries) {
+            double seconds = candidate.path("totalTime").asDouble(-1);
+            int transfers = candidate.path("transferCount").asInt(-1);
+            if (!Double.isFinite(seconds) || seconds <= 0 || seconds > Integer.MAX_VALUE || transfers < 0) continue;
+            hasValidRoute = true;
+            boolean unavailable = false;
+            for (JsonNode leg : candidate.path("legs")) {
+                if (leg.path("service").asInt(1) == 0) unavailable = true;
+            }
+            if (!unavailable) candidates.add(candidate);
+        }
+        if (candidates.isEmpty()) {
+            throw new BusinessException(hasValidRoute ? RouteErrorCode.TMAP_ROUTE_UNAVAILABLE
+                    : RouteErrorCode.TMAP_RESPONSE_INVALID);
+        }
+        Comparator<JsonNode> byTime = Comparator.comparingDouble(node -> node.path("totalTime").asDouble());
+        Comparator<JsonNode> byTransfers = Comparator.comparingInt(node -> node.path("transferCount").asInt());
+        Comparator<JsonNode> order = preference == TransitPreference.FEWER_TRANSFERS
+                ? byTransfers.thenComparing(byTime) : byTime.thenComparing(byTransfers);
+        JsonNode itinerary = candidates.stream().min(order).orElseThrow();
         int durationMinutes = minutes(itinerary.path("totalTime").asDouble(0));
         int transfers = Math.max(0, itinerary.path("transferCount").asInt(0));
         int fare = itinerary.path("fare").path("regular").path("totalFare").asInt(0);

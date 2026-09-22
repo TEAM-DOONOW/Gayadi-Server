@@ -6,6 +6,16 @@ import org.springframework.http.HttpStatus;
 /** 여행 장소 처리에서 사용하는 안정적인 오류 코드를 정의합니다. */
 public enum PlaceErrorCode implements ErrorCode {
 
+    PLACE_SEARCH_DEPARTURE_INVALID(HttpStatus.BAD_REQUEST, "PLACE_SEARCH_DEPARTURE_INVALID",
+            "error.place.search-departure-invalid"),
+
+    PLACE_SEARCH_COORDINATES_INVALID(HttpStatus.BAD_REQUEST, "PLACE_SEARCH_COORDINATES_INVALID",
+            "error.place.search-coordinates-invalid"),
+    PLACE_SEARCH_ORIGIN_REQUIRED(HttpStatus.BAD_REQUEST, "PLACE_SEARCH_ORIGIN_REQUIRED",
+            "error.place.search-origin-required"),
+    PLACE_TRAVEL_CURSOR_UNSUPPORTED(HttpStatus.BAD_REQUEST, "PLACE_TRAVEL_CURSOR_UNSUPPORTED",
+            "error.place.travel-cursor-unsupported"),
+
     // Search - 장소 검색 조건 및 페이지 기준값
     PLACE_SEARCH_QUERY_TOO_LONG(HttpStatus.BAD_REQUEST, "PLACE_SEARCH_QUERY_TOO_LONG",
             "error.place.search-query-too-long"),

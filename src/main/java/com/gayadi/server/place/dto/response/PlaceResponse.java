@@ -83,6 +83,15 @@ public record PlaceResponse(
         String operatingHours,
 
         @Schema(description = "수정 시각", nullable = true)
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+
+        @Schema(description = "이동시간순 검색에서 제공하는 구간 정보", nullable = true)
+        PlaceTravelTimeResponse travelTime
 ) {
+    public PlaceResponse withTravelTime(PlaceTravelTimeResponse value) {
+        return new PlaceResponse(id, name, category, categoryCode, rating, reviews, reviewCount,
+                ratingAvailable, crowdLevel, crowdDataAvailable, emoji, description, address,
+                roadAddress, latitude, longitude, regionId, regionName, phone, homepageUrl,
+                imageUrl, indoor, basicInfo, operatingHours, updatedAt, value);
+    }
 }
