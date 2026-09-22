@@ -68,7 +68,7 @@ class AiUserJourneyIntegrationTests {
         JsonNode route = body(request(
                 "POST", "/api/v1/trips/" + tripId + "/route-recommendations", token,
                 "{\"type\":\"ITINERARY\"}"), 201);
-        Assertions.assertThat(route.path("options").size()).isEqualTo(2);
+        Assertions.assertThat(route.path("options").size()).isEqualTo(4);
         Assertions.assertThat(route.path("segments").size())
                 .isEqualTo(route.path("stops").size() - 1);
         Assertions.assertThat(route.path("provider").asString()).isEqualTo("LOCAL_ESTIMATE");

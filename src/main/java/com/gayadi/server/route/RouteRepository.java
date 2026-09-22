@@ -38,8 +38,8 @@ public class RouteRepository {
             long planId,
             Long memberId,
             RoutePhase phase,
-            TransportMode transportMode,
             String routeData,
+            String transportMode,
             int durationMinutes,
             int transferCount,
             int fare) {
@@ -52,7 +52,7 @@ public class RouteRepository {
                 memberId,
                 phase.name(),
                 routeData,
-                transportMode.name(),
+                transportMode,
                 durationMinutes,
                 transferCount,
                 fare);
