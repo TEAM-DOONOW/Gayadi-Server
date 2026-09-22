@@ -1,6 +1,8 @@
 package com.gayadi.server.route;
 
 import com.gayadi.server.common.KeyHelper;
+import com.gayadi.server.common.Location;
+import com.gayadi.server.route.query.RouteItineraryStop;
 import com.gayadi.server.common.AppDateFormat;
 import com.gayadi.server.common.RowSupport;
 import com.gayadi.server.route.query.RouteLockQueryResult;
@@ -36,6 +38,7 @@ public class RouteRepository {
             long planId,
             Long memberId,
             RoutePhase phase,
+            TransportMode transportMode,
             String routeData,
             int durationMinutes,
             int transferCount,
@@ -43,12 +46,13 @@ public class RouteRepository {
         return keyHelper.insert("""
                 INSERT INTO travel_routes (plan_id, member_id, phase, route_data, transport_mode,
                                             duration_minutes, transfer_count, fare, status, recommended_at)
-                VALUES (?, ?, ?, ?, 'PUBLIC_TRANSIT', ?, ?, ?, 'RECOMMENDED', CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'RECOMMENDED', CURRENT_TIMESTAMP)
                 """,
                 planId,
                 memberId,
                 phase.name(),
                 routeData,
+                transportMode.name(),
                 durationMinutes,
                 transferCount,
                 fare);
@@ -168,21 +172,36 @@ public class RouteRepository {
     }
 
     /** 일정 경유 장소 정보를 DB에서 조회합니다. */
-    public List<RoutePlaceQueryResult> findItineraryStops(long tripId, int limit) {
+    public List<RouteItineraryStop> findItineraryStops(long tripId, int limit) {
         return jdbc.sql("""
-                SELECT p.id, p.name, p.latitude, p.longitude
-                FROM travel_plans tp
-                JOIN travel_plan_items i ON i.plan_id = tp.id
-                JOIN places p ON p.id = i.place_id AND p.status = 'ACTIVE'
-                WHERE tp.trip_id = ? AND tp.status != 'CANCELED'
-                ORDER BY tp.day_number, i.sequence_no, i.id
+                SELECT * FROM (
+                    SELECT p.name, p.latitude, p.longitude, tp.id AS plan_id,
+                           tp.day_number, i.sequence_no, i.id AS item_id,
+                           CASE WHEN i.planned_start IS NOT NULL OR i.planned_end IS NOT NULL
+                                     OR i.item_type = 'ACCOMMODATION' OR i.status != 'PLANNED'
+                                THEN 1 ELSE 0 END AS fixed_stop,
+                           SUM(CASE WHEN p.id IS NULL THEN 1 ELSE 0 END)
+                               OVER (PARTITION BY tp.id ORDER BY i.sequence_no, i.id) AS block_no
+                    FROM travel_plans tp
+                    JOIN travel_plan_items i ON i.plan_id = tp.id
+                    LEFT JOIN places p ON p.id = i.place_id AND p.status = 'ACTIVE'
+                    WHERE tp.trip_id = ? AND tp.status != 'CANCELED'
+                ) stops
+                WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+                ORDER BY day_number, plan_id, sequence_no, item_id
                 LIMIT ?
                 """)
                 .params(tripId, limit)
                 .query()
                 .listOfRows()
                 .stream()
-                .map(this::place)
+                .map(row -> new RouteItineraryStop(
+                        new Location(RowSupport.strValue(row, "name"),
+                                ((Number) RowSupport.value(row, "latitude")).doubleValue(),
+                                ((Number) RowSupport.value(row, "longitude")).doubleValue()),
+                        RowSupport.longValue(row, "plan_id"),
+                        RowSupport.longValue(row, "block_no"),
+                        RowSupport.intValue(row, "fixed_stop") == 1))
                 .toList();
     }
 

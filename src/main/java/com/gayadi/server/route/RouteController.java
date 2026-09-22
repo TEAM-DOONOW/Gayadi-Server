@@ -46,7 +46,7 @@ public class RouteController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "경로 추천",
-            description = "출발·일정·귀가 경로를 계산해 추천안으로 저장합니다. userId는 인증 사용자 본인의 식별자만 받을 수 있습니다.")
+            description = "선택한 transportMode로 출발·일정·귀가 경로를 계산해 저장합니다. 일정은 고정 지점 사이의 방문 순서를 이동시간 기준으로 최적화합니다. userId는 본인만 지정할 수 있습니다.")
     @ApiResponse(responseCode = "201", description = "저장한 추천 경로입니다.",
             content = @Content(schema = @Schema(implementation = RouteResponse.class)))
     public RouteResponse recommendation(
@@ -54,7 +54,8 @@ public class RouteController {
             @PathVariable @Positive long tripId,
             @Valid @RequestBody RouteRecommendationRequest request) {
         return service.recommendForUser(
-                tripId, userId, service.routePhase(request.type()), request.userId());
+                tripId, userId, service.routePhase(request.type()), request.userId(),
+                request.transportMode());
     }
 
     @GetMapping("/route-selections")
