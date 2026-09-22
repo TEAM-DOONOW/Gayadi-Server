@@ -7,7 +7,7 @@
 1. 일정 끝에 추가한다면 같은 날짜의 마지막 방문지를 이전 장소로 사용합니다.
 2. 일정 중간에 추가한다면 앞·뒤 방문지 좌표를 함께 보냅니다.
 3. 앞선 방문지가 없다면 숙소 좌표를 사용할 수 있습니다. 좌표를 정할 수 없으면 여행 지역을 `region`으로 보내 기존 검색을 사용합니다.
-4. 사용자가 선택한 `CAR` / `PUBLIC_TRANSIT`을 `transportMode`로 보냅니다. 대중교통은 이전 일정 종료 시각을 `departureAt`, 후보 체류시간을 `visitDurationMinutes`로 전달합니다.
+4. 사용자가 선택한 `CAR` / `PUBLIC_TRANSIT` / `WALK` / `BICYCLE`을 `transportMode`로 보냅니다. 대중교통은 이전 일정 종료 시각을 `departureAt`, 후보 체류시간을 `visitDurationMinutes`로 전달합니다.
 5. 응답의 `items` 순서대로 후보를 표시하고 `travelTime.durationMinutes`를 ‘자동차 약 10분’처럼 표시합니다. 중간 삽입은 `additionalDurationMinutes`를 함께 표시할 수 있습니다.
 6. 선택한 후보의 `id`, `latitude`, `longitude`를 사용합니다. 제목을 Kakao `keywordSearch`로 다시 검색해 첫 결과로 대체하지 않습니다.
 
@@ -24,7 +24,7 @@ GET /api/v1/places?query=카페&region=1&category=CAFE&sort=TRAVEL_TIME&transpor
 | 필드 | 의미 |
 | --- | --- |
 | `sort` | `RECENT`(기본) 또는 `TRAVEL_TIME` |
-| `transportMode` | `CAR` 또는 `PUBLIC_TRANSIT`(기본) |
+| `transportMode` | `CAR`, `PUBLIC_TRANSIT`(기본), `WALK`, `BICYCLE` |
 | `originLatitude`, `originLongitude` | 이전 장소 또는 숙소의 좌표. 반드시 한 쌍으로 전달 |
 | `nextLatitude`, `nextLongitude` | 다음 장소의 좌표. 일정 중간 삽입일 때 전달 |
 | `limit` | 반환 개수, 1–50, 기본 20. 이동시간 비교 후보는 최대 20곳 |
@@ -106,3 +106,10 @@ TMAP의 최대 10개 반환 경로 중 유효한 소요시간·환승 횟수를 
 [TMAP 공식 문서](https://tmap-public-skopenapi.readme.io/reference/대중교통-api)에 따르면 `searchDttm`은 지정한 시각의 **운행 여부 안내**를 위한 값입니다. 미래 혼잡도·정확한 대기시간과 도착시간 예측을 보장하는 기능으로 표시하면 안 됩니다. 실제 TMAP 사용은 서버의 `route.provider=tmap` 설정과 API 키가 필요합니다.
 
 이 시각·선호도 입력 계약은 장소찾기 API에 적용됩니다. 기존 전체 경로 추천 API는 별도 출발 시각 입력 없이 기존 호출을 유지하며, TMAP 경로 선택 기본값은 FASTEST입니다.
+
+## 도보·자전거 필터
+
+`transportMode=WALK` 또는 `transportMode=BICYCLE`을 지원합니다.
+`sort=TRAVEL_TIME`과 출발 좌표를 보내면 이동시간순으로 정렬하며, 다음 장소 좌표를 보내면 추가 이동시간도 계산합니다.
+도보 시속 4km, 자전거 시속 15km와 직선거리를 이용한 추정치입니다. 실제 보행·자전거 도로 연결 여부는 반영하지 않습니다.
+응답의 `configuredProvider`는 `LOCAL_ESTIMATE`이며 `scheduledTimeApplied`는 false입니다.

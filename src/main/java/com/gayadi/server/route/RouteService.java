@@ -303,8 +303,8 @@ public class RouteService {
                     int duration = Math.max(0, (int) Math.ceil(
                             segment.estimate().durationMinutes() * option.durationFactor()));
                     if (option.activeTravel()) {
-                        duration = activeTravelMinutes(segment.origin(), segment.destination(),
-                                option.transportMode().equals("WALK") ? 4.0 : 15.0);
+                        duration = LocalActiveRouteProvider.durationMinutes(segment.origin(), segment.destination(),
+                                TransportMode.valueOf(option.transportMode()));
                     }
                     int transfers = option.activeTravel() ? 0 : option.fewerTransfers()
                             ? Math.max(0, segment.estimate().transferCount() - 1)
@@ -324,18 +324,6 @@ public class RouteService {
                     return value;
                 })
                 .toList();
-    }
-
-    /** 직선거리와 가정한 속도를 이용한 추정치이며 실제 도로 경로는 아닙니다. */
-    private int activeTravelMinutes(Location origin, Location destination, double speedKmh) {
-        double lat1 = Math.toRadians(origin.latitude());
-        double lat2 = Math.toRadians(destination.latitude());
-        double deltaLat = lat2 - lat1;
-        double deltaLng = Math.toRadians(destination.longitude() - origin.longitude());
-        double a = Math.pow(Math.sin(deltaLat / 2), 2)
-                + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLng / 2), 2);
-        double distanceKm = 6371.0 * 2 * Math.asin(Math.sqrt(Math.min(1.0, a)));
-        return Math.max(1, (int) Math.ceil(distanceKm / speedKmh * 60));
     }
 
     /** 추천 경로 번호를 사용해 참여자의 경로를 선택합니다. */
@@ -462,6 +450,9 @@ public class RouteService {
         options.add(new OptionSpec("bicycle", "자전거", "BICYCLE", 1.0, false,
                 "직선거리와 시속 15km를 기준으로 추정한 자전거 이동입니다. 실제 주행 경로와 다를 수 있으며 대여료는 제외됩니다.",
                 "직선거리 기반 자전거 예상 구간입니다. 대여료는 제외됩니다.", "BICYCLE"));
+        if (mode == TransportMode.WALK || mode == TransportMode.BICYCLE) {
+            return options.stream().filter(option -> option.transportMode().equals(mode.name())).toList();
+        }
         return List.copyOf(options);
     }
 
