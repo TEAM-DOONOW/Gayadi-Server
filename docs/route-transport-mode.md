@@ -11,7 +11,7 @@
 }
 ```
 
-- `transportMode`: `CAR` 또는 `PUBLIC_TRANSIT`. 생략/null은 기존 호환을 위해 `PUBLIC_TRANSIT`으로 처리합니다. 다른 값은 400 응답입니다.
+- `transportMode`: `CAR`, `PUBLIC_TRANSIT`, `WALK`, `BICYCLE`. 생략/null은 기존 호환을 위해 `PUBLIC_TRANSIT`으로 처리합니다. 다른 값은 400 응답입니다.
 - `type`: 기존 `DEPARTURE`, `ITINERARY`, `HOME` 계약을 유지합니다.
 - 자동차는 Kakao Directions, 대중교통은 기존 `route.provider` 설정(`local` 또는 `tmap`)을 사용합니다.
 - 반환되는 `stops`는 추천 방문 순서이며 `segments`는 그 순서의 이동 구간입니다. 프론트는 이 순서를 표시해야 합니다. 계산과 저장이 모두 끝난 후 201을 반환합니다.
@@ -46,3 +46,10 @@
 자동차 조회 실패 시 대중교통이나 직선거리 추정으로 대체하지 않습니다. 대중교통의 기존 로컬 추정/fallback 동작은 유지하며 응답의 `provider`, `configuredProvider`, `fallback`으로 구분합니다.
 
 TMAP 공급자는 첫 결과를 그대로 쓰지 않고 운행 가능한 반환 경로 중 소요시간이 가장 짧은 경로를 선택합니다. 장소찾기의 예정 시각·최소 환승 입력은 [장소찾기 연동 문서](place-travel-time-search.md)를 참고합니다.
+
+## 도보·자전거
+
+`WALK`와 `BICYCLE`을 직접 요청하면 해당 이동수단의 추천 1개를 반환합니다.
+대중교통 요청은 기존 두 옵션과 도보·자전거 옵션을 함께 반환합니다.
+도보는 시속 4km, 자전거는 시속 15km와 직선거리로 추정하며 실제 도로 연결 여부를 보장하지 않습니다.
+공급자는 `LOCAL_ESTIMATE`이고 요금·환승은 0이며 자전거 대여료는 제외합니다.

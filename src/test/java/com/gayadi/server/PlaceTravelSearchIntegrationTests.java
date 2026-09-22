@@ -135,6 +135,36 @@ class PlaceTravelSearchIntegrationTests {
     }
 
     @Test
+    void walkingAndCyclingFiltersReturnRankedPlacesAndOnwardTimes() throws Exception {
+        add("A", 37.001, "PUBLIC", "CAFE", "ACTIVE");
+        add("B", 37.01, "PUBLIC", "CAFE", "ACTIVE");
+        int walkingMinutes = 0;
+        for (String mode : List.of("WALK", "BICYCLE")) {
+            JsonNode result = body(get(travelQuery().replace("CAR", mode), true), 200);
+            assertThat(names(result)).containsExactly(prefix + "-A", prefix + "-B");
+            JsonNode time = result.path("items").get(1).path("travelTime");
+            assertThat(time.path("transportMode").asString()).isEqualTo(mode);
+            assertThat(time.path("configuredProvider").asString()).isEqualTo("LOCAL_ESTIMATE");
+            assertThat(time.path("transferCount").asInt()).isZero();
+            assertThat(time.path("scheduledTimeApplied").asBoolean()).isFalse();
+            assertThat(time.path("durationMinutes").asInt()).isPositive();
+            if (mode.equals("WALK")) walkingMinutes = time.path("durationMinutes").asInt();
+            else assertThat(time.path("durationMinutes").asInt()).isLessThan(walkingMinutes);
+
+            JsonNode onward = body(get(travelQuery().replace("CAR", mode)
+                    + "&nextLatitude=37.02&nextLongitude=127", true), 200);
+            for (JsonNode item : onward.path("items")) {
+                assertThat(item.path("travelTime").path("onwardDurationMinutes").asInt()).isPositive();
+                assertThat(item.path("travelTime").has("additionalDurationMinutes")).isTrue();
+            }
+            JsonNode recent = body(get("?query=" + prefix + "&transportMode=" + mode, false), 200);
+            assertThat(names(recent)).containsExactly(prefix + "-B", prefix + "-A");
+        }
+        verify(car, never()).estimateSegments(anyList(), anyString());
+        verify(transit, never()).estimateSegments(anyList(), anyString());
+    }
+
+    @Test
     void validatesCoordinatesModeCursorAndAuthenticationBeforeProviderCalls() throws Exception {
         assertThat(get(travelQuery(), false).statusCode()).isEqualTo(401);
         assertThat(get(travelQuery() + "&cursor=1", true).statusCode()).isEqualTo(400);

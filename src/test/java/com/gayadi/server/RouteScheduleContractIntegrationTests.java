@@ -258,6 +258,20 @@ class RouteScheduleContractIntegrationTests {
     }
 
     @Test
+    void explicitWalkingAndCyclingRequestsReturnOnlyTheRequestedMode() {
+        Fixture fixture = fixture("이동수단지정");
+        for (TransportMode mode : List.of(TransportMode.WALK, TransportMode.BICYCLE)) {
+            RouteResponse recommendation = routes.recommendForUser(
+                    fixture.tripId(), fixture.ownerId(), RoutePhase.IN_TRIP, null, mode);
+            Assertions.assertThat(recommendation.transportMode()).isEqualTo(mode.name());
+            Assertions.assertThat(recommendation.options()).hasSize(1);
+            RouteResponse selected = routes.selectForUser(fixture.tripId(), fixture.ownerId(),
+                    RoutePhase.IN_TRIP, null, recommendation.optionId(), null);
+            Assertions.assertThat(selected.transportMode()).isEqualTo(mode.name());
+        }
+    }
+
+    @Test
     void everyScheduleMutationExpiresRecommendedAndSelectedRoutes() {
         Fixture fixture = fixture("경로만료");
         RouteResponse firstRecommendation = routes.recommendForUser(
