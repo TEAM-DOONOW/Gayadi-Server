@@ -6,6 +6,15 @@ import org.springframework.http.HttpStatus;
 /** 경로 계산·선택·외부 공급자 오류 코드를 정의합니다. */
 public enum RouteErrorCode implements ErrorCode {
 
+    ROUTE_OPTIMIZATION_TOO_LARGE(HttpStatus.BAD_REQUEST, "ROUTE_OPTIMIZATION_TOO_LARGE",
+            "error.route.optimization-too-large"),
+    KAKAO_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "KAKAO_NOT_CONFIGURED",
+            "error.route.kakao-not-configured"),
+    KAKAO_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "KAKAO_RATE_LIMITED",
+            "error.route.kakao-rate-limited"),
+    KAKAO_ROUTE_UNAVAILABLE(HttpStatus.CONFLICT, "KAKAO_ROUTE_UNAVAILABLE",
+            "error.route.kakao-route-unavailable"),
+
     // Calculation - 경로 계산 입력과 선행 일정
     ROUTE_TYPE_REQUIRED(HttpStatus.BAD_REQUEST, "ROUTE_TYPE_REQUIRED",
             "error.route.type-required"),
