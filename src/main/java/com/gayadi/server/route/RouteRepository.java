@@ -37,18 +37,20 @@ public class RouteRepository {
             Long memberId,
             RoutePhase phase,
             String routeData,
+            String transportMode,
             int durationMinutes,
             int transferCount,
             int fare) {
         return keyHelper.insert("""
                 INSERT INTO travel_routes (plan_id, member_id, phase, route_data, transport_mode,
                                             duration_minutes, transfer_count, fare, status, recommended_at)
-                VALUES (?, ?, ?, ?, 'PUBLIC_TRANSIT', ?, ?, ?, 'RECOMMENDED', CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'RECOMMENDED', CURRENT_TIMESTAMP)
                 """,
                 planId,
                 memberId,
                 phase.name(),
                 routeData,
+                transportMode,
                 durationMinutes,
                 transferCount,
                 fare);

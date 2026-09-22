@@ -190,6 +190,10 @@ public class RouteService {
             OptionSpec option) {
         RouteContext context = calculation.context();
         List<Map<String, Object>> optionSegments = optionSegments(calculation, option);
+        String actualProvider = option.activeTravel()
+                ? RouteProvider.LOCAL_ESTIMATE : calculation.providerName();
+        boolean fallback = !option.activeTravel()
+                && !actualProvider.equals(provider.providerName());
 
         // 옵션별 보정이 반영된 구간을 합산해 저장용 요약 값을 계산합니다.
         int durationMinutes = optionSegments.stream()
@@ -202,9 +206,9 @@ public class RouteService {
                 .mapToInt(segment -> ((Number) segment.get("fare")).intValue())
                 .sum();
         Map<String, Object> routeData = new LinkedHashMap<>();
-        routeData.put("provider", calculation.providerName());
+        routeData.put("provider", actualProvider);
         routeData.put("configuredProvider", provider.providerName());
-        routeData.put("fallback", !calculation.providerName().equals(provider.providerName()));
+        routeData.put("fallback", fallback);
         routeData.put("optionId", option.id());
         routeData.put("optionName", option.name());
         routeData.put("strategy", option.strategy());
@@ -220,6 +224,7 @@ public class RouteService {
                 memberId,
                 phase,
                 json.write(routeData),
+                option.transportMode(),
                 durationMinutes,
                 transferCount,
                 fare);
@@ -242,11 +247,11 @@ public class RouteService {
         result.put("durationMinutes", durationMinutes);
         result.put("transferCount", transferCount);
         result.put("fare", fare);
-        result.put("transportMode", "PUBLIC_TRANSIT");
+        result.put("transportMode", option.transportMode());
         result.put("status", "RECOMMENDED");
-        result.put("provider", calculation.providerName());
+        result.put("provider", actualProvider);
         result.put("configuredProvider", provider.providerName());
-        result.put("fallback", !calculation.providerName().equals(provider.providerName()));
+        result.put("fallback", fallback);
         result.put("summary", option.summary());
         return result;
     }
@@ -258,7 +263,11 @@ public class RouteService {
                 .map(segment -> {
                     int duration = Math.max(1, (int) Math.ceil(
                             segment.estimate().durationMinutes() * option.durationFactor()));
-                    int transfers = option.fewerTransfers()
+                    if (option.activeTravel()) {
+                        duration = activeTravelMinutes(segment.origin(), segment.destination(),
+                                option.transportMode().equals("WALK") ? 4.0 : 15.0);
+                    }
+                    int transfers = option.activeTravel() ? 0 : option.fewerTransfers()
                             ? Math.max(0, segment.estimate().transferCount() - 1)
                             : segment.estimate().transferCount();
                     Map<String, Object> value = new LinkedHashMap<>();
@@ -267,14 +276,27 @@ public class RouteService {
                     value.put("destination", segment.destination());
                     value.put("durationMinutes", duration);
                     value.put("transferCount", transfers);
-                    value.put("fare", segment.estimate().fare());
-                    String providerSummary = segment.estimate().summary();
+                    value.put("fare", option.activeTravel() ? 0 : segment.estimate().fare());
+                    String providerSummary = option.activeTravel()
+                            ? option.segmentSummary() : segment.estimate().summary();
                     value.put("summary", providerSummary == null || providerSummary.isBlank()
                             ? option.segmentSummary() : providerSummary);
                     value.put("strategySummary", option.segmentSummary());
                     return value;
                 })
                 .toList();
+    }
+
+    /** 직선거리와 가정한 속도를 이용한 추정치이며 실제 도로 경로는 아닙니다. */
+    private int activeTravelMinutes(Location origin, Location destination, double speedKmh) {
+        double lat1 = Math.toRadians(origin.latitude());
+        double lat2 = Math.toRadians(destination.latitude());
+        double deltaLat = lat2 - lat1;
+        double deltaLng = Math.toRadians(destination.longitude() - origin.longitude());
+        double a = Math.pow(Math.sin(deltaLat / 2), 2)
+                + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLng / 2), 2);
+        double distanceKm = 6371.0 * 2 * Math.asin(Math.sqrt(Math.min(1.0, a)));
+        return Math.max(1, (int) Math.ceil(distanceKm / speedKmh * 60));
     }
 
     /** 추천 경로 번호를 사용해 참여자의 경로를 선택합니다. */
@@ -333,7 +355,7 @@ public class RouteService {
     }
 
     private List<OptionSpec> optionSpecs(RoutePhase phase) {
-        return switch (phase) {
+        List<OptionSpec> options = new ArrayList<>(switch (phase) {
             case DEPARTURE -> List.of(
                     new OptionSpec(
                             "fast",
@@ -385,7 +407,14 @@ public class RouteService {
                             false,
                             "휴식과 대기 시간을 고려해 여유를 둔 귀가안입니다.",
                             "휴식과 대기 여유를 포함한 예상 구간입니다."));
-        };
+        });
+        options.add(new OptionSpec("walk", "도보", "WALK", 1.0, false,
+                "직선거리와 시속 4km를 기준으로 추정한 도보 이동입니다. 실제 보행 경로와 다를 수 있습니다.",
+                "직선거리 기반 도보 예상 구간입니다.", "WALK"));
+        options.add(new OptionSpec("bicycle", "자전거", "BICYCLE", 1.0, false,
+                "직선거리와 시속 15km를 기준으로 추정한 자전거 이동입니다. 실제 주행 경로와 다를 수 있으며 대여료는 제외됩니다.",
+                "직선거리 기반 자전거 예상 구간입니다. 대여료는 제외됩니다.", "BICYCLE"));
+        return List.copyOf(options);
     }
 
     /** 참여자가 선택한 경로를 취소합니다. */
@@ -524,11 +553,8 @@ public class RouteService {
             throw new BusinessException(RouteErrorCode.ROUTE_OPTION_REQUIRED);
         }
         String optionId = requestedOptionId.trim().toLowerCase(Locale.ROOT);
-        boolean allowed = switch (phase) {
-            case DEPARTURE -> optionId.equals("fast") || optionId.equals("easy");
-            case IN_TRIP -> optionId.equals("balanced") || optionId.equals("crowd");
-            case RETURN -> optionId.equals("home-fast") || optionId.equals("home-rest");
-        };
+        boolean allowed = optionSpecs(phase).stream()
+                .anyMatch(option -> option.id().equals(optionId));
         if (!allowed) {
             throw new BusinessException(RouteErrorCode.ROUTE_OPTION_INVALID);
         }
@@ -794,8 +820,18 @@ public class RouteService {
             double durationFactor,
             boolean fewerTransfers,
             String summary,
-            String segmentSummary
+            String segmentSummary,
+            String transportMode
     ) {
+        private OptionSpec(String id, String name, String strategy, double durationFactor,
+                           boolean fewerTransfers, String summary, String segmentSummary) {
+            this(id, name, strategy, durationFactor, fewerTransfers, summary,
+                    segmentSummary, "PUBLIC_TRANSIT");
+        }
+
+        private boolean activeTravel() {
+            return transportMode.equals("WALK") || transportMode.equals("BICYCLE");
+        }
     }
 
     private record RouteCalculation(

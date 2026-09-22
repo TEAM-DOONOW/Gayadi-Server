@@ -39,7 +39,7 @@ class RouteScheduleContractIntegrationTests {
     @Autowired JdbcClient jdbc;
 
     @Test
-    void itineraryContainsEveryPlaceSegmentAndTwoStoredOptions() {
+    void itineraryContainsEveryPlaceSegmentAndFourStoredOptions() {
         Assertions.assertThat(Arrays.stream(
                         RouteRecommendationRequest.class.getRecordComponents())
                 .map(component -> component.getName())
@@ -52,7 +52,7 @@ class RouteScheduleContractIntegrationTests {
 
         Assertions.assertThat(recommendation.options())
                 .extracting(RouteResponse::optionId)
-                .containsExactly("balanced", "crowd");
+                .containsExactly("balanced", "crowd", "walk", "bicycle");
         Assertions.assertThat(recommendation.optionId()).isEqualTo("balanced");
 
         List<?> stops = recommendation.stops();
@@ -63,13 +63,13 @@ class RouteScheduleContractIntegrationTests {
                 .extracting(segment -> segment.order())
                 .containsExactly(1, 2);
         Assertions.assertThat(activeRoutes(fixture.tripId(), RoutePhase.IN_TRIP))
-                .isEqualTo(2L);
+                .isEqualTo(4L);
 
         RouteResponse home = routes.recommendForUser(
                 fixture.tripId(), fixture.ownerId(), RoutePhase.RETURN, fixture.ownerId());
         Assertions.assertThat(home.options())
                 .extracting(RouteResponse::optionId)
-                .containsExactly("home-fast", "home-rest");
+                .containsExactly("home-fast", "home-rest", "walk", "bicycle");
         long participantId = participantId(fixture.tripId(), fixture.ownerId());
         Assertions.assertThat(home.memberId()).isEqualTo(fixture.ownerId());
         Assertions.assertThat(home.userId()).isEqualTo(fixture.ownerId());
@@ -91,6 +91,44 @@ class RouteScheduleContractIntegrationTests {
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> Assertions.assertThat(exception.getErrorCode().status().value())
                                 .isEqualTo(403));
+    }
+
+    @Test
+    void walkingAndCyclingCanBeSelectedAndReloadedInEveryPhase() {
+        Fixture fixture = fixture("도보자전거");
+        for (RoutePhase phase : RoutePhase.values()) {
+            RouteResponse recommendation = routes.recommendForUser(
+                    fixture.tripId(), fixture.ownerId(), phase, null);
+            RouteResponse walk = recommendation.options().get(2);
+            RouteResponse bicycle = recommendation.options().get(3);
+            Assertions.assertThat(walk.durationMinutes()).isGreaterThanOrEqualTo(bicycle.durationMinutes());
+            if (phase == RoutePhase.IN_TRIP) {
+                Assertions.assertThat(walk.durationMinutes()).isGreaterThan(bicycle.durationMinutes());
+            }
+            for (RouteResponse option : List.of(walk, bicycle)) {
+                Assertions.assertThat(option.transportMode())
+                        .isEqualTo(option.optionId().equals("walk") ? "WALK" : "BICYCLE");
+                Assertions.assertThat(option.provider()).isEqualTo("LOCAL_ESTIMATE");
+                Assertions.assertThat(option.fallback()).isFalse();
+                Assertions.assertThat(option.fare()).isZero();
+                Assertions.assertThat(option.transferCount()).isZero();
+                Assertions.assertThat(option.segments()).hasSize(recommendation.stops().size() - 1);
+                Assertions.assertThat(option.durationMinutes()).isEqualTo(option.segments().stream()
+                        .mapToInt(segment -> segment.durationMinutes()).sum());
+                Assertions.assertThat(option.segments()).allSatisfy(segment -> {
+                    Assertions.assertThat(segment.fare()).isZero();
+                    Assertions.assertThat(segment.transferCount()).isZero();
+                    Assertions.assertThat(segment.summary()).contains("직선거리");
+                });
+                RouteResponse selected = routes.selectForUser(
+                        fixture.tripId(), fixture.ownerId(), phase,
+                        null, option.optionId(), null);
+                Assertions.assertThat(selected.id()).isEqualTo(option.id());
+                Assertions.assertThat(selected.transportMode()).isEqualTo(option.transportMode());
+                Assertions.assertThat(selected.durationMinutes()).isEqualTo(option.durationMinutes());
+                Assertions.assertThat(selected.status()).isEqualTo("SELECTED");
+            }
+        }
     }
 
     @Test
@@ -180,7 +218,7 @@ class RouteScheduleContractIntegrationTests {
         routes.recommendForUser(
                 fixture.tripId(), fixture.ownerId(), RoutePhase.IN_TRIP, null);
         Assertions.assertThat(activeRoutes(fixture.tripId(), RoutePhase.IN_TRIP))
-                .isEqualTo(2L);
+                .isEqualTo(4L);
     }
 
     private long activeRoutes(long tripId, RoutePhase phase) {
