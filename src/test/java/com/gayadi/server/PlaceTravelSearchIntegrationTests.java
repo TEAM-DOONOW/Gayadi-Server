@@ -8,6 +8,15 @@ import com.gayadi.server.route.KakaoDirectionsRouteProvider;
 import com.gayadi.server.route.RouteErrorCode;
 import com.gayadi.server.route.RouteProvider;
 import com.gayadi.server.route.TransportMode;
+import com.gayadi.server.route.LocalRouteProvider;
+import com.gayadi.server.route.TransitRoutingOptions;
+import com.gayadi.server.route.TransitPreference;
+import java.time.OffsetDateTime;
+import java.util.concurrent.CopyOnWriteArrayList;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +49,7 @@ class PlaceTravelSearchIntegrationTests {
     @Autowired UserService users;
     @Autowired JwtService jwt;
     @MockitoBean KakaoDirectionsRouteProvider car;
+    @MockitoSpyBean LocalRouteProvider transit;
     private final HttpClient client = HttpClient.newHttpClient();
     private String prefix;
     private String accessToken;
@@ -116,6 +126,11 @@ class PlaceTravelSearchIntegrationTests {
         JsonNode result = body(get(travelQuery().replace("CAR", "PUBLIC_TRANSIT"), true), 200);
         assertThat(result.path("items").get(0).path("travelTime").path("configuredProvider").asString())
                 .isEqualTo("LOCAL_ESTIMATE");
+        assertThat(result.path("ranking").path("sort").asString()).isEqualTo("TRAVEL_TIME");
+        assertThat(result.path("ranking").path("evaluatedCandidates").asInt()).isEqualTo(1);
+        assertThat(result.path("ranking").path("limited").asBoolean()).isFalse();
+        assertThat(result.path("items").get(0).path("travelTime").path("transportMode").asString())
+                .isEqualTo("PUBLIC_TRANSIT");
         verify(car, never()).estimateSegments(anyList(), anyString());
     }
 
@@ -169,7 +184,8 @@ class PlaceTravelSearchIntegrationTests {
             queryNames.add(parameter.path("name").asString());
         });
         assertThat(queryNames).contains("query", "region", "category", "cursor", "limit", "sort",
-                "transportMode", "originLatitude", "originLongitude", "nextLatitude", "nextLongitude");
+                "transportMode", "originLatitude", "originLongitude", "nextLatitude", "nextLongitude",
+                "departureAt", "transitPreference", "visitDurationMinutes");
     }
 
     @Test
@@ -181,6 +197,64 @@ class PlaceTravelSearchIntegrationTests {
         JsonNode result = body(get(travelQuery(), true), 200);
         assertThat(names(result)).containsExactly(prefix + "-A");
         assertThat(result.path("items").get(0).path("travelTime").path("fallback").asBoolean()).isTrue();
+    }
+
+    @Test
+    void passesScheduledDeparturePreferenceAndStayToTransitAndReturnsTimingMetadata() throws Exception {
+        add("A", 37.001, "PUBLIC", "CAFE", "ACTIVE");
+        List<TransitRoutingOptions> received = new CopyOnWriteArrayList<>();
+        when(transit.supportsScheduledDeparture()).thenReturn(true);
+        when(transit.providerName()).thenReturn("TMAP_TRANSIT");
+        doAnswer(invocation -> {
+            List<Location> stops = invocation.getArgument(0);
+            received.add(invocation.getArgument(2));
+            List<RouteProvider.RouteEstimate> result = new ArrayList<>();
+            for (int i = 1; i < stops.size(); i++) {
+                result.add(new RouteProvider.RouteEstimate(20, 1, 1500, "운행", "TMAP_TRANSIT"));
+            }
+            return result;
+        }).when(transit).estimateSegments(anyList(), anyString(), any(TransitRoutingOptions.class));
+        JsonNode result = body(get(travelQuery().replace("CAR", "PUBLIC_TRANSIT")
+                + "&nextLatitude=37.02&nextLongitude=127&departureAt=2026-10-01T10:00:00%2B09:00"
+                + "&transitPreference=FEWER_TRANSFERS&visitDurationMinutes=90", true), 200);
+        assertThat(received).hasSize(2).allSatisfy(options -> {
+            assertThat(options.departureAt()).isEqualTo(OffsetDateTime.parse("2026-10-01T10:00:00+09:00"));
+            assertThat(options.preference()).isEqualTo(TransitPreference.FEWER_TRANSFERS);
+            assertThat(options.stopoverMinutes()).isEqualTo(90);
+        });
+        JsonNode time = result.path("items").get(0).path("travelTime");
+        assertThat(OffsetDateTime.parse(time.path("onwardDepartureAt").asString()))
+                .isEqualTo(OffsetDateTime.parse("2026-10-01T11:50:00+09:00"));
+        assertThat(time.path("scheduledTimeApplied").asBoolean()).isTrue();
+        assertThat(time.path("transferCount").asInt()).isEqualTo(2);
+        assertThat(time.path("transitPreference").asString()).isEqualTo("FEWER_TRANSFERS");
+    }
+
+    @Test
+    void localEstimateDoesNotClaimToUseScheduledTransitData() throws Exception {
+        add("A", 37.001, "PUBLIC", "CAFE", "ACTIVE");
+        JsonNode result = body(get(travelQuery().replace("CAR", "PUBLIC_TRANSIT")
+                + "&departureAt=2026-10-01T10:00:00%2B09:00", true), 200);
+        assertThat(result.path("items").get(0).path("travelTime").path("scheduledTimeApplied").asBoolean()).isFalse();
+    }
+
+    @Test
+    void rejectsInvalidDeparturePreferenceAndStayDuration() throws Exception {
+        assertThat(get(travelQuery() + "&departureAt=2026-10-01T10:00:00", true).statusCode()).isEqualTo(400);
+        assertThat(get(travelQuery() + "&departureAt=1800-10-01T10:00:00Z", true).statusCode()).isEqualTo(400);
+        assertThat(get(travelQuery() + "&visitDurationMinutes=-1", true).statusCode()).isEqualTo(400);
+        assertThat(get(travelQuery() + "&visitDurationMinutes=1441", true).statusCode()).isEqualTo(400);
+        assertThat(get(travelQuery() + "&transitPreference=INVALID", true).statusCode()).isEqualTo(400);
+        verify(car, never()).estimateSegments(anyList(), anyString());
+    }
+
+    @Test
+    void transitCalculationFailureReturnsErrorInsteadOfOriginalPlaceList() throws Exception {
+        add("A", 37.001, "PUBLIC", "CAFE", "ACTIVE");
+        doThrow(new BusinessException(RouteErrorCode.TMAP_RATE_LIMITED))
+                .when(transit).estimateSegments(anyList(), anyString());
+        JsonNode result = body(get(travelQuery().replace("CAR", "PUBLIC_TRANSIT"), true), 429);
+        assertThat(result.has("items")).isFalse();
     }
 
     private String travelQuery() {

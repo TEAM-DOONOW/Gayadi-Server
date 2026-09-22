@@ -44,3 +44,5 @@
 - 최적화 구간 초과: `400 ROUTE_OPTIMIZATION_TOO_LARGE`
 
 자동차 조회 실패 시 대중교통이나 직선거리 추정으로 대체하지 않습니다. 대중교통의 기존 로컬 추정/fallback 동작은 유지하며 응답의 `provider`, `configuredProvider`, `fallback`으로 구분합니다.
+
+TMAP 공급자는 첫 결과를 그대로 쓰지 않고 운행 가능한 반환 경로 중 소요시간이 가장 짧은 경로를 선택합니다. 장소찾기의 예정 시각·최소 환승 입력은 [장소찾기 연동 문서](place-travel-time-search.md)를 참고합니다.

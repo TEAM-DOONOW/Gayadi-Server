@@ -19,6 +19,15 @@ public interface RouteProvider {
     /** 입력 순서대로 각 구간을 계산합니다. 최적화 중에는 방향별 구간 결과를 재사용합니다. */
     List<RouteEstimate> estimateSegments(List<Location> stops, String phase);
 
+    default List<RouteEstimate> estimateSegments(
+            List<Location> stops, String phase, TransitRoutingOptions options) {
+        return estimateSegments(stops, phase);
+    }
+
+    default boolean supportsScheduledDeparture() {
+        return false;
+    }
+
     record RouteEstimate(
             int durationMinutes,
             int transferCount,

@@ -6,6 +6,8 @@ import com.gayadi.server.auth.AuthErrorCode;
 import com.gayadi.server.place.dto.request.PlaceSearchRequest;
 import com.gayadi.server.place.dto.response.PlaceSearchRankingResponse;
 import com.gayadi.server.place.model.PlaceSort;
+import com.gayadi.server.route.TransitRoutingOptions;
+import java.time.ZoneId;
 import com.gayadi.server.place.dto.response.PlacePageResponse;
 import com.gayadi.server.place.dto.response.PlaceResponse;
 import com.gayadi.server.place.model.PlaceCategory;
@@ -29,6 +31,12 @@ public class PlaceService {
     }
 
     public PlacePageResponse search(PlaceSearchRequest request, Long userId) {
+        if (request.departureAt() != null) {
+            int year = request.departureAt().atZoneSameInstant(ZoneId.of("Asia/Seoul")).getYear();
+            if (year < 1900 || year > 9999) {
+                throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_DEPARTURE_INVALID);
+            }
+        }
         Location origin = coordinate(request.originLatitude(), request.originLongitude());
         Location next = coordinate(request.nextLatitude(), request.nextLongitude());
         if (next != null && origin == null) {
@@ -47,7 +55,8 @@ public class PlaceService {
                 query, region, category, origin, next, MAX_TRAVEL_CANDIDATES);
         List<PlaceResponse> candidates = rows.stream().limit(MAX_TRAVEL_CANDIDATES)
                 .map(this::toResponse).toList();
-        List<PlaceResponse> ranked = ranker.rank(candidates, origin, next, request.transportMode());
+        List<PlaceResponse> ranked = ranker.rank(candidates, origin, next, request.transportMode(),
+                new TransitRoutingOptions(request.departureAt(), request.transitPreference(), request.visitDurationMinutes()));
         int limit = Math.max(1, Math.min(request.limit(), MAX_PAGE_SIZE));
         return new PlacePageResponse(ranked.stream().limit(limit).toList(), null, false,
                 new PlaceSearchRankingResponse(PlaceSort.TRAVEL_TIME, candidates.size(),
