@@ -1,5 +1,7 @@
 # 이동수단별 경로 추천
 
+장소를 고르는 단계의 이동시간순 정렬은 [장소찾기 연동 문서](place-travel-time-search.md)를 사용합니다. 아래 API는 이미 정해진 일정 전체의 경로 계산용으로 유지합니다.
+
 `POST /api/v1/trips/{tripId}/route-recommendations`
 
 ```json

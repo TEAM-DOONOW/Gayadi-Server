@@ -1,6 +1,11 @@
 package com.gayadi.server.place;
 
 import com.gayadi.server.common.exception.BusinessException;
+import com.gayadi.server.common.Location;
+import com.gayadi.server.auth.AuthErrorCode;
+import com.gayadi.server.place.dto.request.PlaceSearchRequest;
+import com.gayadi.server.place.dto.response.PlaceSearchRankingResponse;
+import com.gayadi.server.place.model.PlaceSort;
 import com.gayadi.server.place.dto.response.PlacePageResponse;
 import com.gayadi.server.place.dto.response.PlaceResponse;
 import com.gayadi.server.place.model.PlaceCategory;
@@ -14,10 +19,57 @@ import java.util.Locale;
 @Service
 public class PlaceService {
     private static final int MAX_PAGE_SIZE = 50;
+    private static final int MAX_TRAVEL_CANDIDATES = 20;
     private final PlaceRepository repository;
+    private final PlaceTravelTimeRanker ranker;
 
-    public PlaceService(PlaceRepository repository) {
+    public PlaceService(PlaceRepository repository, PlaceTravelTimeRanker ranker) {
         this.repository = repository;
+        this.ranker = ranker;
+    }
+
+    public PlacePageResponse search(PlaceSearchRequest request, Long userId) {
+        Location origin = coordinate(request.originLatitude(), request.originLongitude());
+        Location next = coordinate(request.nextLatitude(), request.nextLongitude());
+        if (next != null && origin == null) {
+            throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_ORIGIN_REQUIRED);
+        }
+        if (request.sort() != PlaceSort.TRAVEL_TIME || origin == null) {
+            return list(request.query(), request.region(), request.category(), request.cursor(), request.limit());
+        }
+        if (userId == null) throw new BusinessException(AuthErrorCode.AUTH_TOKEN_INVALID);
+        if (request.cursor() != null) throw new BusinessException(PlaceErrorCode.PLACE_TRAVEL_CURSOR_UNSUPPORTED);
+        String query = normalizeText(request.query());
+        String region = normalizeText(request.region());
+        PlaceCategory category = normalizeCategory(request.category());
+        validateFilters(query, region);
+        List<PlaceQueryResult> rows = repository.findNearbyCandidates(
+                query, region, category, origin, next, MAX_TRAVEL_CANDIDATES);
+        List<PlaceResponse> candidates = rows.stream().limit(MAX_TRAVEL_CANDIDATES)
+                .map(this::toResponse).toList();
+        List<PlaceResponse> ranked = ranker.rank(candidates, origin, next, request.transportMode());
+        int limit = Math.max(1, Math.min(request.limit(), MAX_PAGE_SIZE));
+        return new PlacePageResponse(ranked.stream().limit(limit).toList(), null, false,
+                new PlaceSearchRankingResponse(PlaceSort.TRAVEL_TIME, candidates.size(),
+                        rows.size() > MAX_TRAVEL_CANDIDATES || ranked.size() > limit));
+    }
+
+    private Location coordinate(Double latitude, Double longitude) {
+        if (latitude == null && longitude == null) return null;
+        if (latitude == null || longitude == null || !Double.isFinite(latitude) || !Double.isFinite(longitude)
+                || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+            throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_COORDINATES_INVALID);
+        }
+        return new Location("검색 기준", latitude, longitude);
+    }
+
+    private void validateFilters(String query, String region) {
+        if (query != null && query.length() > 100) {
+            throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_QUERY_TOO_LONG);
+        }
+        if (region != null && region.length() > 50) {
+            throw new BusinessException(PlaceErrorCode.PLACE_REGION_TOO_LONG);
+        }
     }
 
     /** 검색어·지역·카테고리 조건으로 공개 장소 페이지를 조회합니다. */
@@ -26,12 +78,7 @@ public class PlaceService {
         String normalizedQuery = normalizeText(query);
         String normalizedRegion = normalizeText(region);
         PlaceCategory normalizedCategory = normalizeCategory(category);
-        if (normalizedQuery != null && normalizedQuery.length() > 100) {
-            throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_QUERY_TOO_LONG);
-        }
-        if (normalizedRegion != null && normalizedRegion.length() > 50) {
-            throw new BusinessException(PlaceErrorCode.PLACE_REGION_TOO_LONG);
-        }
+        validateFilters(normalizedQuery, normalizedRegion);
 
         if (cursor != null) {
             if (cursor < 1) {
@@ -62,7 +109,7 @@ public class PlaceService {
                 "NORMAL", false, categoryEmoji(place.category()), description,
                 place.address(), place.roadAddress(), place.latitude(), place.longitude(),
                 place.regionId(), place.regionName(), place.phone(), place.homepageUrl(),
-                place.imageUrl(), place.indoor(), place.basicInfo(), place.operatingHours(), place.updatedAt());
+                place.imageUrl(), place.indoor(), place.basicInfo(), place.operatingHours(), place.updatedAt(), null);
     }
 
     private String categoryLabel(PlaceCategory category) {
