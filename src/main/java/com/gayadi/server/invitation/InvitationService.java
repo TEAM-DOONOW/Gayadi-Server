@@ -6,7 +6,6 @@ import com.gayadi.server.invitation.query.InvitationQueryResult;
 import com.gayadi.server.invitation.query.InvitationJoinQueryResult;
 import com.gayadi.server.invitation.query.InvitationTripQueryResult;
 import com.gayadi.server.auth.UserService;
-import com.gayadi.server.notification.NotificationService;
 import com.gayadi.server.common.exception.BusinessException;
 import com.gayadi.server.travel.TripService;
 import com.gayadi.server.travel.dto.response.MembershipResponse;
@@ -37,19 +36,16 @@ public class InvitationService {
     private final TripService trips;
     private final UserService users;
     private final InvitationRepository repository;
-    private final NotificationService notifications;
     private final SecureRandom random = new SecureRandom();
     private final ConcurrentHashMap<Long, JoinAttemptWindow> joinAttempts = new ConcurrentHashMap<>();
 
     public InvitationService(
             TripService trips,
             UserService users,
-            InvitationRepository repository,
-            NotificationService notifications) {
+            InvitationRepository repository) {
         this.trips = trips;
         this.users = users;
         this.repository = repository;
-        this.notifications = notifications;
     }
 
     /** 여행의 초대 목록을 페이지 조건에 맞춰 조회합니다. */
@@ -96,13 +92,8 @@ public class InvitationService {
         } catch (org.springframework.dao.DuplicateKeyException exception) {
             throw new BusinessException(InvitationErrorCode.INVITATION_CODE_UNAVAILABLE);
         }
-        InvitationQueryResult invitation = repository.find(invitationId, tripId)
-                .orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_NOT_FOUND));
-        if (inviteeUserId != null) {
-            notifications.publish(inviteeUserId, "INVITATION_REQUEST", "여행 초대 요청",
-                    invitation.inviterNickname() + "님이 여행에 초대했어요.", tripId, invitationId);
-        }
-        return toInvitationView(invitation);
+        return toInvitationView(repository.find(invitationId, tripId)
+                .orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_NOT_FOUND)));
     }
 
     /** 상태 여행 초대 상태를 변경합니다. */
@@ -173,10 +164,6 @@ public class InvitationService {
                         returnPlaceId));
 
         trips.requireMember(tripId, userId);
-        InvitationQueryResult accepted = repository.find(invitationId, tripId)
-                .orElseThrow(() -> new BusinessException(InvitationErrorCode.INVITATION_NOT_FOUND));
-        notifications.publish(accepted.inviterId(), "INVITATION_COMPLETED", "여행 초대 완료",
-                accepted.inviteeNickname() + "님이 여행에 참여했어요.", tripId, invitationId);
         return membership(tripId, userId, invitationId);
     }
 
