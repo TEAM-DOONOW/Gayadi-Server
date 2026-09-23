@@ -8,6 +8,7 @@ import com.gayadi.server.invitation.InvitationService;
 import com.gayadi.server.invitation.InvitationErrorCode;
 import com.gayadi.server.invitation.model.InvitationDecision;
 import com.gayadi.server.invitation.dto.response.InvitationResponse;
+import com.gayadi.server.notification.NotificationService;
 import com.gayadi.server.travel.dto.response.MembershipResponse;
 import com.gayadi.server.legal.LegalDocumentService;
 import com.gayadi.server.legal.dto.response.LegalDocumentResponse;
@@ -31,6 +32,7 @@ class AndroidResourceIntegrationTests {
     @Autowired FavoritePlaceService favorites;
     @Autowired LegalDocumentService legalDocuments;
     @Autowired JdbcClient jdbc;
+    @Autowired NotificationService notifications;
 
     @Test
     void invitationFavoriteAndPublicContentUseDatabase() {
@@ -49,6 +51,14 @@ class AndroidResourceIntegrationTests {
         Assertions.assertThat(trips.members(tripId)).hasSize(3);
 
         InvitationResponse invitation = invitations.create(tripId, ownerId, memberId, null);
+        Assertions.assertThat(notifications.list(memberId, 50, 0))
+                .anySatisfy(item -> Assertions.assertThat(item.type()).isEqualTo("INVITATION_REQUEST"));
+        Assertions.assertThat(notifications.list(ownerId, 50, 0))
+                .noneMatch(item -> item.type().equals("INVITATION_REQUEST"));
+        notifications.saveToken(memberId, "test-fcm-token");
+        notifications.saveToken(memberId, "test-fcm-token");
+        Assertions.assertThat(jdbc.sql("SELECT COUNT(*) FROM fcm_device_tokens WHERE user_id = ?")
+                .param(memberId).query(Integer.class).single()).isEqualTo(1);
         String inviteCode = invitation.code();
         Assertions.assertThat(inviteCode).matches("[A-Z0-9]{8}");
         Assertions.assertThatThrownBy(() -> invitations.updateStatus(
@@ -58,6 +68,8 @@ class AndroidResourceIntegrationTests {
                                 .isEqualTo(InvitationErrorCode.INVITATION_DECLINE_FORBIDDEN));
 
         MembershipResponse membership = invitations.join(memberId, inviteCode, null, null);
+        Assertions.assertThat(notifications.list(ownerId, 50, 0))
+                .anySatisfy(item -> Assertions.assertThat(item.type()).isEqualTo("INVITATION_COMPLETED"));
         Assertions.assertThat(membership.trip().id()).isEqualTo(tripId);
         Assertions.assertThat(membership.participant().status()).isEqualTo("JOINED");
         Assertions.assertThat(membership.participant().id()).isEqualTo(memberId);
