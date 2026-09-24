@@ -24,6 +24,7 @@
 | 아키텍처 | [도메인과 AI 검색](architecture/domain-and-ai-search.md) | 관계형 도메인과 추천 검색 경계 |
 | 아키텍처 | [Agent 조사](architecture/agent-research.md) | AI Agent 적용 배경과 판단 근거 |
 | Android 연동 | [Android 기능 계약](architecture/android-feature-contract.md) | Android 기능과 서버 계약 |
+| 혼잡도 API | [장소별 혼잡도 상세 API](architecture/place-congestion-api.md) | 실시간·예측 공급자 우선순위와 앱 응답 계약 |
 | API | [프런트엔드 API 명세](FRONTEND_API_SPEC.md) | 클라이언트 연동용 경로와 요청·응답 |
 | 예외 | [예외 처리 가이드](exception/README.md) | 공통 오류 응답, ErrorCode, i18n과 테스트 |
 | 보안 | [보안 문서 안내](security/README.md) | 현재 HTTP·JWT 보안 구조와 Redis·RTR·민감정보 강화 기준 |

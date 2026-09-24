@@ -87,6 +87,16 @@ congestion:
     key: ${congestion_api_key:${CONGESTION_API_KEY:}}
     base-url: ${CONGESTION_API_BASE_URL:https://apis.data.go.kr/B551011/TatsCnctrRateService}
     mobile-app: ${CONGESTION_API_MOBILE_APP:${TOUR_API_MOBILE_APP:Gayadi}}
+  tmap:
+    # SK Open API 장소 혼잡도 상품을 신청한 환경에서만 활성화한다. 호출량에 따라 과금될 수 있다.
+    enabled: ${CONGESTION_TMAP_ENABLED:false}
+    app-key: ${skt_appkey:${SKT_APPKEY:}}
+    base-url: ${CONGESTION_TMAP_BASE_URL:https://apis.openapi.sk.com/puzzle/place}
+  seoul:
+    # 서울시 지정 핫스팟만 지원한다. 공식 주소가 HTTP이므로 운영에서는 HTTPS 프록시 주소를 설정한다.
+    enabled: ${CONGESTION_SEOUL_ENABLED:false}
+    api-key: ${seoul_api_key:${SEOUL_API_KEY:}}
+    base-url: ${CONGESTION_SEOUL_BASE_URL:}
 
 weather:
   api:
