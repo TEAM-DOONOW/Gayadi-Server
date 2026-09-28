@@ -1,5 +1,6 @@
 package com.gayadi.server;
 
+import com.gayadi.server.common.logging.RequestTrace;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,18 @@ class ApiErrorResponseIntegrationTests {
         Assertions.assertThat(response.statusCode()).isEqualTo(404);
         JsonNode body = objectMapper.readTree(response.body());
         assertCommonFields(body, 404, "RESOURCE_NOT_FOUND", "/api/openapi/not-found");
+        assertResponseTraceMatchesBody(response, body);
         Assertions.assertThat(body.path("details").isNull()).isTrue();
+    }
+
+    @Test
+    void usesTheRequestTraceIdForSecurityErrors() throws Exception {
+        HttpResponse<String> response = get("/api/v1/trips");
+
+        Assertions.assertThat(response.statusCode()).isEqualTo(401);
+        JsonNode body = objectMapper.readTree(response.body());
+        assertCommonFields(body, 401, "UNAUTHENTICATED", "/api/v1/trips");
+        assertResponseTraceMatchesBody(response, body);
     }
 
     @Test
@@ -111,6 +123,11 @@ class ApiErrorResponseIntegrationTests {
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private void assertResponseTraceMatchesBody(HttpResponse<String> response, JsonNode body) {
+        Assertions.assertThat(response.headers().firstValue(RequestTrace.RESPONSE_HEADER))
+                .contains(body.path("traceId").asString());
     }
 
     private HttpResponse<String> get(String path) throws Exception {

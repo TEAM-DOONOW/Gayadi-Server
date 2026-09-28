@@ -6,6 +6,7 @@ import com.gayadi.server.recommendation.dto.response.RecommendedPlace;
 import com.gayadi.server.recommendation.model.PlaceSearchPlan;
 import com.gayadi.server.recommendation.model.TourPlaceCandidate;
 import com.gayadi.server.recommendation.model.TravelSituation;
+import com.gayadi.server.tourapi.TourRegionResolver;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,14 +45,23 @@ public class PlaceRecommendationAgent {
     private final RecommendationLanguageModel languageModel;
     private final TourPlaceSearchGateway searchGateway;
     private final PlaceSnapshotWriter snapshotWriter;
+    private final TourRegionResolver regionResolver;
 
     @Autowired
     public PlaceRecommendationAgent(RecommendationLanguageModel languageModel,
                                     TourPlaceSearchGateway searchGateway,
-                                    PlaceSnapshotWriter snapshotWriter) {
+                                    PlaceSnapshotWriter snapshotWriter,
+                                    TourRegionResolver regionResolver) {
         this.languageModel = languageModel;
         this.searchGateway = searchGateway;
         this.snapshotWriter = snapshotWriter;
+        this.regionResolver = regionResolver;
+    }
+
+    public PlaceRecommendationAgent(RecommendationLanguageModel languageModel,
+                                    TourPlaceSearchGateway searchGateway,
+                                    PlaceSnapshotWriter snapshotWriter) {
+        this(languageModel, searchGateway, snapshotWriter, null);
     }
 
     public PlaceRecommendationAgent(RecommendationLanguageModel languageModel,
@@ -63,14 +73,14 @@ public class PlaceRecommendationAgent {
         RecommendationLanguageModel.RecommendationContext context = context(request);
         PlaceSearchPlan plan = safePlan(context);
         List<TourPlaceCandidate> candidates = rankedCandidates(
-                searchGateway.search(plan, searchContext(request, context.policy())), context);
+                searchGateway.search(plan, searchContext(request, context)), context);
 
         if (candidates.isEmpty()) {
             PlaceSearchPlan fallback = PlaceSearchPlan.fallback(
                     context.destination(), context.regionCode(), context.sigunguCode(),
                     context.keywords(), context.policy());
             candidates = rankedCandidates(
-                    searchGateway.search(fallback, searchContext(request, context.policy())), context);
+                    searchGateway.search(fallback, searchContext(request, context)), context);
         }
 
         if (candidates.size() < Math.min(context.limit(), MIN_CANDIDATES_BEFORE_REFINEMENT)
@@ -78,7 +88,7 @@ public class PlaceRecommendationAgent {
             try {
                 PlaceSearchPlan refined = languageModel.refineSearchPlan(context, plan, candidates);
                 candidates = mergeAndRank(candidates,
-                        searchGateway.search(refined, searchContext(request, context.policy())), context);
+                        searchGateway.search(refined, searchContext(request, context)), context);
             } catch (RuntimeException exception) {
                 log.warn("추천 검색 계획 개선을 생략합니다: {}", exception.getClass().getSimpleName());
             }
@@ -203,19 +213,54 @@ public class PlaceRecommendationAgent {
     private RecommendationLanguageModel.RecommendationContext context(
             PlaceRecommendationRequest request) {
         TravelSituation situation = request.getSituation();
+        RegionSelection region = resolveRegion(request);
         return new RecommendationLanguageModel.RecommendationContext(
-                request.getPurpose(), request.getDestination(), request.getRegionCode(),
-                request.getSigunguCode(), request.getProfile(),
+                request.getPurpose(), request.getDestination(), region.areaCode(),
+                region.districtCode(), request.getProfile(),
                 request.getKeywords() == null ? List.of() : request.getKeywords(),
                 request.getLatitude(), request.getLongitude(), request.getGroupSize(),
                 request.getLimit(), request.getTargetAt(), situation, situation.policy());
     }
 
     private TourPlaceSearchGateway.SearchContext searchContext(
-            PlaceRecommendationRequest request, TravelSituation.Policy policy) {
+            PlaceRecommendationRequest request,
+            RecommendationLanguageModel.RecommendationContext context) {
         return new TourPlaceSearchGateway.SearchContext(
-                request.getRegionCode(), request.getSigunguCode(),
-                request.getLatitude(), request.getLongitude(), policy);
+                context.regionCode(), context.sigunguCode(),
+                request.getLatitude(), request.getLongitude(), context.policy());
+    }
+
+    private RegionSelection resolveRegion(PlaceRecommendationRequest request) {
+        String areaCode = valueOrEmpty(request.getRegionCode());
+        String districtCode = valueOrEmpty(request.getSigunguCode());
+        String destination = valueOrEmpty(request.getDestination());
+        if (!areaCode.isBlank() || regionResolver == null || destination.isBlank()) {
+            return new RegionSelection(areaCode, districtCode);
+        }
+        try {
+            List<TourRegionResolver.RegionCode> regions =
+                    regionResolver.resolve(destination);
+            Set<String> areaCodes = regions.stream()
+                    .map(TourRegionResolver.RegionCode::areaCode)
+                    .collect(Collectors.toSet());
+            if (areaCodes.size() != 1) {
+                return new RegionSelection(areaCode, districtCode);
+            }
+            String resolvedDistrict = regions.size() == 1
+                    ? regions.getFirst().districtCode() : "";
+            return new RegionSelection(regions.getFirst().areaCode(), resolvedDistrict);
+        } catch (RuntimeException exception) {
+            log.warn("목적지 지역 코드 해석을 생략합니다: {}",
+                    exception.getClass().getSimpleName());
+            return new RegionSelection(areaCode, districtCode);
+        }
+    }
+
+    private record RegionSelection(String areaCode, String districtCode) {
+    }
+
+    private static String valueOrEmpty(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private List<TourPlaceCandidate> mergeAndRank(

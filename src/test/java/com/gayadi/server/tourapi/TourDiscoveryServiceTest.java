@@ -7,10 +7,12 @@ import com.gayadi.server.tourapi.dto.response.TourListResponse;
 import com.gayadi.server.tourapi.dto.response.TourPlaceResponse;
 import com.gayadi.server.tourapi.dto.request.TourDiscoveryRequest;
 import com.gayadi.server.tourapi.dto.response.TourDiscoveryResponse;
+import com.gayadi.server.recommendation.PlaceSnapshotWriter;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,14 +27,16 @@ class TourDiscoveryServiceTest {
     void reusesPlaceResultsWhenOnlyTheTravelDateChanges() {
         TourApiService tourApi = mock(TourApiService.class);
         CongestionForecastService congestion = mock(CongestionForecastService.class);
+        PlaceSnapshotWriter snapshots = mock(PlaceSnapshotWriter.class);
         TourRegionResolver resolver = new TourRegionResolver(tourApi);
-        TourDiscoveryService service = new TourDiscoveryService(tourApi, resolver, congestion);
+        TourDiscoveryService service = new TourDiscoveryService(tourApi, resolver, congestion, snapshots);
         TourPlaceResponse place = new TourPlaceResponse(
                 "1", "12", "경복궁", "서울", "", "", "", "", "",
                 "126.97", "37.58", "", "", "", "", "11", "110",
                 "NA", "NA04", "NA0401", "", "", "", "", "");
         when(tourApi.areaBasedList(any())).thenReturn(
                 new TourListResponse(List.of(place), 1, 10, null));
+        when(snapshots.save(any(), any())).thenReturn(Map.of("1", 101L));
         when(congestion.forecastAll(any())).thenAnswer(invocation -> {
             List<CongestionForecastRequest> requests = invocation.getArgument(0);
             return requests.stream().map(request -> new CongestionForecastResponse(
@@ -49,6 +53,7 @@ class TourDiscoveryServiceTest {
         verify(tourApi, times(1)).areaBasedList(any());
         verify(congestion, times(2)).forecastAll(any());
         assertThat(second.items()).hasSize(1);
+        assertThat(second.items().getFirst().placeId()).isEqualTo(101L);
         assertThat(second.targetDate()).isEqualTo(LocalDate.of(2026, 9, 2));
     }
 

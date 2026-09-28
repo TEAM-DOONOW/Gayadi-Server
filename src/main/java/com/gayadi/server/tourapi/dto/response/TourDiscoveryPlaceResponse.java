@@ -8,6 +8,7 @@ import java.time.LocalDate;
 /** 관광 장소 기본 정보와 해당 날짜의 혼잡도 예측을 반환합니다. */
 @Schema(description = "관광정보와 관광지 집중률 기반 혼잡도 예측을 합친 장소")
 public record TourDiscoveryPlaceResponse(
+        Long placeId,
         String contentId,
         String contentTypeId,
         String title,
@@ -33,8 +34,10 @@ public record TourDiscoveryPlaceResponse(
 
     public static TourDiscoveryPlaceResponse of(
             TourPlaceResponse place,
-            CongestionForecastResponse forecast) {
+            CongestionForecastResponse forecast,
+            Long placeId) {
         return new TourDiscoveryPlaceResponse(
+                placeId,
                 place.contentId(),
                 place.contentTypeId(),
                 place.title(),
