@@ -124,7 +124,7 @@ Accept: application/json
 `전주`, `군산·익산`, `광주·담양`, `목포·신안`, `경주`, `대구`, `안동`, `포항`,
 `부산`, `울산`, `창원`, `통영·거제`, `남해·사천`, `여수`, `해남·완도`, `제주`, `서귀포`.
 
-기존 화면 기본값인 `제주 성산`도 백엔드에서 `제주` 별칭으로 허용합니다.
+기존 화면 기본값인 `제주 성산`도 허용합니다. `수원`, `강릉`처럼 복합 지역 안의 도시 이름만 보내도 해당 도시로 조회됩니다. 화면에서 고른 지역은 `수원·용인` 전체를 보내는 것이 맞습니다.
 
 ## 4. 오류 응답
 
@@ -189,7 +189,9 @@ Android 변경은 API 계층과 기존 장소 모델 매핑으로 제한합니�
 
 ## 6. AI Agent API
 
-Agent API는 모두 `APP_AI_ENABLED=true`인 서버에서 제공하며 다음 헤더가 필요합니다.
+장소 추천 API는 항상 제공하며, `APP_AI_ENABLED=true`이면 TourAPI·언어 모델 Agent를 사용합니다.
+비활성 상태에서는 저장된 공개 장소를 현재 위치 기준으로 추천합니다. 여행 상황 대처 Agent는
+`APP_AI_ENABLED=true`인 서버에서만 제공합니다. 두 API 모두 다음 헤더가 필요합니다.
 
 ```http
 Authorization: Bearer {accessToken}
@@ -238,7 +240,7 @@ Agent 공통 오류:
 | `400` | 필수값·범위 오류 또는 외부 처리 미동의 |
 | `401` | 서버 로그인 토큰 없음·만료 |
 | `403` | 해당 여행의 참여자가 아님 |
-| `503` | Agent 비활성화 또는 외부 연동 불가 |
+| `503` | 여행 상황 대처 Agent 비활성화 또는 활성 Agent의 외부 연동 불가 |
 
 ### 6.3 Android 연동 선행 조건
 
@@ -264,4 +266,13 @@ Content-Type: application/json
 
 ## 7. 원시 관광 API
 
-`/locations`, `/keywords`, `/festivals`, `/stays`와 단독 `/api/v1/congestion/forecast`는 내부·관리용이며 JWT 인증이 필요합니다. Android 장소 검색에서는 직접 호출하지 않습니다.
+`/locations`, `/keywords`, `/festivals`, `/stays`는 JWT가 필요합니다. 장소 목록의 혼잡은 `/tour/areas`에 포함됩니다.
+
+장소 상세의 일별 혼잡, 시간대, 현재 날씨는 한 요청으로 조회합니다.
+
+```http
+GET /api/v1/congestion/forecast?areaCode=11&districtCode=110&hours=0,1,2&lat=37.5796&lon=126.9770
+Authorization: Bearer {accessToken}
+```
+
+`level`과 `concentrationScore`는 일별 값입니다. `points`는 시간대 추정입니다. `weather`는 `lat`와 `lon`을 함께 보낸 경우에만 있습니다. 기온은 초단기실황, 하늘 상태와 강수확률은 초단기예보입니다. 둘 다 실패하면 `available=false`입니다. `/congestion/places/{placeId}`는 가야디에 저장된 장소 번호 전용이며 관광공사 `contentId`와 다릅니다. `/weather/nowcasts` 등 기상청 원본 경로는 장소 화면이 직접 쓰지 않습니다.

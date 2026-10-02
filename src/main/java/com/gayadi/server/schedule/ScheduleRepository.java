@@ -317,6 +317,18 @@ public class ScheduleRepository {
                 .update();
     }
 
+    /** 하루 여행루트로 교체할 일반 장소 일정을 잠그고 반환합니다. */
+    public List<Long> lockMainItemIds(long planId) {
+        return jdbc.sql("""
+                SELECT id FROM travel_plan_items
+                WHERE plan_id = ? AND schedule_type = 'MAIN'
+                ORDER BY sequence_no, id FOR UPDATE
+                """)
+                .param(planId)
+                .query(Long.class)
+                .list();
+    }
+
     private ScheduleItemQueryResult mapItem(Map<String, Object> row) {
         return new ScheduleItemQueryResult(
                 number(row, "id").longValue(),

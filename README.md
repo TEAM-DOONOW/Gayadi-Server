@@ -107,6 +107,7 @@ APP_AI_EMBEDDING_ENABLED=false
 | 일정 | `PATCH/DELETE /api/v1/trips/{tripId}/schedules/{scheduleId}` | 앱 일정 수정·삭제 |
 | 일정 | `PATCH /api/v1/trips/{tripId}/schedule-orders` | 일정 순서 변경 |
 | 출발·귀가 | `POST /api/v1/trips/{tripId}/route-recommendations` | 경로 추천 |
+| 여행루트 | `POST /api/v1/trips/{tripId}/itinerary-recommendations`, `PUT /api/v1/trips/{tripId}/itinerary-selections/{date}` | 장소·순서·체류시간 추천 및 하루 일정 전체 적용 |
 | 경로 | `GET /api/v1/trips/{tripId}/route-selections` | 선택한 추천 경로 조회 |
 | 경로 | `PUT/DELETE /api/v1/trips/{tripId}/route-selections/{type}` | 추천 경로 선택 관리 |
 | 친구 | `GET/POST /api/v1/friendships` | 친구 관계 조회·요청 |
@@ -125,14 +126,15 @@ APP_AI_EMBEDDING_ENABLED=false
 | 날씨 | `GET /api/v1/weather/ultra-forecast` | 인증 사용자의 6시간 이내 초단기예보 조회 |
 | 날씨 | `GET /api/v1/weather/forecast` | 인증 사용자의 전체 단기예보 조회 |
 | 날씨 | `GET /api/v1/weather/version` | 인증 사용자의 예보 파일 버전 조회 |
-| 혼잡 | `GET /api/v1/congestion/forecast` | 한국관광공사 30일 관광지 집중률 예측. 자료가 없으면 낮은 신뢰도의 달력 추정값 반환 |
+| 혼잡·현재 날씨 | `GET /api/v1/congestion/forecast` | 일별 집중률, 시간대 추정, `lat`·`lon`이 있으면 현재 날씨 요약 |
 | 앱 장소 탐색 | `GET /api/v1/tour/areas` | GAYADI 지역명·여행일·카테고리로 관광지와 예상 혼잡도를 통합 조회 |
 | 장소 | `GET /api/v1/places` | 검색·지역·분류·커서 기반 공개 장소 조회 |
 | 찜 | `GET/PUT/DELETE /api/v1/users/current/favorite-places` | 내 장소 찜 관리 |
+| 홈 순위 | `GET /api/v1/rankings` | 관광지(데이터랩 중심 관광지)·축제(진행 중·임박)·인기 지역(데이터랩 외지인·외국인 방문자 수)·맛집(찜 수) TOP 목록 |
 | 공지 | `GET /api/v1/notices`, `GET /api/v1/notices/{noticeId}` | 공개 공지 목록·상세 조회 |
 | 문의 | `POST /api/v1/inquiries` | 인증 사용자의 고객지원 문의 접수 |
 | 문서 | `GET /api/v1/legal-documents/{documentId}` | 약관·개인정보처리방침 조회 |
-| 선택 기능 | `POST /api/v1/recommendations/places` | Groq·TourAPI 기반 장소 추천 Agent |
+| 장소 추천 | `POST /api/v1/recommendations/places` | Groq·TourAPI Agent, 비활성 시 저장 장소 거리순 대체 추천 |
 | 관리 | `POST /api/v1/admin/place-embeddings` | 관리자 전용 장소 검색 자료 갱신 |
 
 `TravelFlowIntegrationTests`가 사용자 생성부터 설문, 일정, 모여서 출발, 이벤트 변경 승인, revision 증가, 귀가 및 완료까지 검증합니다. `AndroidFeatureDomainHttpIntegrationTests`는 Android 화면의 날짜 조율, 공동 경비, 개인 지출, 정산, 공지와 문의를 실제 HTTP·JWT·Swagger 계약으로 검증합니다. `AiUserJourneyIntegrationTests`는 추천 결과가 상황 변화와 변경안 승인 후 일정·경로에 반영되는 사용자 경로를 검증합니다.
@@ -169,6 +171,7 @@ APP_AI_EMBEDDING_ENABLED=false
 - Google 로그인 외 OAuth/OIDC 공급자 확대와 짧은 수명 access token 전환
 - 서울 주요 121장소 실시간 혼잡 공급자 추가와 TMAP 운영 키 검증
 - 공공 API 수집 → 정제 → 검색 자료 저장 작업
+- 한국관광 데이터랩 `LocgoHubTarService1`·`DataLabService` 활용신청(미승인 시 순위 API는 대체 목록 또는 빈 목록 반환)
 - Redis 기반 경로 후보 TTL 캐시
 - FCM/SSE 알림
 - Android의 파일·Firestore 저장소를 서버 API 저장소로 교체하고 로그인 토큰을 연결하는 작업

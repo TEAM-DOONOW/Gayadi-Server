@@ -7,11 +7,12 @@ import com.gayadi.server.place.query.PlaceQueryResult;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ArrayList;
 
 /** 여행 장소 SQL 실행과 DB Row 매핑을 담당합니다. */
 @Repository
@@ -43,6 +44,58 @@ public class PlaceRepository {
     public List<PlaceQueryResult> findNearbyCandidates(
             String query, String region, PlaceCategory category, Location origin, Location next, int limit) {
         return find(query, region, category, null, limit, origin, next);
+    }
+
+    /** 여행루트에 쓸 수 있는 좌표 보유 장소를 지역 안에서 추립니다. */
+    public List<PlaceQueryResult> findItineraryCandidates(String region, int limit) {
+        StringBuilder sql = new StringBuilder(SELECT_FIELDS)
+                .append(" AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL\n")
+                .append(" AND p.category NOT IN ('ACCOMMODATION', 'SHELTER')\n");
+        List<Object> parameters = new ArrayList<>();
+        appendItineraryRegion(sql, parameters, region);
+        sql.append(" ORDER BY p.id DESC LIMIT ?");
+        parameters.add(limit);
+        return jdbc.sql(sql.toString())
+                .params(parameters)
+                .query()
+                .listOfRows()
+                .stream()
+                .map(this::map)
+                .toList();
+    }
+
+    /** 복합 지역명을 도시 단위로 나눠 지역명·주소 조건에 넣습니다. */
+    static void appendItineraryRegion(StringBuilder sql, List<Object> parameters, String region) {
+        List<String> tokens = itineraryRegionTokens(region);
+        if (tokens.isEmpty()) {
+            return;
+        }
+        sql.append(" AND (");
+        for (int index = 0; index < tokens.size(); index++) {
+            if (index > 0) {
+                sql.append(" OR ");
+            }
+            sql.append("(r.name = ? OR r.name LIKE ? OR LOWER(COALESCE(p.address, '')) LIKE ?)");
+            String value = tokens.get(index);
+            parameters.add(value);
+            parameters.add(value + "%");
+            parameters.add("%" + value.toLowerCase(Locale.ROOT) + "%");
+        }
+        sql.append(")\n");
+    }
+
+    static List<String> itineraryRegionTokens(String region) {
+        if (region == null || region.isBlank()) {
+            return List.of();
+        }
+        LinkedHashSet<String> tokens = new LinkedHashSet<>();
+        for (String part : region.trim().split("[·\\s]+")) {
+            String token = part.trim();
+            if (token.length() >= 2) {
+                tokens.add(token);
+            }
+        }
+        return List.copyOf(tokens);
     }
 
     private List<PlaceQueryResult> find(

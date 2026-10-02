@@ -102,9 +102,9 @@ Agent·날씨·TourAPI는 로컬 외부 API 계약 스텁으로 Android → Serv
 1. **소유자 출발·귀가 장소는 여행 생성 또는 내 참여자 수정으로 넣는다.**
    `POST /api/v1/trips`에 `departurePlaceId`/`returnPlaceId`를 넣을 수 있고, 이후 `PATCH /api/v1/trips/{tripId}/participants/current`로 바꿀 수 있다. `PUT /participants/{본인}`은 여전히 신규 참여자 추가이며 이미 참여한 사용자는 `409 TRIP_ALREADY_JOINED`다.
 
-2. **AI 추천·여행 상황 대처는 비활성이다.**
+2. **AI 여행 상황 대처는 비활성이고, 장소 추천은 로컬 대체 경로를 쓴다.**
    `APP_AI_ENABLED=false`이면
-   `POST /api/v1/recommendations/places` → `503 RECOMMENDATION_UNAVAILABLE`
+   `POST /api/v1/recommendations/places` → 저장된 공개 장소를 현재 위치에서 가까운 순으로 `200`
    `POST /api/v1/trips/{tripId}/situation-responses` → 503
    핵심 여행 API를 막지는 않는다.
 

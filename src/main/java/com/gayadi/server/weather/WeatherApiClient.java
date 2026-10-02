@@ -1,5 +1,6 @@
 package com.gayadi.server.weather;
 
+import com.gayadi.server.common.PublicDataKey;
 import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ class WeatherApiClient {
             Thread.currentThread().interrupt();
             throw new BusinessException(WeatherErrorCode.WEATHER_API_INTERRUPTED);
         } catch (IOException e) {
-            log.warn("기상청 API 호출 실패: {} - {}", operation, e.getMessage());
+            log.warn("기상청 API 호출 실패: {} ({})", operation, e.getClass().getSimpleName());
             throw new BusinessException(WeatherErrorCode.WEATHER_API_FAILED);
         }
 
@@ -81,21 +82,36 @@ class WeatherApiClient {
 
         String trimmed = body.stripLeading();
         if (trimmed.charAt(0) == '<') {
-            log.warn("기상청 API XML 오류 응답: {}", extractXmlError(body));
-            throw new BusinessException(WeatherErrorCode.WEATHER_API_AUTH_FAILED);
-        }
-        if (response.statusCode() == 401 || response.statusCode() == 403) {
-            throw new BusinessException(WeatherErrorCode.WEATHER_API_AUTH_FAILED);
-        }
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
+            String reasonCode = extractTag(body, "returnReasonCode");
+            log.warn("기상청 API XML 오류 응답: {} status={} {}",
+                    operation, response.statusCode(), extractXmlError(body));
+            throw new BusinessException(gatewayError(reasonCode));
         }
 
-        JsonNode root;
+        JsonNode root = null;
         try {
             root = objectMapper.readTree(body);
         } catch (Exception e) {
-            log.warn("기상청 API 응답 파싱 실패: {} - {}", operation, e.getMessage());
+            log.warn("기상청 API 응답 파싱 실패: {} status={} ({})",
+                    operation, response.statusCode(), e.getClass().getSimpleName());
+        }
+
+        // 공공데이터포털 게이트웨이 오류는 dataType=JSON이면 JSON으로, 아니면 XML로 옵니다.
+        JsonNode gateway = root == null
+                ? null
+                : root.path("OpenAPI_ServiceResponse").path("cmmMsgHeader");
+        if (gateway != null && !gateway.isMissingNode()) {
+            String reasonCode = text(gateway, "returnReasonCode");
+            log.warn("기상청 API 게이트웨이 오류: {} status={} code={} {}",
+                    operation, response.statusCode(), reasonCode, text(gateway, "errMsg"));
+            throw new BusinessException(gatewayError(reasonCode));
+        }
+        if (response.statusCode() == 401 || response.statusCode() == 403) {
+            log.warn("기상청 API 인증 실패: {} status={}", operation, response.statusCode());
+            throw new BusinessException(WeatherErrorCode.WEATHER_API_AUTH_FAILED);
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300 || root == null) {
+            log.warn("기상청 API 비정상 응답: {} status={}", operation, response.statusCode());
             throw new BusinessException(WeatherErrorCode.WEATHER_API_RESPONSE_INVALID);
         }
 
@@ -176,9 +192,16 @@ class WeatherApiClient {
             }
             query.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
             query.append('=');
-            query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+            query.append(queryValue(entry.getKey(), entry.getValue()));
         }
         return URI.create(baseUrl + "/" + operation + "?" + query);
+    }
+
+    private static String queryValue(String name, String value) {
+        if ("serviceKey".equals(name)) {
+            return PublicDataKey.queryValue(value);
+        }
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private String ensureServiceKey() {
@@ -186,6 +209,14 @@ class WeatherApiClient {
             throw new BusinessException(WeatherErrorCode.WEATHER_API_NOT_CONFIGURED);
         }
         return serviceKey;
+    }
+
+    /** 공공데이터포털 returnReasonCode: 22는 일일 트래픽 초과, 나머지(20·30·31·32 등)는 키·활용신청 문제입니다. */
+    private static WeatherErrorCode gatewayError(String reasonCode) {
+        if ("22".equals(reasonCode)) {
+            return WeatherErrorCode.WEATHER_API_RATE_LIMITED;
+        }
+        return WeatherErrorCode.WEATHER_API_AUTH_FAILED;
     }
 
     private String extractXmlError(String xml) {

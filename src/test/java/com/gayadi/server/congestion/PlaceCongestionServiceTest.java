@@ -1,10 +1,13 @@
 package com.gayadi.server.congestion;
 
+import com.gayadi.server.congestion.dto.request.CongestionForecastRequest;
 import com.gayadi.server.congestion.dto.response.CongestionHourlyForecastResponse;
 import com.gayadi.server.congestion.dto.response.CongestionHourlyPoint;
 import com.gayadi.server.congestion.dto.response.PlaceCongestionDetailResponse;
 import com.gayadi.server.place.PlaceService;
 import com.gayadi.server.place.dto.response.PlaceResponse;
+import com.gayadi.server.tourapi.TourRegionResolver;
+import com.gayadi.server.weather.CurrentWeatherSummaryService;
 import com.gayadi.server.weather.WeatherApiService;
 import com.gayadi.server.weather.dto.response.UltraShortNowcastResponse;
 import com.gayadi.server.weather.dto.response.WeatherForecastResponse;
@@ -42,15 +45,19 @@ class PlaceCongestionServiceTest {
         when(places.get(1L)).thenReturn(place);
 
         when(weather.ultraSrtNcst(any())).thenReturn(nowcast());
-        when(weather.vilageFcst(any())).thenReturn(forecast());
+        when(weather.ultraSrtFcst(any())).thenReturn(forecast());
         when(seoulCongestion.find(anyString(), anyString(), anyString(), any()))
                 .thenReturn(Optional.empty());
         when(tmapCongestion.find(anyString(), any(), any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(congestionForecast.forecastHourly(any(), anyList())).thenReturn(congestion());
 
+        TourRegionResolver regions = mock(TourRegionResolver.class);
+        when(regions.resolveAddress("서울 종로구 사직로 161"))
+                .thenReturn(Optional.of(new TourRegionResolver.RegionCode("11", "110", "종로구")));
         PlaceCongestionService service = new PlaceCongestionService(
-                places, weather, congestionForecast, tmapCongestion, seoulCongestion);
+                places, new CurrentWeatherSummaryService(weather),
+                congestionForecast, tmapCongestion, seoulCongestion, regions);
 
         PlaceCongestionDetailResponse result = service.get(1L, List.of(9, 11));
 
@@ -59,6 +66,12 @@ class PlaceCongestionServiceTest {
         assertThat(result.weather().temperatureCelsius()).isEqualTo(23.0);
         assertThat(result.weather().precipitationProbability()).isEqualTo(10);
         assertThat(result.weather().source()).isEqualTo("KMA");
+        // 저장 장소도 주소의 시군구 코드로 관광공사 집중률 예측을 조회합니다.
+        org.mockito.ArgumentCaptor<CongestionForecastRequest> request =
+                org.mockito.ArgumentCaptor.forClass(CongestionForecastRequest.class);
+        org.mockito.Mockito.verify(congestionForecast).forecastHourly(request.capture(), anyList());
+        assertThat(request.getValue().areaCode()).isEqualTo("11");
+        assertThat(request.getValue().districtCode()).isEqualTo("110");
     }
 
     private UltraShortNowcastResponse nowcast() {

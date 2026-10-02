@@ -59,6 +59,7 @@ class OpenApiIntegrationTests {
                 .contains("/api/v1/users/current")
                 .contains("/api/v1/tour/areas")
                 .contains("/api/v1/trips/{tripId}/situation-responses")
+                .contains("/api/v1/congestion/forecast")
                 .contains("APP_AI_ENABLED")
                 .contains("participants/current");
         JsonNode bearer = document.path("components").path("securitySchemes").path("bearerAuth");
@@ -70,7 +71,9 @@ class OpenApiIntegrationTests {
         List<String> tagNames = new ArrayList<>();
         document.path("tags").forEach(tag -> tagNames.add(tag.path("name").asString()));
         Assertions.assertThat(tagNames)
-                .contains("인증", "사용자", "상황 대처", "친구", "여행 홈", "혼잡");
+                .contains("인증", "사용자", "상황 대처", "친구", "여행 홈", "혼잡", "저장 장소",
+                        "기상청 원본", "관광 목록", "관광 검색", "순위", "여행루트", "경로")
+                .doesNotContain("날씨 API", "관광 API");
         Assertions.assertThat(document.path("paths").properties())
                 .isNotEmpty()
                 .allMatch(path -> path.getKey().startsWith("/api"));
@@ -211,9 +214,12 @@ class OpenApiIntegrationTests {
 
     @Test
     void documentsJwtOnProtectedNounPathsAndOmitsRemovedDuplicates() throws Exception {
-        JsonNode paths = objectMapper.readTree(get(uri("/api/openapi")).body()).path("paths");
+        JsonNode document = objectMapper.readTree(get(uri("/api/openapi")).body());
+        JsonNode paths = document.path("paths");
 
         Assertions.assertThat(paths.has("/api/v1/tour/discover")).isFalse();
+        Assertions.assertThat(paths.path("/api/v1/congestion/forecast/hourly").path("get")
+                .path("deprecated").asBoolean()).isTrue();
         Assertions.assertThat(paths.has("/api/v1/recommendations/situations")).isFalse();
         Assertions.assertThat(paths.has("/api/v1/weather/now")).isFalse();
         Assertions.assertThat(paths.has("/api/v1/tour/areas")).isTrue();
@@ -222,9 +228,7 @@ class OpenApiIntegrationTests {
         Assertions.assertThat(paths.has("/api/v1/trips/{tripId}/situation-responses")).isTrue();
         Assertions.assertThat(paths.has("/api/v1/trips/{tripId}/participants/current")).isTrue();
         Assertions.assertThat(paths.path("/api/v1/recommendations/places").path("post")
-                .path("responses").has("503")).isTrue();
-        Assertions.assertThat(paths.path("/api/v1/recommendations/places").path("post")
-                .path("description").asString()).contains("RECOMMENDATION_UNAVAILABLE");
+                .path("description").asString()).contains("저장된 공개 장소");
         Assertions.assertThat(paths.path("/api/v1/trips/{tripId}/situation-responses").path("post")
                 .path("description").asString())
                 .contains("SITUATION_AGENT_UNAVAILABLE")
@@ -236,8 +240,56 @@ class OpenApiIntegrationTests {
                 || paths.path("/api/v1/tour/areas").path("get").path("security").isEmpty()).isTrue();
         Assertions.assertThat(paths.path("/api/v1/tour/locations").path("get").path("security").toString())
                 .contains("bearerAuth");
-        Assertions.assertThat(paths.path("/api/v1/congestion/forecast").path("get").path("security").toString())
-                .contains("bearerAuth");
+        JsonNode congestionForecast = paths.path("/api/v1/congestion/forecast").path("get");
+        Assertions.assertThat(congestionForecast.path("security").toString()).contains("bearerAuth");
+        List<String> operationIds = new ArrayList<>();
+        paths.properties().forEach(path -> path.getValue().properties().forEach(
+                operation -> operationIds.add(operation.getValue().path("operationId").asString())));
+        Assertions.assertThat(operationIds).doesNotHaveDuplicates().doesNotContain("");
+        Assertions.assertThat(successSchema(document, new OperationKey(
+                "/api/v1/trips/{tripId}/itinerary-recommendations", "post", "200")).path("$ref").asString())
+                .isNotBlank();
+        Assertions.assertThat(successSchema(document, new OperationKey(
+                "/api/v1/trips/{tripId}/itinerary-selections/{date}", "put", "200")).path("$ref").asString())
+                .isNotBlank();
+        Assertions.assertThat(paths.path("/api/v1/rankings").path("get").path("responses").has("400")).isTrue();
+        Assertions.assertThat(congestionForecast.path("tags").get(0).asString()).isEqualTo("혼잡");
+        Assertions.assertThat(congestionForecast.path("description").asString())
+                .contains("lat").contains("hours").contains("points");
+        Assertions.assertThat(paths.path("/api/v1/congestion/places/{placeId}").path("get")
+                .path("tags").get(0).asString()).isEqualTo("저장 장소");
+        Assertions.assertThat(paths.path("/api/v1/weather/nowcasts").path("get")
+                .path("tags").get(0).asString()).isEqualTo("기상청 원본");
+        Assertions.assertThat(paths.path("/api/v1/tour/areas").path("get")
+                .path("tags").get(0).asString()).isEqualTo("관광 목록");
+        Assertions.assertThat(parameterNames(paths.path("/api/v1/tour/areas").path("get")))
+                .contains("regionName")
+                .doesNotContain("cursor", "arrange", "lDongRegnCd", "lDongSignguCd");
+        Assertions.assertThat(paths.path("/api/v1/tour/locations").path("get")
+                .path("tags").get(0).asString()).isEqualTo("관광 검색");
+        JsonNode locationArrange = parameter(paths.path("/api/v1/tour/locations").path("get"), "arrange");
+        Assertions.assertThat(locationArrange.path("description").asString()).contains("A", "C", "D", "E");
+        Assertions.assertThat(locationArrange.path("schema").path("enum").toString()).contains("\"A\"", "\"E\"");
+        JsonNode keywordArrange = parameter(paths.path("/api/v1/tour/keywords").path("get"), "arrange");
+        Assertions.assertThat(keywordArrange.path("description").asString()).contains("A", "C", "D");
+        Assertions.assertThat(keywordArrange.path("schema").path("enum").toString()).contains("\"A\"", "\"D\"");
+        Assertions.assertThat(paths.path("/api/v1/tour/keywords").path("get")
+                .path("tags").get(0).asString()).isEqualTo("관광 검색");
+        Assertions.assertThat(paths.path("/api/v1/trips/{tripId}/route-recommendations").path("post")
+                .path("tags").get(0).asString()).isEqualTo("경로");
+        Assertions.assertThat(paths.path("/api/v1/trips/{tripId}/itinerary-recommendations").path("post")
+                .path("tags").get(0).asString()).isEqualTo("여행루트");
+        Assertions.assertThat(paths.path("/api/v1/trips/{tripId}/itinerary-selections/{date}").path("put")
+                .path("tags").get(0).asString()).isEqualTo("여행루트");
+        Assertions.assertThat(successSchema(document, new OperationKey(
+                "/api/v1/congestion/forecast", "get", "200")).path("$ref").asString())
+                .isEqualTo("#/components/schemas/CongestionForecastDetailResponse");
+        JsonNode congestionSchema = document.path("components").path("schemas")
+                .path("CongestionForecastDetailResponse").path("properties");
+        Assertions.assertThat(congestionSchema.properties().stream().map(java.util.Map.Entry::getKey))
+                .contains("level", "concentrationScore", "points", "baseLevel", "baseScore", "weather");
+        Assertions.assertThat(paths.path("/api/v1/congestion/places/{placeId}").path("get")
+                .path("description").asString()).contains("contentId");
         Assertions.assertThat(paths.path("/api/v1/weather/nowcasts").path("get").path("security").toString())
                 .contains("bearerAuth");
         Assertions.assertThat(paths.path("/api/v1/users/current").path("delete").path("security").toString())
@@ -277,6 +329,15 @@ class OpenApiIntegrationTests {
         List<String> names = new ArrayList<>();
         parameters.forEach(parameter -> names.add(parameter.path("name").asString()));
         return names;
+    }
+
+    private JsonNode parameter(JsonNode operation, String name) {
+        for (JsonNode parameter : operation.path("parameters")) {
+            if (name.equals(parameter.path("name").asString())) {
+                return parameter;
+            }
+        }
+        throw new AssertionError("OpenAPI parameter not found: " + name);
     }
 
     private JsonNode successSchema(JsonNode document, OperationKey key) {

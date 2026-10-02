@@ -5,6 +5,7 @@ import com.gayadi.server.congestion.dto.response.CongestionForecastResponse;
 import com.gayadi.server.congestion.dto.response.CongestionHourlyForecastResponse;
 import com.gayadi.server.congestion.dto.response.CongestionHourlyPoint;
 
+import com.gayadi.server.common.PublicDataKey;
 import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +70,9 @@ public class CongestionForecastService {
         this.serviceKey = serviceKey == null ? "" : serviceKey.trim();
         this.baseUrl = stripTrailingSlash(baseUrl);
         this.mobileApp = mobileApp == null || mobileApp.isBlank() ? "Gayadi" : mobileApp.trim();
+        if (this.serviceKey.isBlank()) {
+            log.warn("관광지 집중률 API 키가 없어 혼잡도는 달력 기반 추정만 제공합니다.");
+        }
     }
 
     /** 지역과 날짜 조건으로 관광지 혼잡도를 예측합니다. */
@@ -124,8 +128,13 @@ public class CongestionForecastService {
      */
     public CongestionHourlyForecastResponse forecastHourly(
             CongestionForecastRequest request, List<Integer> hours) {
+        return hourlyFrom(forecast(request), hours);
+    }
+
+    /** 이미 구한 일별 예측에 시간대 분포를 얹습니다. 같은 요청에서 일별을 다시 조회하지 않습니다. */
+    public CongestionHourlyForecastResponse hourlyFrom(
+            CongestionForecastResponse base, List<Integer> hours) {
         List<Integer> targetHours = normalizeHours(hours);
-        CongestionForecastResponse base = forecast(request);
         List<CongestionHourlyPoint> points = targetHours.stream()
                 .map(hour -> {
                     int score = Math.max(0, Math.min(100,
@@ -225,12 +234,33 @@ public class CongestionForecastService {
                 HttpRequest.newBuilder(buildUri(params)).timeout(Duration.ofSeconds(10))
                         .header("Accept", "application/json").GET().build(),
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (response.statusCode() != 200 || response.body() == null || response.body().isBlank()
-                || response.body().stripLeading().startsWith("<")) return null;
-        JsonNode root = objectMapper.readTree(response.body());
+        String body = response.body();
+        if (body == null || body.isBlank()) {
+            log.warn("관광지 집중률 빈 응답: status={} area={}{}", response.statusCode(), areaCode, districtCode);
+            return null;
+        }
+        if (body.stripLeading().startsWith("<")) {
+            log.warn("관광지 집중률 XML 오류 응답: status={} reason={}",
+                    response.statusCode(), xmlTag(body, "returnReasonCode"));
+            return null;
+        }
+        JsonNode root = objectMapper.readTree(body);
+        JsonNode gateway = root.path("OpenAPI_ServiceResponse").path("cmmMsgHeader");
+        if (!gateway.isMissingNode()) {
+            // 공공데이터포털 게이트웨이 오류(키 미등록·활용신청 필요·트래픽 초과)
+            log.warn("관광지 집중률 게이트웨이 오류: status={} reason={} {}", response.statusCode(),
+                    text(gateway, "returnReasonCode"), text(gateway, "errMsg"));
+            return null;
+        }
+        if (response.statusCode() != 200) {
+            log.warn("관광지 집중률 비정상 응답: status={}", response.statusCode());
+            return null;
+        }
         JsonNode envelope = root.has("response") ? root.path("response") : root;
         String resultCode = text(envelope.path("header"), "resultCode");
         if (!"0000".equals(resultCode) && !"00".equals(resultCode)) {
+            log.warn("관광지 집중률 업무 오류: code={} message={}",
+                    resultCode, text(envelope.path("header"), "resultMsg"));
             return null;
         }
 
@@ -245,6 +275,8 @@ public class CongestionForecastService {
                 .filter(item -> Double.isFinite(rate(item)))
                 .toList();
         if (targetItems.isEmpty()) {
+            log.info("관광지 집중률 자료에 기준일이 없습니다: area={}{} date={} items={}",
+                    areaCode, districtCode, targetDate, items.size());
             return null;
         }
         int average = (int) Math.round(targetItems.stream().mapToDouble(this::rate).average().orElseThrow());
@@ -261,6 +293,12 @@ public class CongestionForecastService {
                         text(representative, "areaNm"),
                         text(representative, "signguNm")),
                 Math.max(0, Math.min(100, average)), Map.copyOf(scores));
+    }
+
+    private static String xmlTag(String xml, String tag) {
+        int start = xml.indexOf("<" + tag + ">");
+        int end = xml.indexOf("</" + tag + ">");
+        return start < 0 || end <= start ? "" : xml.substring(start + tag.length() + 2, end).trim();
     }
 
     private CongestionForecastResponse heuristic(
@@ -288,7 +326,7 @@ public class CongestionForecastService {
 
     private URI buildUri(Map<String, String> params) {
         String query = params.entrySet().stream()
-                .map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue()))
+                .map(entry -> encode(entry.getKey()) + "=" + queryValue(entry.getKey(), entry.getValue()))
                 .reduce((left, right) -> left + "&" + right).orElse("");
         return URI.create(baseUrl + "/" + OPERATION + "?" + query);
     }
@@ -390,6 +428,13 @@ public class CongestionForecastService {
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private String queryValue(String name, String value) {
+        if ("serviceKey".equals(name)) {
+            return PublicDataKey.queryValue(value);
+        }
+        return encode(value);
     }
 
     private record GroupKey(
