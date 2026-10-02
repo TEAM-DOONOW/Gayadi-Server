@@ -3,6 +3,7 @@ package com.gayadi.server.congestion;
 import com.gayadi.server.congestion.dto.request.CongestionForecastRequest;
 import com.gayadi.server.congestion.dto.response.CongestionForecastResponse;
 import com.gayadi.server.congestion.dto.response.CongestionHourlyForecastResponse;
+import com.gayadi.server.congestion.dto.response.PlaceCongestionDetailResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,11 +18,12 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 관광지 혼잡도 예측 조회 HTTP 요청을 처리합니다. */
+/** 관광지의 실시간·예측 혼잡도 조회 HTTP 요청을 처리합니다. */
 @Validated
 @RestController
 @RequestMapping("/api/v1/congestion")
@@ -30,9 +32,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class CongestionController {
 
     private final CongestionForecastService service;
+    private final PlaceCongestionService placeCongestion;
 
-    public CongestionController(CongestionForecastService service) {
+    public CongestionController(
+            CongestionForecastService service,
+            PlaceCongestionService placeCongestion) {
         this.service = service;
+        this.placeCongestion = placeCongestion;
     }
 
     @GetMapping("/forecast")
@@ -81,5 +87,20 @@ public class CongestionController {
             @RequestParam(required = false) java.util.List<@Min(0) @Max(23) Integer> hours) {
         return service.forecastHourly(new CongestionForecastRequest(
                 areaCode, districtCode, areaName, placeName, targetAt), hours);
+    }
+
+    /** 장소·현재 날씨·실시간 또는 예상 혼잡도를 화면 단위로 조회합니다. */
+    @GetMapping("/places/{placeId}")
+    @Operation(summary = "장소별 혼잡도 상세 조회",
+            description = "장소 정보와 현재 날씨, 실시간 또는 예상 혼잡도, 시간대별 혼잡도를 반환합니다. "
+                    + "서울 지정 핫스팟은 서울시 데이터, 그 외 TMAP 지원 장소는 TMAP 데이터를 우선 사용하고 "
+                    + "연동할 수 없으면 전국 관광 혼잡도 예측으로 대체합니다.")
+    @ApiResponse(responseCode = "200", description = "장소별 혼잡도 상세 정보입니다.",
+            content = @Content(schema = @Schema(implementation = PlaceCongestionDetailResponse.class)))
+    public PlaceCongestionDetailResponse place(
+            @PathVariable @Min(1) long placeId,
+            @Parameter(description = "표시할 시간대 목록. 생략하면 9, 11, 13, 15, 17, 19시")
+            @RequestParam(required = false) @Size(max = 24) java.util.List<@Min(0) @Max(23) Integer> hours) {
+        return placeCongestion.get(placeId, hours);
     }
 }

@@ -1,5 +1,6 @@
 package com.gayadi.server.route.dto.request;
 
+import com.gayadi.server.route.TransportMode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -13,6 +14,14 @@ public record RouteRecommendationRequest(
 
         @Positive
         @Schema(description = "개인 경로를 요청할 사용자 ID", example = "1", nullable = true)
-        Long userId
+        Long userId,
+
+        @Schema(description = "이동수단. 생략하면 PUBLIC_TRANSIT", example = "CAR")
+        TransportMode transportMode
 ) {
+    public RouteRecommendationRequest {
+        if (transportMode == null) {
+            transportMode = TransportMode.PUBLIC_TRANSIT;
+        }
+    }
 }

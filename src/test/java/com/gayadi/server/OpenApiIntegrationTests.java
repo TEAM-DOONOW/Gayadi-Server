@@ -31,6 +31,20 @@ class OpenApiIntegrationTests {
             .build();
 
     @Test
+    void placeSearchAllowsSwaggerBearerWhileKeepingAnonymousSearchPublic() throws Exception {
+        JsonNode paths = objectMapper.readTree(get(uri("/api/openapi")).body()).path("paths");
+        JsonNode search = paths.path("/api/v1/places").path("get");
+        Assertions.assertThat(search.path("security").size()).isEqualTo(2);
+        Assertions.assertThat(search.path("security").get(0).has("bearerAuth")).isTrue();
+        Assertions.assertThat(search.path("security").get(1).isEmpty()).isTrue();
+        Assertions.assertThat(search.path("responses").has("401")).isTrue();
+        Assertions.assertThat(paths.path("/api/v1/places/{placeId}").path("get").path("security").isEmpty()).isTrue();
+        Assertions.assertThat(get(uri("/api/v1/places?limit=1")).statusCode()).isEqualTo(200);
+        Assertions.assertThat(get(uri("/api/v1/places?sort=TRAVEL_TIME&originLatitude=37&originLongitude=127"))
+                .statusCode()).isEqualTo(401);
+    }
+
+    @Test
     void exposesOnlyApiPathsWithDocumentInformationAndSecurityScheme() throws Exception {
         HttpResponse<String> response = get(uri("/api/openapi"));
 

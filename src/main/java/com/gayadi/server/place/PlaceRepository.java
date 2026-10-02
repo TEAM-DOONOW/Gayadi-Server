@@ -1,6 +1,7 @@
 package com.gayadi.server.place;
 
 import com.gayadi.server.common.AppDateFormat;
+import com.gayadi.server.common.Location;
 import com.gayadi.server.place.model.PlaceCategory;
 import com.gayadi.server.place.query.PlaceQueryResult;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -35,6 +36,18 @@ public class PlaceRepository {
     /** 전체 조건에 맞는 장소 데이터를 DB에서 조회합니다. */
     public List<PlaceQueryResult> findAll(
             String query, String region, PlaceCategory category, Long cursor, int limit) {
+        return find(query, region, category, cursor, limit, null, null);
+    }
+
+    /** 검색 조건 전체에서 근접 후보를 먼저 추립니다. ID 페이지를 재정렬하지 않습니다. */
+    public List<PlaceQueryResult> findNearbyCandidates(
+            String query, String region, PlaceCategory category, Location origin, Location next, int limit) {
+        return find(query, region, category, null, limit, origin, next);
+    }
+
+    private List<PlaceQueryResult> find(
+            String query, String region, PlaceCategory category, Long cursor, int limit,
+            Location origin, Location next) {
         StringBuilder condition = new StringBuilder();
         List<Object> parameters = new ArrayList<>();
         if (query != null) {
@@ -60,7 +73,24 @@ public class PlaceRepository {
             condition.append(" AND p.id < ?\n");
             parameters.add(cursor);
         }
-        condition.append(" ORDER BY p.id DESC LIMIT ?");
+        if (origin == null) {
+            condition.append(" ORDER BY p.id DESC LIMIT ?");
+        } else {
+            condition.append(" AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL");
+            condition.append(" AND NOT (p.latitude = ? AND p.longitude = ?)");
+            parameters.addAll(List.of(origin.latitude(), origin.longitude()));
+            if (next != null) {
+                condition.append(" AND NOT (p.latitude = ? AND p.longitude = ?)");
+                parameters.addAll(List.of(next.latitude(), next.longitude()));
+            }
+            condition.append(" ORDER BY (");
+            appendDistance(condition, parameters, origin);
+            if (next != null) {
+                condition.append(" + ");
+                appendDistance(condition, parameters, next);
+            }
+            condition.append("), p.id ASC LIMIT ?");
+        }
         parameters.add(limit + 1);
         return jdbc.sql(SELECT_FIELDS + condition)
                 .params(parameters)
@@ -69,6 +99,12 @@ public class PlaceRepository {
                 .stream()
                 .map(this::map)
                 .toList();
+    }
+
+    private void appendDistance(StringBuilder sql, List<Object> params, Location point) {
+        sql.append("SQRT(POWER(p.latitude - ?, 2) + POWER((p.longitude - ?) * ?, 2))");
+        params.addAll(List.of(point.latitude(), point.longitude(),
+                Math.cos(Math.toRadians(point.latitude()))));
     }
 
     private Long parsePositiveLong(String value) {
