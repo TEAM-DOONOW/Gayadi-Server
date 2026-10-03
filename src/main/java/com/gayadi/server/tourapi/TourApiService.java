@@ -10,6 +10,7 @@ import com.gayadi.server.tourapi.dto.response.TourPlaceDetailResponse;
 import com.gayadi.server.tourapi.dto.response.TourPlaceResponse;
 import com.gayadi.server.tourapi.model.LegalDistrict;
 
+import com.gayadi.server.common.PublicDataKey;
 import com.gayadi.server.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -296,7 +297,9 @@ public class TourApiService {
             }
             query.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
             query.append('=');
-            query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+            query.append("serviceKey".equals(entry.getKey())
+                    ? PublicDataKey.queryValue(entry.getValue())
+                    : URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
         }
         return URI.create(baseUrl + "/" + operation + "?" + query);
     }

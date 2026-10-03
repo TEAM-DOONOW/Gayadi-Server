@@ -22,12 +22,14 @@ class WeatherApiClientTest {
 
     private HttpServer server;
     private AtomicInteger pageRequests;
+    private String lastQuery;
 
     @BeforeEach
     void setUp() throws IOException {
         pageRequests = new AtomicInteger();
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/weather/pages", this::pages);
+        server.createContext("/weather/key", this::key);
         server.createContext("/weather/xml", exchange -> respond(exchange, 200, """
                 <OpenAPI_ServiceResponse><cmmMsgHeader>
                   <returnReasonCode>30</returnReasonCode>
@@ -35,6 +37,8 @@ class WeatherApiClientTest {
                 </cmmMsgHeader></OpenAPI_ServiceResponse>
                 """));
         server.createContext("/weather/limited", exchange -> respond(exchange, 429, "rate limited"));
+        server.createContext("/weather/json-auth", exchange -> respond(exchange, 403, gateway("30")));
+        server.createContext("/weather/json-quota", exchange -> respond(exchange, 200, gateway("22")));
         server.start();
     }
 
@@ -66,6 +70,30 @@ class WeatherApiClientTest {
     }
 
     @Test
+    void convertsJsonGatewayErrorsFromThePublicDataPortal() {
+        assertThatThrownBy(() -> client("json-auth", "test-key").call("", Map.of()))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_AUTH_FAILED));
+        assertThatThrownBy(() -> client("json-quota", "test-key").call("", Map.of()))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(WeatherErrorCode.WEATHER_API_RATE_LIMITED));
+    }
+
+    @Test
+    void encodesADecodedServiceKeyOnceAndKeepsAnEncodedKey() {
+        WeatherApiClient decoded = client("key", "abc+def/g=");
+        decoded.call("op", decoded.baseParams());
+        assertThat(lastQuery).contains("serviceKey=abc%2Bdef%2Fg%3D");
+
+        WeatherApiClient encoded = client("key", "abc%2Bdef%2Fg%3D");
+        encoded.call("op", encoded.baseParams());
+        assertThat(lastQuery).contains("serviceKey=abc%2Bdef%2Fg%3D");
+        assertThat(lastQuery).doesNotContain("%252B");
+    }
+
+    @Test
     void rejectsMissingServiceKeyBeforeSendingARequest() {
         assertThatThrownBy(() -> client("pages", "").baseParams())
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
@@ -73,9 +101,24 @@ class WeatherApiClientTest {
                                 .isEqualTo(WeatherErrorCode.WEATHER_API_NOT_CONFIGURED));
     }
 
+    private static String gateway(String reasonCode) {
+        return """
+                {"OpenAPI_ServiceResponse":{"cmmMsgHeader":{
+                  "errMsg":"SERVICE ERROR","returnAuthMsg":"ERROR","returnReasonCode":"%s"}}}
+                """.formatted(reasonCode);
+    }
+
     private WeatherApiClient client(String context, String key) {
         return new WeatherApiClient(new ObjectMapper(), key,
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/weather/" + context);
+    }
+
+    private void key(HttpExchange exchange) throws IOException {
+        lastQuery = exchange.getRequestURI().getRawQuery();
+        respond(exchange, 200, """
+                {"response":{"header":{"resultCode":"00","resultMsg":"NORMAL_SERVICE"},
+                  "body":{"totalCount":0,"items":{}}}}
+                """);
     }
 
     private void pages(HttpExchange exchange) throws IOException {

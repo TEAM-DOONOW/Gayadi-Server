@@ -32,7 +32,7 @@ import java.util.List;
 @Validated
 @RestController
 @RequestMapping("/api/v1/trips/{tripId}")
-@Tag(name = "경로", description = "출발, 이동과 귀가 경로 안내")
+@Tag(name = "경로", description = "출발·이동·귀가 교통. 하루 장소 순서는 여행루트")
 @SecurityRequirement(name = "bearerAuth")
 public class RouteController {
 
@@ -45,8 +45,8 @@ public class RouteController {
     @PostMapping("/route-recommendations")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-            summary = "경로 추천",
-            description = "선택한 transportMode로 출발·일정·귀가 경로를 계산해 저장합니다. 일정은 고정 지점 사이의 방문 순서를 이동시간 기준으로 최적화합니다. userId는 본인만 지정할 수 있습니다.")
+            summary = "출발·이동·귀가 경로",
+            description = "선택한 교통수단으로 출발·이동·귀가 경로를 계산합니다. 하루 장소 순서는 여행루트입니다.")
     @ApiResponse(responseCode = "201", description = "저장한 추천 경로입니다.",
             content = @Content(schema = @Schema(implementation = RouteResponse.class)))
     public RouteResponse recommendation(

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -62,14 +63,17 @@ public class OpenApiConfig {
                                 `POST /api/v1/recommendations/places`는 맞춤 장소 추천이고, \
                                 `POST /api/v1/trips/{tripId}/situation-responses`는 여행 상황 대처입니다. \
                                 설문이 없어도 상황 대처는 동작하며, 여행 중이면 승인 가능한 변경안을 만듭니다. \
-                                Agent가 꺼져 있으면 503 `RECOMMENDATION_UNAVAILABLE` 또는 \
-                                `SITUATION_AGENT_UNAVAILABLE`입니다.
+                                장소 추천 Agent가 꺼져 있으면 저장 장소 기반 추천으로 대체합니다. \
+                                상황 대처 Agent가 꺼져 있으면 503 `SITUATION_AGENT_UNAVAILABLE`입니다.
 
                                 소유자 출발·귀가는 여행 생성의 `departurePlaceId`/`returnPlaceId` 또는 \
                                 `PATCH /api/v1/trips/{tripId}/participants/current`로 넣습니다.
 
-                                경로는 명사 자원입니다. 장소·혼잡 통합 조회는 `GET /api/v1/tour/areas`만 사용합니다. \
-                                오류는 공통 `ApiErrorResponse`입니다.""")
+                                장소 목록은 `GET /api/v1/tour/areas`, 장소 화면의 혼잡·시간대·현재 날씨는 \
+                                `GET /api/v1/congestion/forecast`입니다. 홈 카테고리 순위는 `GET /api/v1/rankings`, \
+                                하루 장소 순서 추천은 `POST /api/v1/trips/{tripId}/itinerary-recommendations`, \
+                                일정 적용은 `PUT /api/v1/trips/{tripId}/itinerary-selections/{date}`입니다. \
+                                경로는 명사 자원입니다. 오류는 공통 `ApiErrorResponse`입니다.""")
                         .version("v1"))
                 .components(components)
                 .tags(List.of(
@@ -78,14 +82,14 @@ public class OpenApiConfig {
                         tag("여행", "여행 생성·참여자·내 출발·귀가 장소 관리"),
                         tag("설문", "여행 성향 문항과 응답 관리"),
                         tag("일정", "여행 일정 생성과 변경"),
-                        tag("경로", "출발, 이동과 귀가 경로 안내"),
+                        tag("경로", "출발·이동·귀가 교통. 하루 장소 순서는 여행루트"),
                         tag("날짜 조율", "그룹 여행 참여자의 가능한 날짜 조율"),
                         tag("여행 경비", "여행 지출, 공동 경비와 참여자 정산"),
                         tag("여행 홈", "여행, 참여자, 일정과 변경 제안을 한 번에 조회"),
                         tag("현장 상황", "날씨와 돌발 상황 대응"),
                         tag("상황 대처", "여행 상황 대처 Agent. APP_AI_ENABLED=true 필요"),
                         tag("장소", "여행 장소 조회"),
-                        tag("추천", "맞춤 장소 추천 Agent. APP_AI_ENABLED=true 필요"),
+                        tag("추천", "맞춤 장소 추천. Agent 비활성화 시 저장 장소 기반 추천"),
                         tag("초대", "여행 초대 발급과 참여"),
                         tag("찜", "사용자가 저장한 장소 관리"),
                         tag("친구", "친구 검색·요청·수락·거절"),
@@ -93,9 +97,13 @@ public class OpenApiConfig {
                         tag("공지", "앱 업데이트와 서비스 공지"),
                         tag("문의", "고객지원 문의 접수"),
                         tag("관리", "운영 자료 관리"),
-                        tag("관광 API", "한국관광공사 국문 관광정보 서비스(KorService2) 연동"),
-                        tag("날씨 API", "기상청 단기예보 조회서비스(VilageFcstInfoService_2.0) 연동"),
-                        tag("혼잡", "관광지 집중률 예측")
+                        tag("관광 목록", "지역명으로 장소와 예상 혼잡을 함께 조회"),
+                        tag("관광 검색", "좌표, 키워드, 행사, 숙박을 각각 조회"),
+                        tag("혼잡", "지역 코드의 일별·시간대 혼잡. 좌표가 있으면 현재 날씨 요약"),
+                        tag("저장 장소", "저장된 장소 번호의 혼잡. 관광 contentId는 사용할 수 없음"),
+                        tag("기상청 원본", "기상청 실황·예보 원본. 장소 화면은 혼잡 forecast의 weather"),
+                        tag("순위", "관광지·축제·인기 지역·맛집 카테고리별 TOP 목록"),
+                        tag("여행루트", "하루 장소 순서와 체류. 출발·귀가 교통은 경로")
                 ));
     }
 
@@ -173,6 +181,9 @@ public class OpenApiConfig {
         ResponseStatus responseStatus = handlerMethod.getMethodAnnotation(ResponseStatus.class);
         if (responseStatus == null || responseStatus.value() != HttpStatus.NO_CONTENT) {
             return;
+        }
+        if (operation.getResponses() == null) {
+            operation.setResponses(new ApiResponses());
         }
         operation.getResponses().addApiResponse("204", new ApiResponse().description("본문 없이 처리했습니다."));
         operation.getResponses().remove("200");

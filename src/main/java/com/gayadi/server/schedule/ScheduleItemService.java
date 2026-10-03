@@ -195,6 +195,55 @@ public class ScheduleItemService {
         return list(userId, tripId);
     }
 
+    /**
+     * 추천된 하루 루트를 하나의 단위로 적용합니다.
+     * 자유여행의 개별 수정과 달리, 해당 날짜의 MAIN 일정 전체를 교체합니다.
+     */
+    @Transactional
+    public List<ScheduleResponse> replaceMainRoute(
+            long userId,
+            long tripId,
+            LocalDate date,
+            List<RouteStopCommand> stops) {
+        ScheduleTripQueryResult trip = lockTrip(tripId);
+        trips.requireMember(tripId, userId);
+        requireEditableTrip(trip);
+        validateDate(trip, date);
+        if (stops == null || stops.size() < 2) {
+            throw new BusinessException(com.gayadi.server.route.RouteErrorCode.ROUTE_STOPS_INSUFFICIENT);
+        }
+        for (RouteStopCommand stop : stops) {
+            if (stop == null) {
+                throw new BusinessException(ScheduleErrorCode.SCHEDULE_REQUIRED_FIELDS_MISSING);
+            }
+            validateCommand(new ScheduleCommand(stop.title(), date, stop.start(), ScheduleType.MAIN,
+                    stop.placeId(), stop.end(), stop.memo()));
+            if (stop.end() == null) {
+                throw new BusinessException(ScheduleErrorCode.SCHEDULE_REQUIRED_FIELDS_MISSING);
+            }
+            requirePlace(stop.placeId(), tripId, userId);
+        }
+
+        long planId = planForDate(trip, tripId, date, userId);
+        expireTripRoutes(tripId);
+        repository.lockMainItemIds(planId).forEach(repository::deleteItem);
+        normalize(planId);
+        int sequence = nextSequence(planId);
+        for (RouteStopCommand stop : stops) {
+            repository.insertItem(
+                    planId,
+                    stop.placeId(),
+                    stop.title().trim(),
+                    sequence++,
+                    LocalDateTime.of(date, stop.start()),
+                    LocalDateTime.of(date, stop.end()),
+                    blankToNull(stop.memo()),
+                    ScheduleType.MAIN);
+        }
+        incrementPlanVersion(planId);
+        return list(userId, tripId);
+    }
+
     private ScheduleTripQueryResult lockTrip(long tripId) {
         return repository.lockTrip(tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
@@ -405,5 +454,14 @@ public class ScheduleItemService {
                     null,
                     isVisited);
         }
+    }
+
+    public record RouteStopCommand(
+            long placeId,
+            String title,
+            LocalTime start,
+            LocalTime end,
+            String memo
+    ) {
     }
 }
