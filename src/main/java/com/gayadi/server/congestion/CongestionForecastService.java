@@ -128,13 +128,8 @@ public class CongestionForecastService {
      */
     public CongestionHourlyForecastResponse forecastHourly(
             CongestionForecastRequest request, List<Integer> hours) {
-        return hourlyFrom(forecast(request), hours);
-    }
-
-    /** 이미 구한 일별 예측에 시간대 분포를 얹습니다. 같은 요청에서 일별을 다시 조회하지 않습니다. */
-    public CongestionHourlyForecastResponse hourlyFrom(
-            CongestionForecastResponse base, List<Integer> hours) {
         List<Integer> targetHours = normalizeHours(hours);
+        CongestionForecastResponse base = forecast(request);
         List<CongestionHourlyPoint> points = targetHours.stream()
                 .map(hour -> {
                     int score = Math.max(0, Math.min(100,

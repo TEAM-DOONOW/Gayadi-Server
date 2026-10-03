@@ -71,43 +71,13 @@ class WeatherApiHttpIntegrationTests {
                         + "&baseDate=20260825&baseTime=1400", token)
                 .statusCode()).isEqualTo(400);
 
-        int requestsBeforeForecast = forecastRequests.get();
         JsonNode forecast = body(get(
                 "/api/v1/weather/forecast?nx=60&ny=127"
                         + "&baseDate=20260825&baseTime=1400", token), 200);
         Assertions.assertThat(forecast.path("forecast").size()).isEqualTo(2);
         Assertions.assertThat(forecast.path("forecast").get(0).path("skyName").asString())
                 .isEqualTo("구름많음");
-        Assertions.assertThat(forecastRequests.get() - requestsBeforeForecast).isEqualTo(2);
-    }
-
-    @Test
-    void congestionForecastIncludesHourlyPointsAndCurrentWeather() throws Exception {
-        Assertions.assertThat(get(
-                "/api/v1/congestion/forecast?areaCode=11&districtCode=110", null).statusCode())
-                .isEqualTo(401);
-        String token = register();
-        Assertions.assertThat(get(
-                "/api/v1/congestion/forecast?areaCode=11&districtCode=110&lat=37.56", token)
-                .statusCode()).isEqualTo(400);
-
-        JsonNode detail = body(get(
-                "/api/v1/congestion/forecast?areaCode=11&districtCode=110"
-                        + "&placeName=경복궁&hours=13,14&lat=37.563569&lon=126.980008",
-                token), 200);
-        Assertions.assertThat(detail.path("level").asString()).isNotBlank();
-        Assertions.assertThat(detail.path("concentrationScore").asInt()).isBetween(0, 100);
-        Assertions.assertThat(detail.path("baseLevel").asString()).isEqualTo(detail.path("level").asString());
-        Assertions.assertThat(detail.path("baseScore").asInt())
-                .isEqualTo(detail.path("concentrationScore").asInt());
-        Assertions.assertThat(detail.path("points").size()).isEqualTo(2);
-        Assertions.assertThat(detail.path("points").get(0).path("hour").asInt()).isEqualTo(13);
-        Assertions.assertThat(detail.path("weather").path("available").asBoolean()).isTrue();
-        Assertions.assertThat(detail.path("weather").path("condition").asString()).isEqualTo("맑음");
-        Assertions.assertThat(detail.path("weather").path("temperatureCelsius").asDouble()).isEqualTo(27.1);
-        Assertions.assertThat(detail.path("weather").path("precipitationProbability").asInt()).isEqualTo(10);
-        Assertions.assertThat(detail.path("weather").path("source").asString()).isEqualTo("KMA");
-        Assertions.assertThat(detail.path("weather").path("message").asString()).contains("초단기예보");
+        Assertions.assertThat(forecastRequests).hasValue(2);
     }
 
     @Test
@@ -179,7 +149,6 @@ class WeatherApiHttpIntegrationTests {
         try {
             weatherServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             weatherServer.createContext("/getUltraSrtNcst", WeatherApiHttpIntegrationTests::weather);
-            weatherServer.createContext("/getUltraSrtFcst", WeatherApiHttpIntegrationTests::ultraForecast);
             weatherServer.createContext("/getVilageFcst", WeatherApiHttpIntegrationTests::forecast);
             weatherServer.start();
         } catch (IOException exception) {
@@ -209,17 +178,6 @@ class WeatherApiHttpIntegrationTests {
         }
     }
 
-    private static void ultraForecast(HttpExchange exchange) throws IOException {
-        String response = """
-                {"response":{"header":{"resultCode":"00","resultMsg":"NORMAL_SERVICE"},
-                  "body":{"pageNo":1,"numOfRows":1000,"totalCount":2,"items":{"item":[
-                    {"fcstDate":"20260930","fcstTime":"1200","category":"SKY","fcstValue":"1"},
-                    {"fcstDate":"20260930","fcstTime":"1200","category":"POP","fcstValue":"10"}
-                  ]}}}}
-                """;
-        writeJson(exchange, response);
-    }
-
     private static void forecast(HttpExchange exchange) throws IOException {
         forecastRequests.incrementAndGet();
         boolean secondPage = exchange.getRequestURI().getRawQuery().contains("pageNo=2");
@@ -238,15 +196,6 @@ class WeatherApiHttpIntegrationTests {
                   "body":{"pageNo":%d,"numOfRows":2,"totalCount":4,
                   "items":{"item":[%s]}}}}
                 """.formatted(page, items);
-        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "application/json;charset=UTF-8");
-        exchange.sendResponseHeaders(200, bytes.length);
-        try (var output = exchange.getResponseBody()) {
-            output.write(bytes);
-        }
-    }
-
-    private static void writeJson(HttpExchange exchange, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json;charset=UTF-8");
         exchange.sendResponseHeaders(200, bytes.length);

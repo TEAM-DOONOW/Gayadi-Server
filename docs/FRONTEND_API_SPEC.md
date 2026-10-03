@@ -266,13 +266,4 @@ Content-Type: application/json
 
 ## 7. 원시 관광 API
 
-`/locations`, `/keywords`, `/festivals`, `/stays`는 JWT가 필요합니다. 장소 목록의 혼잡은 `/tour/areas`에 포함됩니다.
-
-장소 상세의 일별 혼잡, 시간대, 현재 날씨는 한 요청으로 조회합니다.
-
-```http
-GET /api/v1/congestion/forecast?areaCode=11&districtCode=110&hours=0,1,2&lat=37.5796&lon=126.9770
-Authorization: Bearer {accessToken}
-```
-
-`level`과 `concentrationScore`는 일별 값입니다. `points`는 시간대 추정입니다. `weather`는 `lat`와 `lon`을 함께 보낸 경우에만 있습니다. 기온은 초단기실황, 하늘 상태와 강수확률은 초단기예보입니다. 둘 다 실패하면 `available=false`입니다. `/congestion/places/{placeId}`는 가야디에 저장된 장소 번호 전용이며 관광공사 `contentId`와 다릅니다. `/weather/nowcasts` 등 기상청 원본 경로는 장소 화면이 직접 쓰지 않습니다.
+`/locations`, `/keywords`, `/festivals`, `/stays`와 단독 `/api/v1/congestion/forecast`는 내부·관리용이며 JWT 인증이 필요합니다. Android 장소 검색에서는 직접 호출하지 않습니다.

@@ -73,7 +73,7 @@ class OpenApiIntegrationTests {
         Assertions.assertThat(tagNames)
                 .contains("인증", "사용자", "상황 대처", "친구", "여행 홈", "혼잡", "저장 장소",
                         "기상청 원본", "관광 목록", "관광 검색", "순위", "여행루트", "경로")
-                .doesNotContain("날씨 API", "관광 API");
+                .doesNotContain("관광 API");
         Assertions.assertThat(document.path("paths").properties())
                 .isNotEmpty()
                 .allMatch(path -> path.getKey().startsWith("/api"));
@@ -219,7 +219,7 @@ class OpenApiIntegrationTests {
 
         Assertions.assertThat(paths.has("/api/v1/tour/discover")).isFalse();
         Assertions.assertThat(paths.path("/api/v1/congestion/forecast/hourly").path("get")
-                .path("deprecated").asBoolean()).isTrue();
+                .path("deprecated").asBoolean()).isFalse();
         Assertions.assertThat(paths.has("/api/v1/recommendations/situations")).isFalse();
         Assertions.assertThat(paths.has("/api/v1/weather/now")).isFalse();
         Assertions.assertThat(paths.has("/api/v1/tour/areas")).isTrue();
@@ -253,13 +253,6 @@ class OpenApiIntegrationTests {
                 "/api/v1/trips/{tripId}/itinerary-selections/{date}", "put", "200")).path("$ref").asString())
                 .isNotBlank();
         Assertions.assertThat(paths.path("/api/v1/rankings").path("get").path("responses").has("400")).isTrue();
-        Assertions.assertThat(congestionForecast.path("tags").get(0).asString()).isEqualTo("혼잡");
-        Assertions.assertThat(congestionForecast.path("description").asString())
-                .contains("lat").contains("hours").contains("points");
-        Assertions.assertThat(paths.path("/api/v1/congestion/places/{placeId}").path("get")
-                .path("tags").get(0).asString()).isEqualTo("저장 장소");
-        Assertions.assertThat(paths.path("/api/v1/weather/nowcasts").path("get")
-                .path("tags").get(0).asString()).isEqualTo("기상청 원본");
         Assertions.assertThat(paths.path("/api/v1/tour/areas").path("get")
                 .path("tags").get(0).asString()).isEqualTo("관광 목록");
         Assertions.assertThat(parameterNames(paths.path("/api/v1/tour/areas").path("get")))
@@ -283,13 +276,7 @@ class OpenApiIntegrationTests {
                 .path("tags").get(0).asString()).isEqualTo("여행루트");
         Assertions.assertThat(successSchema(document, new OperationKey(
                 "/api/v1/congestion/forecast", "get", "200")).path("$ref").asString())
-                .isEqualTo("#/components/schemas/CongestionForecastDetailResponse");
-        JsonNode congestionSchema = document.path("components").path("schemas")
-                .path("CongestionForecastDetailResponse").path("properties");
-        Assertions.assertThat(congestionSchema.properties().stream().map(java.util.Map.Entry::getKey))
-                .contains("level", "concentrationScore", "points", "baseLevel", "baseScore", "weather");
-        Assertions.assertThat(paths.path("/api/v1/congestion/places/{placeId}").path("get")
-                .path("description").asString()).contains("contentId");
+                .isEqualTo("#/components/schemas/CongestionForecastResponse");
         Assertions.assertThat(paths.path("/api/v1/weather/nowcasts").path("get").path("security").toString())
                 .contains("bearerAuth");
         Assertions.assertThat(paths.path("/api/v1/users/current").path("delete").path("security").toString())
