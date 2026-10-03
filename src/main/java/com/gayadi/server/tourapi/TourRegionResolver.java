@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** 앱 지역명을 TourAPI 법정동 코드 목록으로 변환합니다. */
@@ -17,6 +18,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TourRegionResolver {
 
     private static final Map<String, List<AreaTarget>> APP_REGIONS = regions();
+    /** 주소 첫 토큰(시도 약칭·정식 명칭)을 법정동 시도 코드로 바꿉니다. */
+    private static final Map<String, String> SIDO_CODES = Map.ofEntries(
+            Map.entry("서울", "11"), Map.entry("부산", "26"), Map.entry("대구", "27"),
+            Map.entry("인천", "28"), Map.entry("광주", "29"), Map.entry("대전", "30"),
+            Map.entry("울산", "31"), Map.entry("세종", "36"), Map.entry("경기", "41"),
+            Map.entry("충북", "43"), Map.entry("충청북", "43"), Map.entry("충남", "44"),
+            Map.entry("충청남", "44"), Map.entry("전남", "46"), Map.entry("전라남", "46"),
+            Map.entry("경북", "47"), Map.entry("경상북", "47"), Map.entry("경남", "48"),
+            Map.entry("경상남", "48"), Map.entry("제주", "50"), Map.entry("강원", "51"),
+            Map.entry("전북", "52"), Map.entry("전라북", "52"));
     private final TourApiService tourApi;
     private final Map<String, List<LegalDistrict>> districtCache = new ConcurrentHashMap<>();
 
@@ -26,8 +37,8 @@ public class TourRegionResolver {
 
     public List<RegionCode> resolve(String regionName) {
         String normalized = normalize(regionName);
-        List<AreaTarget> targets = APP_REGIONS.get(normalized);
-        if (targets == null) {
+        List<AreaTarget> targets = targetsFor(normalized);
+        if (targets.isEmpty()) {
             throw new BusinessException(TourApiErrorCode.TOUR_REGION_UNSUPPORTED, normalized);
         }
         List<RegionCode> result = new ArrayList<>();
@@ -62,6 +73,85 @@ public class TourRegionResolver {
             throw new BusinessException(TourApiErrorCode.TOUR_REGION_CODE_NOT_FOUND);
         }
         return distinct;
+    }
+
+    /**
+     * 장소 주소의 시도·시군구로 혼잡 예측 코드를 찾습니다. 예: {@code 서울 종로구 송현동} → 11/110.
+     * 시군구까지 맞출 수 없으면 비어 있는 결과를 돌려 호출자가 추정값으로 대체하게 합니다.
+     */
+    public Optional<RegionCode> resolveAddress(String address) {
+        String[] tokens = normalize(address).split("\\s+");
+        if (tokens.length < 2) {
+            return Optional.empty();
+        }
+        String areaCode = sidoCode(tokens[0]);
+        if (areaCode == null) {
+            return Optional.empty();
+        }
+        List<LegalDistrict> districts = districtCache.computeIfAbsent(areaCode, tourApi::legalDistricts);
+        // "수원시 팔달구"처럼 두 단어인 시군구를 먼저 맞추고, 없으면 첫 단어로 맞춥니다.
+        List<String> candidates = tokens.length >= 3
+                ? List.of(tokens[1] + tokens[2], tokens[1])
+                : List.of(tokens[1]);
+        for (String candidate : candidates) {
+            String token = normalizeName(candidate);
+            Optional<RegionCode> match = districts.stream()
+                    .filter(district -> normalizeName(district.name()).equals(token))
+                    .map(district -> new RegionCode(areaCode, districtCode(areaCode, district.code()), district.name()))
+                    .filter(code -> !code.districtCode().isBlank())
+                    .findFirst();
+            if (match.isPresent()) {
+                return match;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static String sidoCode(String token) {
+        String value = token.replaceAll("(특별자치시|특별자치도|특별시|광역시|도)$", "");
+        String exact = SIDO_CODES.get(value);
+        if (exact != null) {
+            return exact;
+        }
+        return SIDO_CODES.entrySet().stream()
+                .filter(entry -> value.startsWith(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * 앱 지역명 전체와, 그 안의 개별 도시명을 받습니다.
+     * 예를 들어 {@code 수원·용인}과 {@code 수원} 모두 수원 시군구로 해석합니다.
+     */
+    private static List<AreaTarget> targetsFor(String normalized) {
+        List<AreaTarget> exact = APP_REGIONS.get(normalized);
+        if (exact != null) {
+            return exact;
+        }
+        String token = normalizeName(normalized);
+        if (token.isEmpty()) {
+            return List.of();
+        }
+        Map<String, AreaTarget> matches = new LinkedHashMap<>();
+        for (List<AreaTarget> targets : APP_REGIONS.values()) {
+            for (AreaTarget target : targets) {
+                if (target.districtNames().isEmpty()) {
+                    if (token.equals(normalizeName(target.label()))) {
+                        matches.putIfAbsent(target.areaCode() + ":", target);
+                    }
+                    continue;
+                }
+                for (String district : target.districtNames()) {
+                    if (token.equals(normalizeName(district))) {
+                        matches.putIfAbsent(
+                                target.areaCode() + ":" + district,
+                                new AreaTarget(target.areaCode(), target.label(), List.of(district)));
+                    }
+                }
+            }
+        }
+        return List.copyOf(matches.values());
     }
 
     private static String districtCode(String areaCode, String value) {

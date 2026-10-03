@@ -25,13 +25,13 @@ class AgentAvailabilityHttpIntegrationTests {
     private final HttpClient client = HttpClient.newHttpClient();
 
     @Test
-    void disabledAgentReturns503AndOwnerCanSetDeparturePlaces() throws Exception {
+    void disabledAgentFallsBackToSavedPlacesAndOwnerCanSetDeparturePlaces() throws Exception {
         JsonNode signup = body(request("POST", "/api/v1/auth/registrations", null, """
                 {"email":"agent-off-%s@example.com","password":"password1","nickname":"에이전트"}
                 """.formatted(System.nanoTime())), 201);
         String token = signup.path("accessToken").asString();
 
-        JsonNode unavailable = body(request("POST", "/api/v1/recommendations/places", token, """
+        JsonNode recommendations = body(request("POST", "/api/v1/recommendations/places", token, """
                 {
                   "destination":"서울",
                   "profile":"여유 있는 여행을 좋아합니다.",
@@ -39,9 +39,11 @@ class AgentAvailabilityHttpIntegrationTests {
                   "longitude":126.9780,
                   "externalProcessingConsent":true
                 }
-                """), 503);
-        Assertions.assertThat(unavailable.path("code").asString())
-                .isEqualTo("RECOMMENDATION_UNAVAILABLE");
+                """), 200);
+        Assertions.assertThat(recommendations.path("recommendations").isArray()).isTrue();
+        Assertions.assertThat(recommendations.path("recommendations").isEmpty()).isFalse();
+        Assertions.assertThat(recommendations.path("reasoning").asString())
+                .contains("가까운 저장 장소");
 
         LocalDate day = LocalDate.now().plusDays(2);
         JsonNode trip = body(request("POST", "/api/v1/trips", token, """

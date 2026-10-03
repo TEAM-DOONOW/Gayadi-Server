@@ -30,8 +30,10 @@ import java.time.LocalDate;
 @Validated
 @RestController
 @RequestMapping("/api/v1/tour")
-@Tag(name = "관광 API", description = "한국관광공사 국문 관광정보 서비스(KorService2) 연동")
 public class TourApiController {
+
+    private static final String ARRANGE = "A 제목순, C 수정일순, D 생성일순";
+    private static final String ARRANGE_WITH_DISTANCE = ARRANGE + ", E 거리순";
 
     private final TourApiService service;
     private final TourDiscoveryService discovery;
@@ -42,17 +44,15 @@ public class TourApiController {
     }
 
     @GetMapping("/areas")
-    @Operation(summary = "지역 장소·혼잡도 통합 조회",
-            description = "앱 여행 지역명으로 관광정보와 여행일 기준 예상 혼잡도를 함께 반환합니다. "
-                    + "인증 없이 호출합니다. `/tour/discover`는 이 경로와 중복되어 제거했습니다. "
-                    + "nextCursor는 항상 null입니다. "
-                    + "관광 타입(contentTypeId): 12 관광지, 14 문화시설, 15 축제공연행사, 25 여행코스, "
-                    + "28 레포츠, 32 숙박, 38 쇼핑, 39 음식점.")
+    @Tag(name = "관광 목록")
+    @Operation(summary = "지역 장소·혼잡 목록",
+            description = "지역명으로 장소와 예상 혼잡을 반환합니다. 인증이 없습니다. "
+                    + "시간대와 현재 날씨는 GET /api/v1/congestion/forecast입니다.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "관광지와 혼잡도 조회 성공",
+            @ApiResponse(responseCode = "200", description = "장소와 예상 혼잡",
                     content = @Content(schema = @Schema(
                             implementation = TourDiscoveryResponse.class))),
-            @ApiResponse(responseCode = "400", description = "지원하지 않는 지역명 또는 잘못된 요청값",
+            @ApiResponse(responseCode = "400", description = "지원하지 않는 지역명",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "429", description = "공공데이터 API 요청 한도 초과",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
@@ -62,23 +62,22 @@ public class TourApiController {
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
     public TourDiscoveryResponse areas(
-            @Parameter(description = "한 페이지 결과 수")
+            @Parameter(description = "한 페이지 결과 수. 최대 20")
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int pageSize,
-            @Parameter(description = "이전 Android 호환용. 현재는 사용하지 않음")
+            @Parameter(hidden = true)
             @RequestParam(required = false) String cursor,
-            @Parameter(description = "이전 Android 호환용. 현재는 사용하지 않음", example = "C")
+            @Parameter(hidden = true)
             @RequestParam(defaultValue = "C") String arrange,
-            @Parameter(description = "앱 여행 지역명. Android의 국내 여행 지역 선택 문자열을 그대로 사용하며 "
-                    + "'제주 성산'도 '제주' 별칭으로 허용합니다. 전체 목록은 프론트엔드 API 명세를 참고하세요.",
-                    example = "서울", required = true)
+            @Parameter(description = "여행 지역명. 예: 서울, 수원·용인, 수원", example = "서울", required = true)
             @RequestParam String regionName,
-            @Parameter(description = "혼잡도 예측 기준일", example = "2026-09-01")
+            @Parameter(description = "혼잡 기준일", example = "2026-09-01")
             @RequestParam(required = false) LocalDate targetDate,
-            @Parameter(description = "관광 타입 ID", example = "12")
+            @Parameter(description = "12 관광지, 14 문화시설, 15 행사, 25 여행코스, 28 레포츠, 32 숙박, 38 쇼핑, 39 음식점",
+                    example = "12")
             @RequestParam(required = false) String contentTypeId,
-            @Parameter(description = "법정동 시도 코드", example = "26")
+            @Parameter(hidden = true)
             @RequestParam(required = false) String lDongRegnCd,
-            @Parameter(description = "법정동 시군구 코드", example = "380")
+            @Parameter(hidden = true)
             @RequestParam(required = false) String lDongSignguCd,
             @Parameter(description = "분류체계 대분류", example = "NA")
             @RequestParam(required = false) String lclsSystm1,
@@ -91,11 +90,11 @@ public class TourApiController {
     }
 
     @GetMapping("/locations")
+    @Tag(name = "관광 검색")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "위치기반 관광정보 조회",
-            description = "JWT가 필요합니다. 좌표(mapX/mapY)와 반경(radius, m, 최대 20000)으로 주변 관광정보 목록을 조회합니다. "
-                    + "정렬(arrange): A 제목순, C 수정일순, D 생성일순, E 거리순. "
-                    + "응답 항목에 중심 좌표로부터 거리(dist, m)가 추가됩니다.")
+    @Operation(summary = "좌표 주변 장소",
+            description = "경도 mapX, 위도 mapY, 반경 radius(m, 최대 20000)로 주변을 조회합니다. JWT가 필요합니다. "
+                    + "지역 목록은 GET /api/v1/tour/areas입니다.")
     @ApiResponse(responseCode = "200", description = "주변 관광정보 목록",
             content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse locations(
@@ -103,7 +102,8 @@ public class TourApiController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
             @RequestParam(required = false) String cursor,
-            @Parameter(description = "정렬 구분", example = "E")
+            @Parameter(description = ARRANGE_WITH_DISTANCE, example = "E",
+                    schema = @Schema(allowableValues = {"A", "C", "D", "E"}))
             @RequestParam(defaultValue = "E") String arrange,
             @Parameter(description = "GPS X좌표(WGS84 경도)", example = "126.98375", required = true)
             @RequestParam String mapX,
@@ -111,7 +111,8 @@ public class TourApiController {
             @RequestParam String mapY,
             @Parameter(description = "거리 반경(m, 최대 20000)", example = "1000", required = true)
             @RequestParam String radius,
-            @Parameter(description = "관광 타입 ID", example = "39")
+            @Parameter(description = "12 관광지, 14 문화시설, 15 행사, 25 여행코스, 28 레포츠, 32 숙박, 38 쇼핑, 39 음식점",
+                    example = "39")
             @RequestParam(required = false) String contentTypeId,
             @Parameter(description = "콘텐츠 수정일(YYYYMMDD)")
             @RequestParam(required = false) String modifiedtime,
@@ -131,10 +132,10 @@ public class TourApiController {
     }
 
     @GetMapping("/keywords")
+    @Tag(name = "관광 검색")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "키워드 관광정보 조회",
-            description = "JWT가 필요합니다. 키워드로 관광정보를 검색합니다. 키워드는 필수이며 한국어 인코딩은 서버가 처리합니다. "
-                    + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
+    @Operation(summary = "키워드 장소 검색",
+            description = "키워드로 장소를 검색합니다. JWT가 필요합니다.")
     @ApiResponse(responseCode = "200", description = "키워드 관광정보 목록",
             content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse keywords(
@@ -142,7 +143,8 @@ public class TourApiController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
             @RequestParam(required = false) String cursor,
-            @Parameter(description = "정렬 구분", example = "C")
+            @Parameter(description = ARRANGE, example = "C",
+                    schema = @Schema(allowableValues = {"A", "C", "D"}))
             @RequestParam(defaultValue = "C") String arrange,
             @Parameter(description = "검색 키워드", example = "시장", required = true)
             @RequestParam String keyword,
@@ -162,12 +164,10 @@ public class TourApiController {
     }
 
     @GetMapping("/festivals")
+    @Tag(name = "관광 검색")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "행사정보 조회",
-            description = "JWT가 필요합니다. 행사/공연/축제 정보를 날짜로 조회합니다. eventStartDate는 필수(YYYYMMDD)입니다. "
-                    + "응답 항목에 행사 시작일(eventStartDate)/종료일(eventEndDate)/"
-                    + "진행상태(progressType)/축제유형(festivalType)이 추가됩니다. "
-                    + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
+    @Operation(summary = "행사 조회",
+            description = "시작일 eventStartDate(YYYYMMDD)로 행사만 조회합니다. JWT가 필요합니다.")
     @ApiResponse(responseCode = "200", description = "행사정보 목록",
             content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse festivals(
@@ -175,7 +175,8 @@ public class TourApiController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
             @RequestParam(required = false) String cursor,
-            @Parameter(description = "정렬 구분", example = "C")
+            @Parameter(description = ARRANGE, example = "C",
+                    schema = @Schema(allowableValues = {"A", "C", "D"}))
             @RequestParam(defaultValue = "C") String arrange,
             @Parameter(description = "행사 시작일(YYYYMMDD)", example = "20260101", required = true)
             @RequestParam String eventStartDate,
@@ -199,10 +200,10 @@ public class TourApiController {
     }
 
     @GetMapping("/stays")
+    @Tag(name = "관광 검색")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "숙박정보 조회",
-            description = "JWT가 필요합니다. 숙박 정보 목록을 조회합니다(관광 타입 32). "
-                    + "정렬(arrange): A 제목순, C 수정일순, D 생성일순.")
+    @Operation(summary = "숙박 조회",
+            description = "숙박만 조회합니다. JWT가 필요합니다.")
     @ApiResponse(responseCode = "200", description = "숙박정보 목록",
             content = @Content(schema = @Schema(implementation = TourListResponse.class)))
     public TourListResponse stays(
@@ -210,7 +211,8 @@ public class TourApiController {
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
             @Parameter(description = "이전 응답의 nextCursor. 미전달 시 첫 페이지")
             @RequestParam(required = false) String cursor,
-            @Parameter(description = "정렬 구분", example = "C")
+            @Parameter(description = ARRANGE, example = "C",
+                    schema = @Schema(allowableValues = {"A", "C", "D"}))
             @RequestParam(defaultValue = "C") String arrange,
             @Parameter(description = "콘텐츠 수정일(YYYYMMDD)")
             @RequestParam(required = false) String modifiedtime,

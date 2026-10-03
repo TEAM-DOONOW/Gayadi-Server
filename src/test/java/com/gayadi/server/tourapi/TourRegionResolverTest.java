@@ -37,6 +37,38 @@ class TourRegionResolverTest {
                 .containsExactly(new TourRegionResolver.RegionCode("50", "", "제주"));
     }
 
+    @Test
+    void resolvesASingleCityInsideACompositeRegion() {
+        TourRegionResolver resolver = new TourRegionResolver(new StubTourApiService());
+
+        assertThat(resolver.resolve("수원")).extracting(TourRegionResolver.RegionCode::districtCode)
+                .containsExactly("110", "111");
+        assertThat(resolver.resolve("용인")).extracting(TourRegionResolver.RegionCode::districtCode)
+                .containsExactly("460", "461");
+    }
+
+    @Test
+    void resolvesAMetropolitanCityByItsOwnName() {
+        TourRegionResolver resolver = new TourRegionResolver(new StubTourApiService());
+
+        assertThat(resolver.resolve("광주"))
+                .containsExactly(new TourRegionResolver.RegionCode("29", "", "광주"));
+        assertThat(resolver.resolve("부산"))
+                .containsExactly(new TourRegionResolver.RegionCode("26", "", "부산"));
+    }
+
+    @Test
+    void resolvesDistrictCodeFromAPlaceAddress() {
+        TourRegionResolver resolver = new TourRegionResolver(new StubTourApiService());
+
+        assertThat(resolver.resolveAddress("경기도 수원시 장안구 영화동 320-2"))
+                .contains(new TourRegionResolver.RegionCode("41", "110", "수원시 장안구"));
+        assertThat(resolver.resolveAddress("경기 용인시 기흥구 보정동"))
+                .contains(new TourRegionResolver.RegionCode("41", "461", "용인시 기흥구"));
+        assertThat(resolver.resolveAddress("미국 뉴욕")).isEmpty();
+        assertThat(resolver.resolveAddress("")).isEmpty();
+    }
+
     private static final class StubTourApiService extends TourApiService {
         private StubTourApiService() {
             super(new ObjectMapper(), "test", "http://example.com", "test");
