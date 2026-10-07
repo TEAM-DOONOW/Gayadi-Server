@@ -84,7 +84,8 @@ tour:
 
 congestion:
   api:
-    key: ${congestion_api_key:${CONGESTION_API_KEY:}}
+    # 공공데이터포털 계정 공용 키입니다. 전용 키가 없으면 TourAPI 키를 씁니다(관광지 집중률 예측 활용신청 필요)
+    key: ${congestion_api_key:${CONGESTION_API_KEY:${tour_api_key:${TOUR_API_KEY:}}}}
     base-url: ${CONGESTION_API_BASE_URL:https://apis.data.go.kr/B551011/TatsCnctrRateService}
     mobile-app: ${CONGESTION_API_MOBILE_APP:${TOUR_API_MOBILE_APP:Gayadi}}
   tmap:
@@ -98,9 +99,18 @@ congestion:
     api-key: ${seoul_api_key:${SEOUL_API_KEY:}}
     base-url: ${CONGESTION_SEOUL_BASE_URL:}
 
+datalab:
+  api:
+    # 한국관광공사 중심 관광지·지역별 방문자 수. 같은 공공데이터포털 키로 두 서비스를 활용신청해야 합니다
+    key: ${datalab_api_key:${DATALAB_API_KEY:${tour_api_key:${TOUR_API_KEY:}}}}
+    hub-base-url: ${DATALAB_HUB_API_BASE_URL:https://apis.data.go.kr/B551011/LocgoHubTarService1}
+    visitor-base-url: ${DATALAB_VISITOR_API_BASE_URL:https://apis.data.go.kr/B551011/DataLabService}
+    mobile-app: ${DATALAB_API_MOBILE_APP:${TOUR_API_MOBILE_APP:Gayadi}}
+
 weather:
   api:
-    key: ${weather_api_key:${WEATHER_API_KEY:}}
+    # 공공데이터포털 키는 계정 공용입니다. 기상청 전용 키가 없으면 TourAPI 키를 씁니다(단기예보 활용신청 필요)
+    key: ${weather_api_key:${WEATHER_API_KEY:${tour_api_key:${TOUR_API_KEY:}}}}
     base-url: ${WEATHER_API_BASE_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
 
 auth:
@@ -162,7 +172,9 @@ springdoc:
     persist-authorization: true
     display-request-duration: true
     doc-expansion: none
-    operations-sorter: method
+    operations-sorter: alpha
+    filter: true
+    try-it-out-enabled: true
   paths-to-match: /api/**
   packages-to-scan: com.gayadi.server
 
